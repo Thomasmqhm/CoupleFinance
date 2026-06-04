@@ -19,12 +19,16 @@ public class FixedChargeSuggestionManager {
     private static final String KEY_ACCEPTED = "accepted_";
     private static final String KEY_UPDATED_AT = "updated_at_";
 
-    private static FixedChargeSuggestionManager instance;
+    private static volatile FixedChargeSuggestionManager instance;
     private Context appContext;
+
+    private FixedChargeSuggestionManager() {}
 
     public static FixedChargeSuggestionManager getInstance() {
         if (instance == null) {
-            instance = new FixedChargeSuggestionManager();
+            synchronized (FixedChargeSuggestionManager.class) {
+                if (instance == null) instance = new FixedChargeSuggestionManager();
+            }
         }
         return instance;
     }
