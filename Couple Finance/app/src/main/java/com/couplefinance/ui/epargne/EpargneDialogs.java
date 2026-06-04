@@ -14,6 +14,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.couplefinance.AppToast;
+import com.couplefinance.data.TelegramManager;
 import com.couplefinance.UserSession;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.TransactionManager;
@@ -324,10 +325,16 @@ public final class EpargneDialogs {
 								public void onSuccess() {
 										recordSavingDepositTransaction(activity, goal.name, actual);
 
-									AppToast.success(activity,
-											newCurrent >= goal.target && goal.target > 0
-													? "Objectif atteint"
-													: "Versement de " + Fmt.money(actual) + " ajouté");
+									boolean goalReached = newCurrent >= goal.target && goal.target > 0;
+									AppToast.success(activity, goalReached ? "Objectif atteint !" : "Versement de " + Fmt.money(actual) + " ajouté");
+									if (goalReached) {
+										try {
+											String msg = "🎉 <b>Objectif atteint !</b>\n"
+													+ goal.emoji + " <b>" + goal.name + "</b>\n"
+													+ Fmt.money(goal.target) + " épargnés 🎉";
+											TelegramManager.getInstance().sendMessage(msg, null);
+										} catch (Exception ignored) {}
+									}
 
 									dismissThenReload(dialogRef[0], callback);
 								}
@@ -342,6 +349,154 @@ public final class EpargneDialogs {
 				.build();
 
 		dialogRef[0].show();
+	}
+
+	public static void showWithdrawDialog(Activity activity, EpargneModels.SavingsGoal goal, OnActionDone callback) {
+		if (goal.current <= 0) {
+			AppToast.info(activity, "Aucun fonds à retirer");
+			return;
+		}
+		LinearLayout content = new LinearLayout(activity);
+		content.setOrientation(LinearLayout.VERTICAL);
+		content.addView(buildGoalSummaryCard(activity, goal));
+
+		LinearLayout colAmount = AppDialog.fieldColumn(activity, "MONTANT À RETIRER €");
+		LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
+		clp.topMargin = DS.dp(activity, DS.GAP);
+		colAmount.setLayoutParams(clp);
+		EditText etAmount = UiFactory.inputNumeric(activity, "Max : " + Fmt.money(goal.current));
+		colAmount.addView(etAmount);
+		content.addView(colAmount);
+
+		TextView tvFeedback = new TextView(activity);
+		tvFeedback.setTextSize(DS.TEXT_SM);
+		tvFeedback.setPadding(DS.dp(activity, 4), DS.dp(activity, 2), DS.dp(activity, 4), DS.dp(activity, 6));
+		tvFeedback.setVisibility(View.GONE);
+		content.addView(tvFeedback);
+
+		etAmount.addTextChangedListener(simpleTextWatcher(() -> {
+			double entered = parseInput(etAmount.getText().toString(), 0);
+			if (entered <= 0) { tvFeedback.setVisibility(View.GONE); return; }
+			tvFeedback.setVisibility(View.VISIBLE);
+			double after = goal.current - Math.min(entered, goal.current);
+			tvFeedback.setText("Après retrait : " + Fmt.money(after));
+			tvFeedback.setTextColor(ThemeColors.subtext());
+		}));
+
+		final AlertDialog[] dialogRef = new AlertDialog[1];
+		dialogRef[0] = new AppDialog.Builder(activity)
+				.icon(goal.emoji)
+				.title("Retirer de l'objectif")
+				.content(content)
+				.primaryBtn("RETIRER", () -> {
+					double entered = parseInput(etAmount.getText().toString(), -1);
+					if (entered <= 0) { AppToast.error(activity, "Montant invalide"); return; }
+					double actual = Math.min(entered, goal.current);
+					double newCurrent = Math.max(0, goal.current - actual);
+					EpargneRepository.updateGoalCurrent(goal.docId, newCurrent, activity,
+							new EpargneRepository.OnWriteComplete() {
+								public void onSuccess() {
+									AppToast.success(activity, "Retrait de " + Fmt.money(actual) + " effectué");
+									dismissThenReload(dialogRef[0], callback);
+								}
+								public void onError(String e) {
+									AppToast.error(activity, "Erreur : " + e);
+								}
+							});
+				})
+				.build();
+		dialogRef[0].show();
+	}
+
+	public static void showEditDialog(Activity activity, EpargneModels.SavingsGoal goal, OnActionDone callback) {
+		LinearLayout content = new LinearLayout(activity);
+		content.setOrientation(LinearLayout.VERTICAL);
+
+		LinearLayout colNom = AppDialog.fieldColumn(activity, "NOM DE L'OBJECTIF");
+		EditText etName = UiFactory.input(activity, "Nom de l'objectif");
+		etName.setText(goal.name);
+		colNom.addView(etName);
+		content.addView(colNom);
+
+		LinearLayout colTarget = AppDialog.fieldColumn(activity, "MONTANT CIBLE €");
+		LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
+		clp.topMargin = DS.dp(activity, DS.GAP);
+		colTarget.setLayoutParams(clp);
+		EditText etTarget = UiFactory.inputNumeric(activity, "Montant cible");
+		if (goal.target > 0) etTarget.setText(String.valueOf((int) goal.target));
+		colTarget.addView(etTarget);
+		content.addView(colTarget);
+
+		final long[] selectedDateMs = { goal.targetDateMs };
+		final Calendar cal = Calendar.getInstance();
+		if (goal.targetDateMs > 0) cal.setTimeInMillis(goal.targetDateMs);
+
+		Button btnDate = UiFactory.btnSecondary(activity, goal.hasDate()
+				? capitalize(new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.FRANCE).format(new java.util.Date(goal.targetDateMs)))
+				: "Modifier la date cible");
+		btnDate.setTextColor(goal.hasDate() ? ThemeColors.success() : ThemeColors.primary());
+		if (goal.hasDate()) btnDate.setBackground(UiFactory.bg(ThemeColors.successBackground(), DS.R_SM, activity));
+		btnDate.setAllCaps(false);
+		PressAnimations.apply(btnDate);
+		LinearLayout.LayoutParams dateLp = new LinearLayout.LayoutParams(-1, DS.dp(activity, DS.BTN_HEIGHT));
+		dateLp.topMargin = DS.dp(activity, DS.GAP);
+		btnDate.setLayoutParams(dateLp);
+
+		btnDate.setOnClickListener(v -> {
+			DatePickerDialog dpd = new DatePickerDialog(activity,
+					(view, year, month, day) -> {
+						cal.set(year, month, day, 0, 0, 0);
+						cal.set(Calendar.MILLISECOND, 0);
+						selectedDateMs[0] = cal.getTimeInMillis();
+						String label = capitalize(new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.FRANCE).format(cal.getTime()));
+						btnDate.setText(label);
+						btnDate.setBackground(UiFactory.bg(ThemeColors.successBackground(), DS.R_SM, activity));
+						btnDate.setTextColor(ThemeColors.success());
+					},
+					cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+			dpd.getDatePicker().setMinDate(System.currentTimeMillis() + 86_400_000L);
+			dpd.show();
+		});
+		content.addView(btnDate);
+
+		final AlertDialog[] dialogRef = new AlertDialog[1];
+		dialogRef[0] = new AppDialog.Builder(activity)
+				.icon(goal.emoji)
+				.title("Modifier l'objectif")
+				.content(content)
+				.primaryBtn("ENREGISTRER", () -> {
+					String name = etName.getText().toString().trim();
+					if (name.isEmpty()) { AppToast.error(activity, "Nom requis"); return; }
+					double target = parseInput(etTarget.getText().toString(), -1);
+					if (target <= 0) { AppToast.error(activity, "Montant cible invalide"); return; }
+					EpargneRepository.updateGoalFull(
+							goal.docId, name, target,
+							EpargneModels.autoEmoji(name), EpargneModels.autoColor(name),
+							selectedDateMs[0], activity,
+							new EpargneRepository.OnWriteComplete() {
+								public void onSuccess() {
+									AppToast.success(activity, "Objectif mis à jour");
+									dismissThenReload(dialogRef[0], callback);
+								}
+								public void onError(String e) {
+									AppToast.error(activity, "Erreur : " + e);
+								}
+							});
+				})
+				.build();
+		dialogRef[0].show();
+	}
+
+	public static void showOptionsMenu(Activity activity, EpargneModels.SavingsGoal goal, OnActionDone callback) {
+		String[] options = { "✏️  Modifier", "↩  Retirer des fonds", "🗑️  Supprimer" };
+		new android.app.AlertDialog.Builder(activity)
+				.setTitle(goal.emoji + "  " + goal.name)
+				.setItems(options, (dialog, which) -> {
+					if (which == 0) showEditDialog(activity, goal, callback);
+					else if (which == 1) showWithdrawDialog(activity, goal, callback);
+					else showDeleteDialog(activity, goal, callback);
+				})
+				.show();
 	}
 
 	public static void showDeleteDialog(Activity activity, EpargneModels.SavingsGoal goal, OnActionDone callback) {
