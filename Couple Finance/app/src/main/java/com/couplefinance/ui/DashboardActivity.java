@@ -44,9 +44,11 @@ import com.couplefinance.ui.transactions.TransactionsView;
 import com.couplefinance.ui.virements.VirementView;
 import com.couplefinance.data.CreditManager;
 import com.couplefinance.data.RecurringChargeManager;
+import com.couplefinance.data.BankAutoSyncManager;
 import com.couplefinance.data.TelegramScheduler;
 import com.couplefinance.utils.NotificationHelper;
 import com.couplefinance.utils.NotificationScheduler;
+import com.couplefinance.ui.analyse.AnalyseView;
 
 public class DashboardActivity extends Activity {
 
@@ -57,6 +59,7 @@ public class DashboardActivity extends Activity {
 	private Button btnHome, btnAgenda, btnTransactions, btnVirements;
 	private Button btnBudget, btnEpargne, btnCredits, btnVuePerso, btnSettings;
 	private Button btnAbonnements;
+	private Button btnAnalyse;
 
 	private LinearLayout bottomNav;
 	private LinearLayout tabHome, tabTransactions, tabBudget, tabEpargne, tabMore;
@@ -119,6 +122,7 @@ public class DashboardActivity extends Activity {
 			CreditManager.getInstance().checkAndApplyCredits(null);
 			NotificationHelper.getInstance(this).notifyPendingFixedCharges(3);
 			TelegramScheduler.checkAndSend(this);
+			if (BankAutoSyncManager.isEnabled(this)) BankAutoSyncManager.scheduleDaily(this);
 		} catch (Exception ignored) {
 		}
 	}
@@ -173,6 +177,7 @@ public class DashboardActivity extends Activity {
 		btnVuePerso = findViewById(R.id.btnVuePerso);
 		btnSettings = findViewById(R.id.btnSettings);
 		btnAbonnements = findViewById(R.id.btnAbonnements);
+		btnAnalyse = findViewById(R.id.btnAnalyse);
 		bottomNav = findViewById(R.id.bottomNav);
 		tabHome = findViewById(R.id.tabHome);
 		tabTransactions = findViewById(R.id.tabTransactions);
@@ -296,6 +301,8 @@ public class DashboardActivity extends Activity {
 			btnSettings.setOnClickListener(v -> sidebarNav(btnSettings, this::showSettings));
 		if (btnAbonnements != null)
 			btnAbonnements.setOnClickListener(v -> sidebarNav(btnAbonnements, this::showAbonnements));
+		if (btnAnalyse != null)
+			btnAnalyse.setOnClickListener(v -> sidebarNav(btnAnalyse, this::showAnalyse));
 	}
 
 	private void sidebarNav(Button btn, Runnable action) {
@@ -369,7 +376,7 @@ public class DashboardActivity extends Activity {
 
 	private void setActiveButton(Button btn) {
 		Button[] all = { btnHome, btnAgenda, btnTransactions, btnVirements, btnBudget, btnEpargne, btnCredits,
-				btnVuePerso, btnSettings, btnAbonnements };
+				btnVuePerso, btnSettings, btnAbonnements, btnAnalyse };
 		for (Button b : all) {
 			if (b == null)
 				continue;
@@ -458,6 +465,10 @@ public class DashboardActivity extends Activity {
 
 	private void showAbonnements() {
 		switchTo(new com.couplefinance.ui.abonnements.AbonnementsView(this).getView());
+	}
+
+	private void showAnalyse() {
+		switchTo(new AnalyseView(this).getView());
 	}
 
 	private void checkFirebaseStatus() {

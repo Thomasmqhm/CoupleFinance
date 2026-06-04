@@ -316,6 +316,13 @@
             android:gravity="start|center_vertical" android:paddingStart="24dp"
             android:background="@android:color/transparent"/>
 
+        <Button android:id="@+id/btnAnalyse"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Analyse"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
         <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
         <View android:layout_width="match_parent" android:layout_height="1dp"
             android:background="#D8CAC0" android:layout_marginBottom="8dp"/>
