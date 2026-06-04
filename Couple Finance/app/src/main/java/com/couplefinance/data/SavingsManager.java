@@ -125,6 +125,33 @@ public class SavingsManager {
 		});
 	}
 
+	public void updateSavingFull(String docPath, String name, double target,
+								  String emoji, String color, long targetDateMs,
+								  FirestoreManager.Callback cb) {
+		executor.execute(() -> {
+			HttpURLConnection conn = null;
+			try {
+				String token = AuthManager.getInstance().getFreshTokenSync();
+				String cleanPath = normalizeSavingDocPath(docPath);
+				String body = "{\"fields\":{"
+						+ "\"name\":{\"stringValue\":\"" + escape(name) + "\"},"
+						+ "\"target\":{\"doubleValue\":" + target + "},"
+						+ "\"emoji\":{\"stringValue\":\"" + escape(emoji) + "\"},"
+						+ "\"color\":{\"stringValue\":\"" + escape(color) + "\"},"
+						+ "\"targetDate\":{\"integerValue\":\"" + targetDateMs + "\"}"
+						+ "}}";
+				conn = openRaw(
+						FirebaseConfig.documentUpdateUrl(cleanPath, "name", "target", "emoji", "color", "targetDate"),
+						"PATCH", token, true);
+				send(conn, body, cb);
+			} catch (Exception e) {
+				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
+			}
+		});
+	}
+
 	public void deleteSaving(String docPath, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
 			HttpURLConnection conn = null;

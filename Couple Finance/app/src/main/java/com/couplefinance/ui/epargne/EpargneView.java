@@ -419,7 +419,7 @@ public class EpargneView extends BaseView {
 				showDepositDialog(goal));
 
 		card.setOnLongClickListener(v -> {
-			showDeleteDialog(goal);
+			showOptionsMenu(goal);
 			return true;
 		});
 
@@ -496,7 +496,7 @@ public class EpargneView extends BaseView {
 		texts.addView(target, targetLp);
 
 		TextView badge = new TextView(activity);
-		badge.setText(pct + "%");
+		badge.setText(EpargneCalculator.badgeLabel(goal));
 		badge.setTextColor(accent);
 		badge.setTextSize(12);
 		badge.setTypeface(Typeface.DEFAULT_BOLD);
@@ -548,6 +548,18 @@ public class EpargneView extends BaseView {
 		values.addView(right);
 
 		card.addView(progressBar(pct, accent));
+
+		double monthly = EpargneCalculator.smartMonthly(goal);
+		if (monthly > 0 && !goal.isCompleted()) {
+			TextView tvMonthly = new TextView(activity);
+			tvMonthly.setText("→ " + Fmt.money(monthly) + "/mois recommandé");
+			tvMonthly.setTextSize(11f);
+			tvMonthly.setTextColor(ThemeColors.withAlpha(accent, 200));
+			LinearLayout.LayoutParams monthlyLp = new LinearLayout.LayoutParams(-1, -2);
+			monthlyLp.topMargin = dp(6);
+			monthlyLp.bottomMargin = dp(4);
+			card.addView(tvMonthly, monthlyLp);
+		}
 
 		LinearLayout footer = new LinearLayout(activity);
 		footer.setOrientation(LinearLayout.HORIZONTAL);
@@ -966,5 +978,9 @@ public class EpargneView extends BaseView {
 
 	private void showDeleteDialog(EpargneModels.SavingsGoal goal) {
 		EpargneDialogs.showDeleteDialog(activity, goal, this::load);
+	}
+
+	private void showOptionsMenu(EpargneModels.SavingsGoal goal) {
+		EpargneDialogs.showOptionsMenu(activity, goal, this::load);
 	}
 }

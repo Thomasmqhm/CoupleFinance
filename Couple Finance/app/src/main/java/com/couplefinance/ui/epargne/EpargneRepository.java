@@ -103,6 +103,23 @@ public final class EpargneRepository {
     }
 
     /**
+     * Met à jour les champs principaux d'un objectif (édition complète).
+     */
+    public static void updateGoalFull(String docId, String name, double target,
+                                       String emoji, String colorHex, long targetDateMs,
+                                       Activity activity, OnWriteComplete callback) {
+        SavingsManager.getInstance().updateSavingFull(docId, name, target, emoji, colorHex, targetDateMs,
+            new FirestoreManager.Callback() {
+                public void onSuccess(String r) {
+                    activity.runOnUiThread(callback::onSuccess);
+                }
+                public void onError(String e) {
+                    activity.runOnUiThread(() -> callback.onError(e));
+                }
+            });
+    }
+
+    /**
      * Supprime un objectif d'épargne par son docId.
      */
     public static void deleteGoal(String docId, Activity activity, OnWriteComplete callback) {
