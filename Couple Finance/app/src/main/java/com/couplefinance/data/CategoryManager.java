@@ -18,14 +18,17 @@ import java.util.concurrent.Executors;
 
 public class CategoryManager {
 
-	private static CategoryManager instance;
+	private static volatile CategoryManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(2);
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
 	public static CategoryManager getInstance() {
-		if (instance == null)
-			instance = new CategoryManager();
+		if (instance == null) {
+			synchronized (CategoryManager.class) {
+				if (instance == null) instance = new CategoryManager();
+			}
+		}
 		return instance;
 	}
 
@@ -39,216 +42,129 @@ public class CategoryManager {
 
 	public void addCategory(String name, String emoji, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				HttpURLConnection conn = openPost(getCategoriesPath(), token);
-				if (conn == null) {
-					postError(cb, "Connection failed");
-					return;
-				}
+				conn = open(FirebaseConfig.BASE_URL + getCategoriesPath() + "?key=" + FirebaseConfig.API_KEY, "POST", token, true);
 
 				String rawName = name == null ? "" : name.trim();
 				String type = "expense";
-
 				if (rawName.endsWith("|income")) {
 					type = "income";
 					rawName = rawName.replace("|income", "").trim();
 				} else if (rawName.endsWith("|expense")) {
-					type = "expense";
 					rawName = rawName.replace("|expense", "").trim();
 				}
 
-				String safeName = safeJson(rawName);
-				String safeEmoji = safeJson(emoji);
-				String safeType = safeJson(type);
-
 				String body = "{\"fields\":{"
-						+ "\"name\":{\"stringValue\":\"" + safeName + "\"},"
-						+ "\"type\":{\"stringValue\":\"" + safeType + "\"},"
-						+ "\"emoji\":{\"stringValue\":\"" + safeEmoji + "\"}"
+						+ "\"name\":{\"stringValue\":\"" + safeJson(rawName) + "\"},"
+						+ "\"type\":{\"stringValue\":\"" + safeJson(type) + "\"},"
+						+ "\"emoji\":{\"stringValue\":\"" + safeJson(emoji) + "\"}"
 						+ "}}";
-
 				send(conn, body, cb);
-
 			} catch (Exception e) {
 				postError(cb, e.getMessage());
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void getCategories(FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				HttpURLConnection conn = openGet(getCategoriesPath(), token);
-				if (conn == null) {
-					postSuccess(cb, "{\"documents\":[]}");
-					return;
-				}
-
+				conn = open(FirebaseConfig.BASE_URL + getCategoriesPath() + "?key=" + FirebaseConfig.API_KEY, "GET", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200) {
 					postSuccess(cb, safeRead(conn.getInputStream()));
 				} else {
 					postSuccess(cb, "{\"documents\":[]}");
 				}
-
 			} catch (Exception e) {
 				postSuccess(cb, "{\"documents\":[]}");
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void deleteCategory(String docPath, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				String url = buildDocumentUrl(docPath, "categories");
-				HttpURLConnection conn = openDelete(url, token);
-
-				if (conn == null) {
-					postError(cb, "Connection failed");
-					return;
+				String urlStr = buildDocumentUrl(docPath, "categories");
+				if (!urlStr.contains("key=")) {
+					urlStr += (urlStr.contains("?") ? "&key=" : "?key=") + FirebaseConfig.API_KEY;
 				}
-
+				conn = open(urlStr, "DELETE", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200 || code == 204) {
 					postSuccess(cb, "deleted");
 				} else {
 					postError(cb, "Code: " + code + " - " + safeRead(conn.getErrorStream()));
 				}
-
 			} catch (Exception e) {
 				postError(cb, e.getMessage());
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void setCategoryBudget(String docId, double budget, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				String urlStr = FirebaseConfig.BASE_URL
-						+ getCategoriesPath()
-						+ "/"
-						+ docId
-						+ "?updateMask.fieldPaths=budget&key="
-						+ FirebaseConfig.API_KEY;
-
-				HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-				conn.setRequestMethod("PATCH");
-				conn.setRequestProperty("Content-Type", "application/json");
-
-				if (token != null && !token.isEmpty()) {
-					conn.setRequestProperty("Authorization", "Bearer " + token);
-				}
-
-				conn.setConnectTimeout(10000);
-				conn.setReadTimeout(10000);
-				conn.setDoOutput(true);
-
+				String urlStr = FirebaseConfig.BASE_URL + getCategoriesPath() + "/" + docId
+						+ "?updateMask.fieldPaths=budget&key=" + FirebaseConfig.API_KEY;
+				conn = open(urlStr, "PATCH", token, true);
 				String body = "{\"fields\":{\"budget\":{\"doubleValue\":" + budget + "}}}";
-
-				DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-				dos.write(body.getBytes("UTF-8"));
-				dos.flush();
-				dos.close();
-
+				try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+					dos.write(body.getBytes("UTF-8"));
+				}
 				int code = conn.getResponseCode();
-
 				if (code == 200) {
 					postSuccess(cb, "ok");
 				} else {
 					postError(cb, "Code: " + code + " - " + safeRead(conn.getErrorStream()));
 				}
-
 			} catch (Exception e) {
 				postError(cb, e.getMessage());
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
-	private HttpURLConnection openPost(String path, String token) {
-		return open(path, "POST", token);
-	}
-
-	private HttpURLConnection openGet(String path, String token) {
-		return open(path, "GET", token);
-	}
-
-	private HttpURLConnection open(String path, String method, String token) {
-		try {
-			URL url = new URL(FirebaseConfig.BASE_URL + path + "?key=" + FirebaseConfig.API_KEY);
-
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestMethod(method);
-			conn.setRequestProperty("Content-Type", "application/json");
-
-			if (token != null && !token.isEmpty()) {
-				conn.setRequestProperty("Authorization", "Bearer " + token);
-			}
-
-			conn.setConnectTimeout(10000);
-			conn.setReadTimeout(10000);
-
-			if (!method.equals("GET") && !method.equals("DELETE")) {
-				conn.setDoOutput(true);
-			}
-
-			return conn;
-
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	private HttpURLConnection openDelete(String fullUrl, String token) {
-		try {
-			String urlStr = fullUrl.contains("key=")
-					? fullUrl
-					: fullUrl + (fullUrl.contains("?") ? "&key=" : "?key=") + FirebaseConfig.API_KEY;
-
-			HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-			conn.setRequestMethod("DELETE");
-
-			if (token != null && !token.isEmpty()) {
-				conn.setRequestProperty("Authorization", "Bearer " + token);
-			}
-
-			conn.setConnectTimeout(10000);
-			conn.setReadTimeout(10000);
-
-			return conn;
-
-		} catch (Exception e) {
-			return null;
-		}
+	private HttpURLConnection open(String urlStr, String method, String token, boolean output) throws Exception {
+		HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+		conn.setRequestMethod(method);
+		conn.setRequestProperty("Content-Type", "application/json");
+		if (token != null && !token.isEmpty()) conn.setRequestProperty("Authorization", "Bearer " + token);
+		conn.setConnectTimeout(10000);
+		conn.setReadTimeout(10000);
+		conn.setDoOutput(output);
+		return conn;
 	}
 
 	private void send(HttpURLConnection conn, String body, FirestoreManager.Callback cb) {
 		try {
 			if (body != null) {
-				DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-				dos.write(body.getBytes("UTF-8"));
-				dos.flush();
-				dos.close();
+				try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+					dos.write(body.getBytes("UTF-8"));
+				}
 			}
-
 			int code = conn.getResponseCode();
 			String response = safeRead(code == 200 || code == 201 ? conn.getInputStream() : conn.getErrorStream());
-
 			if (code == 200 || code == 201) {
 				postSuccess(cb, response);
 			} else {
 				postError(cb, response);
 			}
-
 		} catch (Exception e) {
 			postError(cb, e.getMessage());
 		}
@@ -274,19 +190,12 @@ public class CategoryManager {
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null)
-			return "";
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		if (is == null) return "";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null)
-				sb.append(line);
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}

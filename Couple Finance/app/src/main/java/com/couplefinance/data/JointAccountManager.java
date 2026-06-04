@@ -486,31 +486,29 @@ public class JointAccountManager {
 
 	/** Lit un document Firestore et le mappe en Snapshot, ou null si absent/erreur. */
 	private Snapshot readDocument(String path) {
+		HttpURLConnection conn = null;
 		try {
 			String token = AuthManager.getInstance().getToken();
-			if (token == null || token.isEmpty()) {
-				return null;
-			}
+			if (token == null || token.isEmpty()) return null;
 
-			HttpURLConnection conn = open(FirebaseConfig.documentUrl(path), "GET", token, false);
+			conn = open(FirebaseConfig.documentUrl(path), "GET", token, false);
 			int code = conn.getResponseCode();
 
 			if (code == 404) {
-				// Document jamais créé : ce n'est pas une erreur réseau.
 				Snapshot empty = new Snapshot();
 				empty.anchorDate = monthStartMillis();
 				return empty;
 			}
 
-			if (code != 200) {
-				return null; // erreur réseau / permission → fallback local
-			}
+			if (code != 200) return null;
 
 			String body = safeRead(conn.getInputStream());
 			return parseSnapshot(body);
 
 		} catch (Exception e) {
 			return null;
+		} finally {
+			if (conn != null) conn.disconnect();
 		}
 	}
 
@@ -582,6 +580,7 @@ public class JointAccountManager {
 	}
 
 	private boolean patch(String path, String body) {
+		HttpURLConnection conn = null;
 		try {
 			String token = AuthManager.getInstance().getToken();
 			if (token == null || token.isEmpty()) {
@@ -589,27 +588,22 @@ public class JointAccountManager {
 				return false;
 			}
 
-			HttpURLConnection conn = open(FirebaseConfig.documentUrl(path), "PATCH", token, true);
+			conn = open(FirebaseConfig.documentUrl(path), "PATCH", token, true);
 			writeBody(conn, body);
 
 			int code = conn.getResponseCode();
-			if (code >= 200 && code < 300) {
-				return true;
-			}
+			if (code >= 200 && code < 300) return true;
 
-			// Capture la réponse d'erreur Firestore pour diagnostic.
 			String response = safeRead(conn.getErrorStream());
-			if (response != null && response.length() > 180) {
-				response = response.substring(0, 180);
-			}
-			lastError = "HTTP " + code
-					+ (response == null || response.isEmpty() ? "" : " · " + response);
+			if (response != null && response.length() > 180) response = response.substring(0, 180);
+			lastError = "HTTP " + code + (response == null || response.isEmpty() ? "" : " · " + response);
 			return false;
 
 		} catch (Exception e) {
-			lastError = "exception réseau : "
-					+ (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+			lastError = "exception réseau : " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
 			return false;
+		} finally {
+			if (conn != null) conn.disconnect();
 		}
 	}
 
@@ -725,23 +719,17 @@ public class JointAccountManager {
 	}
 
 	private void writeBody(HttpURLConnection conn, String body) throws Exception {
-		DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-		dos.write(body.getBytes("UTF-8"));
-		dos.flush();
-		dos.close();
+		try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+			dos.write(body.getBytes("UTF-8"));
+		}
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null) {
-			return "";
-		}
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+		if (is == null) return "";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
 		} catch (Exception e) {
 			return "";

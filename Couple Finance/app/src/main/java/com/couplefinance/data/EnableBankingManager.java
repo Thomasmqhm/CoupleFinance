@@ -60,7 +60,7 @@ public class EnableBankingManager {
     private static final String K_OWNERS      = "eb_account_owners";    // ||| séparateur : "thomas","melissa","joint",""
     private static final String SEP           = "|||";
 
-    private static EnableBankingManager instance;
+    private static volatile EnableBankingManager instance;
     private final Executor executor = Executors.newFixedThreadPool(2);
     private final Handler  handler  = new Handler(Looper.getMainLooper());
     private Context context;
@@ -114,7 +114,11 @@ public class EnableBankingManager {
 
     private EnableBankingManager() {}
     public static EnableBankingManager getInstance() {
-        if (instance == null) instance = new EnableBankingManager();
+        if (instance == null) {
+            synchronized (EnableBankingManager.class) {
+                if (instance == null) instance = new EnableBankingManager();
+            }
+        }
         return instance;
     }
     public void init(Context ctx) {
@@ -698,27 +702,36 @@ public class EnableBankingManager {
     }
     private JSONObject getJsonFullUrl(String url, String jwt) throws Exception {
         HttpURLConnection c = openConn(url, "GET", jwt, false);
-        int code = c.getResponseCode();
-        String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
-        if (code == 401) throw new Exception("JWT invalide (401).");
-        if (code == 404) throw new Exception("404 — URL incorrecte. Reconnectez la banque.");
-        if (code == 400) {
-            if (body.contains("ASPSP_ERROR"))
-                throw new Exception("ASPSP_ERROR — Banque a refusé (auth expirée ou dates trop larges).");
-            throw new Exception("HTTP 400 : " + body);
+        try {
+            int code = c.getResponseCode();
+            String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
+            if (code == 401) throw new Exception("JWT invalide (401).");
+            if (code == 404) throw new Exception("404 — URL incorrecte. Reconnectez la banque.");
+            if (code == 400) {
+                if (body.contains("ASPSP_ERROR"))
+                    throw new Exception("ASPSP_ERROR — Banque a refusé (auth expirée ou dates trop larges).");
+                throw new Exception("HTTP 400 : " + body);
+            }
+            if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
+            return new JSONObject(body);
+        } finally {
+            c.disconnect();
         }
-        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
-        return new JSONObject(body);
     }
     private JSONObject postJson(String endpoint, String jwt, String bodyStr) throws Exception {
         HttpURLConnection c = openConn(BASE_URL + endpoint, "POST", jwt, true);
-        DataOutputStream dos = new DataOutputStream(c.getOutputStream());
-        dos.write(bodyStr.getBytes("UTF-8")); dos.flush(); dos.close();
-        int code = c.getResponseCode();
-        String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
-        if (code == 401) throw new Exception("JWT invalide (401).");
-        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
-        return new JSONObject(body);
+        try {
+            try (DataOutputStream dos = new DataOutputStream(c.getOutputStream())) {
+                dos.write(bodyStr.getBytes("UTF-8"));
+            }
+            int code = c.getResponseCode();
+            String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
+            if (code == 401) throw new Exception("JWT invalide (401).");
+            if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
+            return new JSONObject(body);
+        } finally {
+            c.disconnect();
+        }
     }
     private HttpURLConnection openConn(String url, String method, String jwt, boolean out) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
@@ -771,11 +784,12 @@ public class EnableBankingManager {
         catch (Exception e) { return uid; }
     }
     private String safeRead(InputStream is) {
-        if (is==null) return "";
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            StringBuilder sb = new StringBuilder(); String l;
-            while((l=br.readLine())!=null) sb.append(l); return sb.toString();
+        if (is == null) return "";
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
+            StringBuilder sb = new StringBuilder();
+            String l;
+            while ((l = br.readLine()) != null) sb.append(l);
+            return sb.toString();
         } catch (Exception e) { return ""; }
     }
     private List<String> split(String raw, String sep) {

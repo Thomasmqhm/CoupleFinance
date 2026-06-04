@@ -18,14 +18,17 @@ import java.util.concurrent.Executors;
 
 public class TransferManager {
 
-	private static TransferManager instance;
+	private static volatile TransferManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(3);
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
 	public static TransferManager getInstance() {
-		if (instance == null)
-			instance = new TransferManager();
+		if (instance == null) {
+			synchronized (TransferManager.class) {
+				if (instance == null) instance = new TransferManager();
+			}
+		}
 		return instance;
 	}
 
@@ -231,6 +234,7 @@ public class TransferManager {
 	// ─────────────────────────────────────────────
 
 	private void send(String method, String path, String body, FirestoreManager.Callback cb) {
+		HttpURLConnection conn = null;
 		try {
 			String token = AuthManager.getInstance().getToken();
 
@@ -247,7 +251,7 @@ public class TransferManager {
 				urlStr += "&key=" + FirebaseConfig.API_KEY;
 			}
 
-			HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+			conn = (HttpURLConnection) new URL(urlStr).openConnection();
 			conn.setRequestMethod(method);
 			conn.setRequestProperty("Content-Type", "application/json");
 			conn.setConnectTimeout(10000);
@@ -259,10 +263,9 @@ public class TransferManager {
 
 			if (body != null && !method.equals("GET") && !method.equals("DELETE")) {
 				conn.setDoOutput(true);
-				DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-				dos.write(body.getBytes("UTF-8"));
-				dos.flush();
-				dos.close();
+				try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+					dos.write(body.getBytes("UTF-8"));
+				}
 			}
 
 			int code = conn.getResponseCode();
@@ -278,6 +281,8 @@ public class TransferManager {
 
 		} catch (Exception e) {
 			error(cb, e.getMessage());
+		} finally {
+			if (conn != null) conn.disconnect();
 		}
 	}
 
@@ -314,19 +319,12 @@ public class TransferManager {
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null)
-			return "";
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		if (is == null) return "";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null)
-				sb.append(line);
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}

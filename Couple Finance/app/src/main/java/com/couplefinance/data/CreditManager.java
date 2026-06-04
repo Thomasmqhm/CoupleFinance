@@ -32,7 +32,7 @@ public class CreditManager {
 					+ PROJECT_ID
 					+ "/databases/(default)/documents/";
 
-	private static CreditManager instance;
+	private static volatile CreditManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(2);
 	private final Handler  handler  = new Handler(Looper.getMainLooper());
@@ -41,7 +41,9 @@ public class CreditManager {
 
 	public static CreditManager getInstance() {
 		if (instance == null) {
-			instance = new CreditManager();
+			synchronized (CreditManager.class) {
+				if (instance == null) instance = new CreditManager();
+			}
 		}
 		return instance;
 	}
@@ -75,80 +77,35 @@ public class CreditManager {
 	) {
 
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
-
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
-				HttpURLConnection conn = open(
-						getHouseholdPath() + "/credits",
-						"POST",
-						token,
-						true
-				);
+				conn = open(getHouseholdPath() + "/credits", "POST", token, true);
 
 				String body =
 						"{\"fields\":{"
-
-								+ "\"name\":{\"stringValue\":\""
-								+ escape(name)
-								+ "\"},"
-
-								+ "\"totalAmount\":{\"doubleValue\":"
-								+ totalAmount
-								+ "},"
-
-								+ "\"monthlyPayment\":{\"doubleValue\":"
-								+ monthlyPayment
-								+ "},"
-
-								+ "\"startDate\":{\"integerValue\":\""
-								+ startDate
-								+ "\"},"
-
-								+ "\"durationMonths\":{\"integerValue\":\""
-								+ durationMonths
-								+ "\"},"
-
-								+ "\"emoji\":{\"stringValue\":\""
-								+ escape(emoji)
-								+ "\"},"
-
-								+ "\"bank\":{\"stringValue\":\""
-								+ escape(bank)
-								+ "\"},"
-
-								+ "\"type\":{\"stringValue\":\""
-								+ escape(type)
-								+ "\"},"
-
-								+ "\"rate\":{\"doubleValue\":"
-								+ rate
-								+ "},"
-
-								+ "\"paidBy\":{\"stringValue\":\""
-								+ escape(paidBy)
-								+ "\"},"
-
-								+ "\"compte\":{\"stringValue\":\""
-								+ escape(compte)
-								+ "\"},"
-
-								+ "\"paymentDay\":{\"integerValue\":\""
-								+ paymentDay
-								+ "\"},"
-
+								+ "\"name\":{\"stringValue\":\"" + escape(name) + "\"},"
+								+ "\"totalAmount\":{\"doubleValue\":" + totalAmount + "},"
+								+ "\"monthlyPayment\":{\"doubleValue\":" + monthlyPayment + "},"
+								+ "\"startDate\":{\"integerValue\":\"" + startDate + "\"},"
+								+ "\"durationMonths\":{\"integerValue\":\"" + durationMonths + "\"},"
+								+ "\"emoji\":{\"stringValue\":\"" + escape(emoji) + "\"},"
+								+ "\"bank\":{\"stringValue\":\"" + escape(bank) + "\"},"
+								+ "\"type\":{\"stringValue\":\"" + escape(type) + "\"},"
+								+ "\"rate\":{\"doubleValue\":" + rate + "},"
+								+ "\"paidBy\":{\"stringValue\":\"" + escape(paidBy) + "\"},"
+								+ "\"compte\":{\"stringValue\":\"" + escape(compte) + "\"},"
+								+ "\"paymentDay\":{\"integerValue\":\"" + paymentDay + "\"},"
 								+ "\"lastAppliedMonth\":{\"stringValue\":\"\"},"
-
-								+ "\"createdAt\":{\"integerValue\":\""
-								+ System.currentTimeMillis()
-								+ "\"}"
-
+								+ "\"createdAt\":{\"integerValue\":\"" + System.currentTimeMillis() + "\"}"
 								+ "}}";
 
 				send(conn, body, cb);
 
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -177,29 +134,21 @@ public class CreditManager {
 	public void getCredits(FirestoreManager.Callback cb) {
 
 		executor.execute(() -> {
-
+			HttpURLConnection conn = null;
 			try {
-
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
-				HttpURLConnection conn = open(
-						getHouseholdPath() + "/credits",
-						"GET",
-						token,
-						false
-				);
-
+				conn = open(getHouseholdPath() + "/credits", "GET", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200) {
 					String response = safeRead(conn.getInputStream());
 					handler.post(() -> cb.onSuccess(response));
 				} else {
 					handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -211,34 +160,27 @@ public class CreditManager {
 	public void deleteCredit(String docPath, FirestoreManager.Callback cb) {
 
 		executor.execute(() -> {
-
+			HttpURLConnection conn = null;
 			try {
-
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
 				String urlStr;
-
 				if (docPath.startsWith("projects/")) {
-					urlStr = "https://firestore.googleapis.com/v1/"
-							+ docPath + "?key=" + API_KEY;
+					urlStr = "https://firestore.googleapis.com/v1/" + docPath + "?key=" + API_KEY;
 				} else {
-					urlStr = BASE_URL + getHouseholdPath()
-							+ "/credits/" + docPath + "?key=" + API_KEY;
+					urlStr = BASE_URL + getHouseholdPath() + "/credits/" + docPath + "?key=" + API_KEY;
 				}
-
-				HttpURLConnection conn = openRaw(urlStr, "DELETE", token, false);
-
+				conn = openRaw(urlStr, "DELETE", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200 || code == 204) {
 					handler.post(() -> cb.onSuccess("deleted"));
 				} else {
 					String error = safeRead(conn.getErrorStream());
 					handler.post(() -> cb.onError("Code: " + code + " - " + error));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -268,11 +210,13 @@ public class CreditManager {
 
 				// Fetch credits
 				HttpURLConnection conn = open(getHouseholdPath() + "/credits", "GET", token, false);
-				if (conn.getResponseCode() != 200) {
+				int creditsCode = conn.getResponseCode();
+				String json = creditsCode == 200 ? safeRead(conn.getInputStream()) : null;
+				conn.disconnect();
+				if (creditsCode != 200) {
 					postDone(onDone);
 					return;
 				}
-				String json = safeRead(conn.getInputStream());
 				List<CreditsModels.Credit> credits = CreditsParser.parseCredits(json);
 
 				String currentMonth = getCurrentMonth();
@@ -343,6 +287,7 @@ public class CreditManager {
 			String compte,
 			String householdId,
 			String token) {
+		HttpURLConnection conn = null;
 		try {
 			String path = "households/" + householdId + "/transactions";
 			String body = "{\"fields\":{"
@@ -364,8 +309,7 @@ public class CreditManager {
 					+ "\"recurringKey\":{\"stringValue\":\"" + escapeJson(recurringKey) + "\"}"
 					+ "}}";
 
-			URL url = new URL(FirebaseConfig.collectionUrl(path));
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn = (HttpURLConnection) new URL(FirebaseConfig.collectionUrl(path)).openConnection();
 			conn.setRequestMethod("POST");
 			conn.setRequestProperty("Content-Type", "application/json");
 			conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -373,20 +317,22 @@ public class CreditManager {
 			conn.setReadTimeout(10000);
 			conn.setDoOutput(true);
 
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
 
 			int code = conn.getResponseCode();
 			return code == 200 || code == 201;
 
 		} catch (Exception e) {
 			return false;
+		} finally {
+			if (conn != null) conn.disconnect();
 		}
 	}
 
 	private boolean transactionExistsForKey(String recurringKey, String householdId, String token) {
+		HttpURLConnection conn = null;
 		try {
 			String structuredQuery =
 					"{\"structuredQuery\":{"
@@ -408,8 +354,7 @@ public class CreditManager {
 							+ URLEncoder.encode(householdId, "UTF-8")
 							+ ":runQuery?key=" + API_KEY;
 
-			URL url = new URL(urlString);
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn = (HttpURLConnection) new URL(urlString).openConnection();
 			conn.setRequestMethod("POST");
 			conn.setRequestProperty("Content-Type", "application/json");
 			conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -417,21 +362,23 @@ public class CreditManager {
 			conn.setReadTimeout(10000);
 			conn.setDoOutput(true);
 
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(structuredQuery.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(structuredQuery.getBytes("UTF-8"));
+			}
 
 			if (conn.getResponseCode() != 200) return false;
 			return safeRead(conn.getInputStream()).contains("\"document\"");
 
 		} catch (Exception e) {
 			return false;
+		} finally {
+			if (conn != null) conn.disconnect();
 		}
 	}
 
 	private void patchLastAppliedMonthSync(String docId, String month,
 			String householdId, String token) {
+		HttpURLConnection conn = null;
 		try {
 			String urlStr = BASE_URL
 					+ "households/" + householdId + "/credits/" + docId
@@ -441,13 +388,15 @@ public class CreditManager {
 					+ "\"lastAppliedMonth\":{\"stringValue\":\"" + escapeJson(month) + "\"}"
 					+ "}}";
 
-			HttpURLConnection conn = openRaw(urlStr, "PATCH", token, true);
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
-			conn.getResponseCode(); // fire and forget
-		} catch (Exception ignored) {}
+			conn = openRaw(urlStr, "PATCH", token, true);
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
+			conn.getResponseCode();
+		} catch (Exception ignored) {
+		} finally {
+			if (conn != null) conn.disconnect();
+		}
 	}
 
 	private boolean isCreditActiveThisMonth(CreditsModels.Credit credit) {
@@ -524,15 +473,12 @@ public class CreditManager {
 
 	private void send(HttpURLConnection conn, String body, FirestoreManager.Callback cb) {
 		try {
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
-
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
 			int code = conn.getResponseCode();
 			String response = safeRead(code == 200 || code == 201
 					? conn.getInputStream() : conn.getErrorStream());
-
 			if (code == 200 || code == 201) {
 				handler.post(() -> cb.onSuccess(response));
 			} else {
@@ -545,8 +491,7 @@ public class CreditManager {
 
 	private String safeRead(InputStream is) {
 		if (is == null) return "";
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
 			while ((line = br.readLine()) != null) sb.append(line);

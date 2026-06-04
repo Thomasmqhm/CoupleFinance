@@ -24,13 +24,17 @@ public class AgendaManager {
 	private static final String BASE_URL = "https://firestore.googleapis.com/v1/projects/"
 			+ PROJECT_ID + "/databases/(default)/documents/";
 
-	private static AgendaManager instance;
+	private static volatile AgendaManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(2);
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
 	public static AgendaManager getInstance() {
-		if (instance == null) instance = new AgendaManager();
+		if (instance == null) {
+			synchronized (AgendaManager.class) {
+				if (instance == null) instance = new AgendaManager();
+			}
+		}
 		return instance;
 	}
 
@@ -42,11 +46,10 @@ public class AgendaManager {
 			String person, String note, FirestoreManager.Callback cb) {
 
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
-				HttpURLConnection conn = open(getHouseholdPath() + "/events", "POST", token, true);
-
+				conn = open(getHouseholdPath() + "/events", "POST", token, true);
 				String body = "{\"fields\":{"
 						+ "\"title\":{\"stringValue\":\"" + escape(title) + "\"},"
 						+ "\"type\":{\"stringValue\":\"" + escape(type) + "\"},"
@@ -55,63 +58,59 @@ public class AgendaManager {
 						+ "\"person\":{\"stringValue\":\"" + escape(person) + "\"},"
 						+ "\"note\":{\"stringValue\":\"" + escape(note) + "\"}"
 						+ "}}";
-
 				send(conn, body, cb);
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void getEvents(FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
-				HttpURLConnection conn = open(getHouseholdPath() + "/events", "GET", token, false);
-
+				conn = open(getHouseholdPath() + "/events", "GET", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200) {
 					String response = safeRead(conn.getInputStream());
 					handler.post(() -> cb.onSuccess(response));
 				} else {
 					handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void deleteEvent(String docPath, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
 				String urlStr;
-
 				if (docPath.startsWith("projects/")) {
 					urlStr = "https://firestore.googleapis.com/v1/" + docPath + "?key=" + API_KEY;
 				} else {
 					urlStr = BASE_URL + getHouseholdPath() + "/events/" + docPath + "?key=" + API_KEY;
 				}
-
-				HttpURLConnection conn = openRaw(urlStr, "DELETE", token, false);
-
+				conn = openRaw(urlStr, "DELETE", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200 || code == 204) {
 					handler.post(() -> cb.onSuccess("deleted"));
 				} else {
 					String error = safeRead(conn.getErrorStream());
 					handler.post(() -> cb.onError("Code: " + code + " - " + error));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -139,23 +138,16 @@ public class AgendaManager {
 
 	private void send(HttpURLConnection conn, String body, FirestoreManager.Callback cb) {
 		try {
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
-
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
 			int code = conn.getResponseCode();
-
-			String response = safeRead(code == 200 || code == 201
-					? conn.getInputStream()
-					: conn.getErrorStream());
-
+			String response = safeRead(code == 200 || code == 201 ? conn.getInputStream() : conn.getErrorStream());
 			if (code == 200 || code == 201) {
 				handler.post(() -> cb.onSuccess(response));
 			} else {
 				handler.post(() -> cb.onError("Code: " + code + " - " + response));
 			}
-
 		} catch (Exception e) {
 			handler.post(() -> cb.onError(e.getMessage()));
 		}
@@ -163,18 +155,11 @@ public class AgendaManager {
 
 	private String safeRead(InputStream is) {
 		if (is == null) return "";
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}

@@ -44,7 +44,7 @@ public class RecurringChargeManager {
     private static final String PREFS_NAME        = "recurring_prefs";
     private static final String KEY_LAST_CHECK_DAY = "last_check_day";
 
-    private static RecurringChargeManager instance;
+    private static volatile RecurringChargeManager instance;
 
     private final Executor executor = Executors.newSingleThreadExecutor();
     private final Handler  handler  = new Handler(Looper.getMainLooper());
@@ -54,7 +54,11 @@ public class RecurringChargeManager {
     private RecurringChargeManager() {}
 
     public static RecurringChargeManager getInstance() {
-        if (instance == null) instance = new RecurringChargeManager();
+        if (instance == null) {
+            synchronized (RecurringChargeManager.class) {
+                if (instance == null) instance = new RecurringChargeManager();
+            }
+        }
         return instance;
     }
 
@@ -71,6 +75,7 @@ public class RecurringChargeManager {
             long dateMs, FirestoreManager.Callback cb) {
 
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 String householdId = HouseholdManager.getInstance().getHouseholdId();
                 String token       = AuthManager.getInstance().getToken();
@@ -105,8 +110,7 @@ public class RecurringChargeManager {
                         + "\"source\":{\"stringValue\":\"pdf_import\"}"
                         + "}}";
 
-                URL url = new URL(FirebaseConfig.collectionUrl(path));
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) new URL(FirebaseConfig.collectionUrl(path)).openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -114,9 +118,9 @@ public class RecurringChargeManager {
                 conn.setReadTimeout(10000);
                 conn.setDoOutput(true);
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                dos.write(body.getBytes("UTF-8"));
-                dos.flush(); dos.close();
+                try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                    dos.write(body.getBytes("UTF-8"));
+                }
 
                 int code     = conn.getResponseCode();
                 String response = safeRead(code >= 200 && code < 300
@@ -127,6 +131,8 @@ public class RecurringChargeManager {
 
             } catch (Exception e) {
                 postError(cb, e.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -343,6 +349,7 @@ public class RecurringChargeManager {
 
     private List<FixedCharge> fetchFixedChargesSync() {
         List<FixedCharge> result = new ArrayList<>();
+        HttpURLConnection conn = null;
         try {
             String householdId = HouseholdManager.getInstance().getHouseholdId();
             String token       = AuthManager.getInstance().getToken();
@@ -350,8 +357,7 @@ public class RecurringChargeManager {
             if (token       == null || token.trim().isEmpty())       return result;
 
             String path = "households/" + householdId + "/fixedcharges";
-            URL    url  = new URL(FirebaseConfig.collectionUrl(path));
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) new URL(FirebaseConfig.collectionUrl(path)).openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -361,7 +367,11 @@ public class RecurringChargeManager {
             if (conn.getResponseCode() != 200) return result;
             return parseCharges(safeRead(conn.getInputStream()));
 
-        } catch (Exception ignored) { return result; }
+        } catch (Exception ignored) {
+            return result;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private List<FixedCharge> parseCharges(String json) {
@@ -403,6 +413,7 @@ public class RecurringChargeManager {
     }
 
     private boolean recurringTransactionExistsSync(String recurringKey) {
+        HttpURLConnection conn = null;
         try {
             String householdId = HouseholdManager.getInstance().getHouseholdId();
             String token       = AuthManager.getInstance().getToken();
@@ -426,8 +437,7 @@ public class RecurringChargeManager {
                     + URLEncoder.encode(householdId, "UTF-8")
                     + ":runQuery?key=" + FirebaseConfig.API_KEY;
 
-            URL url = new URL(urlString);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) new URL(urlString).openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -435,18 +445,23 @@ public class RecurringChargeManager {
             conn.setReadTimeout(10000);
             conn.setDoOutput(true);
 
-            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-            dos.write(query.getBytes("UTF-8"));
-            dos.flush(); dos.close();
+            try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                dos.write(query.getBytes("UTF-8"));
+            }
 
             if (conn.getResponseCode() != 200) return false;
             String response = safeRead(conn.getInputStream());
             return response != null && response.contains("\"document\"");
 
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private boolean addTransactionSync(FixedCharge charge, long date, String recurringKey) {
+        HttpURLConnection conn = null;
         try {
             String householdId = HouseholdManager.getInstance().getHouseholdId();
             String token       = AuthManager.getInstance().getToken();
@@ -475,8 +490,7 @@ public class RecurringChargeManager {
                     + "\"recurringKey\":{\"stringValue\":\""      + escapeJson(recurringKey)  + "\"}"
                     + "}}";
 
-            URL url = new URL(FirebaseConfig.collectionUrl(path));
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) new URL(FirebaseConfig.collectionUrl(path)).openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -484,14 +498,18 @@ public class RecurringChargeManager {
             conn.setReadTimeout(10000);
             conn.setDoOutput(true);
 
-            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-            dos.write(body.getBytes("UTF-8"));
-            dos.flush(); dos.close();
+            try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                dos.write(body.getBytes("UTF-8"));
+            }
 
             int code = conn.getResponseCode();
             return code == 200 || code == 201;
 
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private String resolvePaidBy(FixedCharge charge) {
@@ -502,6 +520,7 @@ public class RecurringChargeManager {
     }
 
     private void updateLastAppliedMonthSync(String docId, String month) {
+        HttpURLConnection conn = null;
         try {
             String householdId = HouseholdManager.getInstance().getHouseholdId();
             String token       = AuthManager.getInstance().getToken();
@@ -513,9 +532,8 @@ public class RecurringChargeManager {
             String body = "{\"fields\":{\"lastAppliedMonth\":{\"stringValue\":\""
                     + escapeJson(month) + "\"}}}";
 
-            URL url = new URL(FirebaseConfig.documentUrl(path)
-                    .replace("?key=", "?updateMask.fieldPaths=lastAppliedMonth&key="));
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) new URL(FirebaseConfig.documentUrl(path)
+                    .replace("?key=", "?updateMask.fieldPaths=lastAppliedMonth&key=")).openConnection();
             conn.setRequestMethod("PATCH");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -523,12 +541,15 @@ public class RecurringChargeManager {
             conn.setReadTimeout(10000);
             conn.setDoOutput(true);
 
-            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-            dos.write(body.getBytes("UTF-8"));
-            dos.flush(); dos.close();
+            try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                dos.write(body.getBytes("UTF-8"));
+            }
             conn.getResponseCode();
 
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -681,9 +702,8 @@ public class RecurringChargeManager {
 
     private String safeRead(InputStream is) {
         if (is == null) return "";
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            StringBuilder  sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
+            StringBuilder sb = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) sb.append(line);
             return sb.toString();

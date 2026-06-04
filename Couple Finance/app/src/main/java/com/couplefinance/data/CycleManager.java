@@ -51,7 +51,7 @@ public class CycleManager {
             + FirebaseConfig.PROJECT_ID
             + "/databases/(default)/documents/";
 
-    private static CycleManager instance;
+    private static volatile CycleManager instance;
 
     private final Executor executor = Executors.newSingleThreadExecutor();
     private final Handler  handler  = new Handler(Looper.getMainLooper());
@@ -62,7 +62,11 @@ public class CycleManager {
     private CycleManager() {}
 
     public static CycleManager getInstance() {
-        if (instance == null) instance = new CycleManager();
+        if (instance == null) {
+            synchronized (CycleManager.class) {
+                if (instance == null) instance = new CycleManager();
+            }
+        }
         return instance;
     }
 
@@ -118,6 +122,7 @@ public class CycleManager {
         writeLocal(cleanDay);
 
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 String token       = AuthManager.getInstance().getFreshTokenSync();
                 String householdId = HouseholdManager.getInstance().getHouseholdId();
@@ -131,14 +136,13 @@ public class CycleManager {
                         + "?updateMask.fieldPaths=cycleStartDay"
                         + "&key=" + FirebaseConfig.API_KEY;
 
-                HttpURLConnection conn = open(urlStr, "PATCH", token, true);
+                conn = open(urlStr, "PATCH", token, true);
                 String body = "{\"fields\":{\"cycleStartDay\":{\"integerValue\":\""
                         + cleanDay + "\"}}}";
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                dos.write(body.getBytes("UTF-8"));
-                dos.flush();
-                dos.close();
+                try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                    dos.write(body.getBytes("UTF-8"));
+                }
 
                 int code = conn.getResponseCode();
                 if (code == 200) {
@@ -150,6 +154,8 @@ public class CycleManager {
 
             } catch (Exception e) {
                 handler.post(() -> cb.onError(e.getMessage()));
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -160,6 +166,7 @@ public class CycleManager {
      */
     public void loadFromFirestore(FirestoreManager.Callback cb) {
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 String token       = AuthManager.getInstance().getFreshTokenSync();
                 String householdId = HouseholdManager.getInstance().getHouseholdId();
@@ -172,20 +179,20 @@ public class CycleManager {
                 String urlStr = BASE_URL + "households/" + householdId
                         + "?key=" + FirebaseConfig.API_KEY;
 
-                HttpURLConnection conn = open(urlStr, "GET", token, false);
+                conn = open(urlStr, "GET", token, false);
 
                 if (conn.getResponseCode() == 200) {
                     String json = safeRead(conn.getInputStream());
                     int day = parseIntField(json, "cycleStartDay");
-                    if (day >= 1 && day <= 28) {
-                        writeLocal(day);
-                    }
+                    if (day >= 1 && day <= 28) writeLocal(day);
                 }
 
                 handler.post(() -> cb.onSuccess(String.valueOf(cachedStartDay)));
 
             } catch (Exception e) {
                 handler.post(() -> cb.onSuccess(String.valueOf(cachedStartDay)));
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -336,9 +343,8 @@ public class CycleManager {
 
     private String safeRead(InputStream is) {
         if (is == null) return "";
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-            StringBuilder  sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
+            StringBuilder sb = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) sb.append(line);
             return sb.toString();

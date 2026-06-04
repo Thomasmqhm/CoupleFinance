@@ -29,13 +29,17 @@ public class MerchantRuleManager {
     private static final String KEY_TYPE = "type_";
     private static final String KEY_UPDATED_AT = "updated_at_";
 
-    private static MerchantRuleManager instance;
+    private static volatile MerchantRuleManager instance;
 
     private Context appContext;
 
+    private MerchantRuleManager() {}
+
     public static MerchantRuleManager getInstance() {
         if (instance == null) {
-            instance = new MerchantRuleManager();
+            synchronized (MerchantRuleManager.class) {
+                if (instance == null) instance = new MerchantRuleManager();
+            }
         }
         return instance;
     }
