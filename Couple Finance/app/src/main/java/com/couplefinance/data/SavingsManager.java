@@ -17,14 +17,16 @@ import java.util.concurrent.Executors;
 
 public class SavingsManager {
 
-	private static SavingsManager instance;
+	private static volatile SavingsManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(2);
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
 	public static SavingsManager getInstance() {
 		if (instance == null) {
-			instance = new SavingsManager();
+			synchronized (SavingsManager.class) {
+				if (instance == null) instance = new SavingsManager();
+			}
 		}
 		return instance;
 	}
@@ -37,6 +39,7 @@ public class SavingsManager {
 						  String emoji, String color, long targetDateMs,
 						  FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
 
@@ -50,17 +53,13 @@ public class SavingsManager {
 						+ "\"createdAt\":{\"integerValue\":\"" + System.currentTimeMillis() + "\"}"
 						+ "}}";
 
-				HttpURLConnection conn = openRaw(
-						FirebaseConfig.collectionUrl(getHouseholdPath() + "/savings"),
-						"POST",
-						token,
-						true
-				);
-
+				conn = openRaw(FirebaseConfig.collectionUrl(getHouseholdPath() + "/savings"), "POST", token, true);
 				send(conn, body, cb);
 
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -73,101 +72,77 @@ public class SavingsManager {
 
 	public void getSavings(FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
-
-				HttpURLConnection conn = openRaw(
-						FirebaseConfig.collectionUrl(getHouseholdPath() + "/savings"),
-						"GET",
-						token,
-						false
-				);
-
+				conn = openRaw(FirebaseConfig.collectionUrl(getHouseholdPath() + "/savings"), "GET", token, false);
 				int code = conn.getResponseCode();
-
 				if (code >= 200 && code < 300) {
 					String response = safeRead(conn.getInputStream());
 					handler.post(() -> cb.onSuccess(response));
 				} else {
 					handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onSuccess("{\"documents\":[]}"));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void updateSavingCurrent(String docPath, double current, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
 				String cleanPath = normalizeSavingDocPath(docPath);
-
 				String body = "{\"fields\":{\"current\":{\"doubleValue\":" + current + "}}}";
-
-				HttpURLConnection conn = openRaw(
-						FirebaseConfig.documentUpdateUrl(cleanPath, "current"),
-						"PATCH",
-						token,
-						true
-				);
-
+				conn = openRaw(FirebaseConfig.documentUpdateUrl(cleanPath, "current"), "PATCH", token, true);
 				send(conn, body, cb);
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void updateSavingTargetDate(String docPath, long targetDateMs, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
 				String cleanPath = normalizeSavingDocPath(docPath);
-
 				String body = "{\"fields\":{\"targetDate\":{\"integerValue\":\"" + targetDateMs + "\"}}}";
-
-				HttpURLConnection conn = openRaw(
-						FirebaseConfig.documentUpdateUrl(cleanPath, "targetDate"),
-						"PATCH",
-						token,
-						true
-				);
-
+				conn = openRaw(FirebaseConfig.documentUpdateUrl(cleanPath, "targetDate"), "PATCH", token, true);
 				send(conn, body, cb);
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void deleteSaving(String docPath, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getFreshTokenSync();
 				String cleanPath = normalizeSavingDocPath(docPath);
-
-				HttpURLConnection conn = openRaw(
-						FirebaseConfig.documentUrl(cleanPath),
-						"DELETE",
-						token,
-						false
-				);
-
+				conn = openRaw(FirebaseConfig.documentUrl(cleanPath), "DELETE", token, false);
 				int code = conn.getResponseCode();
-
 				if (code >= 200 && code < 300) {
 					handler.post(() -> cb.onSuccess("deleted"));
 				} else {
 					String error = safeRead(conn.getErrorStream());
 					handler.post(() -> cb.onError("Code: " + code + " - " + error));
 				}
-
 			} catch (Exception e) {
 				handler.post(() -> cb.onError(e.getMessage()));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -224,46 +199,28 @@ public class SavingsManager {
 
 	private void send(HttpURLConnection conn, String body, FirestoreManager.Callback cb) {
 		try {
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
-
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
 			int code = conn.getResponseCode();
-
-			String response = safeRead(
-					code >= 200 && code < 300
-							? conn.getInputStream()
-							: conn.getErrorStream()
-			);
-
+			String response = safeRead(code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream());
 			if (code >= 200 && code < 300) {
 				handler.post(() -> cb.onSuccess(response));
 			} else {
 				handler.post(() -> cb.onError("Code: " + code + " - " + response));
 			}
-
 		} catch (Exception e) {
 			handler.post(() -> cb.onError(e.getMessage()));
 		}
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null) {
-			return "";
-		}
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		if (is == null) return "";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}

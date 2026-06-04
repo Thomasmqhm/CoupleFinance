@@ -18,14 +18,16 @@ import java.util.concurrent.Executors;
 
 public class EventManager {
 
-	private static EventManager instance;
+	private static volatile EventManager instance;
 
 	private final Executor executor = Executors.newSingleThreadExecutor();
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
 	public static EventManager getInstance() {
 		if (instance == null) {
-			instance = new EventManager();
+			synchronized (EventManager.class) {
+				if (instance == null) instance = new EventManager();
+			}
 		}
 		return instance;
 	}
@@ -47,15 +49,10 @@ public class EventManager {
 		}
 
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				HttpURLConnection conn = openPost(getCollectionPath(), token);
-				if (conn == null) {
-					postError(cb, "Connection failed");
-					return;
-				}
-
+				conn = open(FirebaseConfig.documentUrl(getCollectionPath()), "POST", token, true);
 				String body = "{\"fields\":{"
 						+ "\"title\":{\"stringValue\":\"" + escapeJson(title) + "\"},"
 						+ "\"type\":{\"stringValue\":\"" + escapeJson(type) + "\"},"
@@ -65,150 +62,78 @@ public class EventManager {
 						+ "\"note\":{\"stringValue\":\"" + escapeJson(note) + "\"},"
 						+ "\"createdAt\":{\"integerValue\":\"" + System.currentTimeMillis() + "\"}"
 						+ "}}";
-
 				send(conn, body, cb);
-
 			} catch (Exception e) {
 				postError(cb, e.getMessage());
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void getEvents(FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				HttpURLConnection conn = openGet(getCollectionPath(), token);
-				if (conn == null) {
-					postSuccess(cb, "{\"documents\":[]}");
-					return;
-				}
-
+				conn = open(FirebaseConfig.documentUrl(getCollectionPath()), "GET", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200) {
 					postSuccess(cb, safeRead(conn.getInputStream()));
 				} else {
 					postSuccess(cb, "{\"documents\":[]}");
 				}
-
 			} catch (Exception e) {
 				postSuccess(cb, "{\"documents\":[]}");
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
 	public void deleteEvent(String docPath, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = AuthManager.getInstance().getToken();
-
-				HttpURLConnection conn = openDelete(cleanDocUrl(docPath), token);
-				if (conn == null) {
-					postError(cb, "Connection failed");
-					return;
-				}
-
+				conn = open(cleanDocUrl(docPath), "DELETE", token, false);
 				int code = conn.getResponseCode();
-
 				if (code == 200 || code == 204) {
 					postSuccess(cb, "deleted");
 				} else {
 					postError(cb, "Code: " + code + " - " + safeRead(conn.getErrorStream()));
 				}
-
 			} catch (Exception e) {
 				postError(cb, e.getMessage());
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
 
-	private HttpURLConnection openPost(String path, String token) {
-		try {
-			URL url = new URL(FirebaseConfig.documentUrl(path));
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-			conn.setRequestMethod("POST");
-			conn.setRequestProperty("Content-Type", "application/json");
-
-			if (token != null && !token.isEmpty()) {
-				conn.setRequestProperty("Authorization", "Bearer " + token);
-			}
-
-			conn.setConnectTimeout(10000);
-			conn.setReadTimeout(10000);
-			conn.setDoOutput(true);
-
-			return conn;
-
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	private HttpURLConnection openGet(String path, String token) {
-		try {
-			URL url = new URL(FirebaseConfig.documentUrl(path));
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-			conn.setRequestMethod("GET");
-			conn.setRequestProperty("Content-Type", "application/json");
-
-			if (token != null && !token.isEmpty()) {
-				conn.setRequestProperty("Authorization", "Bearer " + token);
-			}
-
-			conn.setConnectTimeout(10000);
-			conn.setReadTimeout(10000);
-
-			return conn;
-
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	private HttpURLConnection openDelete(String fullUrl, String token) {
-		try {
-			URL url = new URL(fullUrl);
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-			conn.setRequestMethod("DELETE");
-
-			if (token != null && !token.isEmpty()) {
-				conn.setRequestProperty("Authorization", "Bearer " + token);
-			}
-
-			conn.setConnectTimeout(10000);
-			conn.setReadTimeout(10000);
-
-			return conn;
-
-		} catch (Exception e) {
-			return null;
-		}
+	private HttpURLConnection open(String urlStr, String method, String token, boolean output) throws Exception {
+		HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+		conn.setRequestMethod(method);
+		conn.setRequestProperty("Content-Type", "application/json");
+		if (token != null && !token.isEmpty()) conn.setRequestProperty("Authorization", "Bearer " + token);
+		conn.setConnectTimeout(10000);
+		conn.setReadTimeout(10000);
+		conn.setDoOutput(output);
+		return conn;
 	}
 
 	private void send(HttpURLConnection conn, String body, FirestoreManager.Callback cb) {
 		try {
-			DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-			dos.write(body.getBytes("UTF-8"));
-			dos.flush();
-			dos.close();
-
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
 			int code = conn.getResponseCode();
-
-			String response = safeRead(code == 200 || code == 201
-					? conn.getInputStream()
-					: conn.getErrorStream());
-
+			String response = safeRead(code == 200 || code == 201 ? conn.getInputStream() : conn.getErrorStream());
 			if (code == 200 || code == 201) {
 				postSuccess(cb, response);
 			} else {
 				postError(cb, "Code: " + code + " - " + response);
 			}
-
 		} catch (Exception e) {
 			postError(cb, e.getMessage());
 		}
@@ -233,21 +158,12 @@ public class EventManager {
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null) {
-			return "";
-		}
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		if (is == null) return "";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null) {
-				sb.append(line);
-			}
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}
