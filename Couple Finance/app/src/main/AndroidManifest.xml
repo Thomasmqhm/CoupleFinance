@@ -9,9 +9,13 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
-    <!-- ── Permissions stockage ──────────────────────────────── -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- ── Permissions stockage (API ≤ 28 seulement) ────────── -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!-- ── Notifications ─────────────────────────────────────── -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -23,15 +27,17 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
-        SCHEDULE_EXACT_ALARM — nécessaire sur API 31+ pour
+        SCHEDULE_EXACT_ALARM — nécessaire sur API 31-32 pour
         AlarmManager.setExactAndAllowWhileIdle() (rappels ponctuels).
-        Sur API < 31, la permission n'est pas nécessaire.
+        Sur API 33+ USE_EXACT_ALARM est préféré.
     -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
 
     <!--
-        USE_EXACT_ALARM — alternative à SCHEDULE_EXACT_ALARM sur API 33+
-        (accordée automatiquement, sans demande utilisateur).
+        USE_EXACT_ALARM — accordé automatiquement sur API 33+.
+        Ne nécessite pas de demande utilisateur.
     -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
@@ -41,6 +47,7 @@
         android:label="CoupleFinance"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@android:style/Theme.Material.Light.NoActionBar" >
 
         <!-- ── Activités ─────────────────────────────────────── -->
@@ -54,11 +61,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".LoginActivity" />
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.DashboardActivity"
-            android:exported="true" />
-        <activity android:name=".HouseholdActivity" />
+            android:exported="false" />
+        <activity
+            android:name=".HouseholdActivity"
+            android:exported="false" />
 
         <!-- ── Widget écran d'accueil ─────────────────────────── -->
         <!--

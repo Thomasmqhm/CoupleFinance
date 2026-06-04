@@ -43,7 +43,7 @@ public class BalanceManager {
 
 	private static final String PREFS_NAME = "home_cache";
 
-	private static BalanceManager instance;
+	private static volatile BalanceManager instance;
 
 	private final Executor executor = Executors.newFixedThreadPool(2);
 	private final Handler  handler  = new Handler(Looper.getMainLooper());
@@ -51,7 +51,11 @@ public class BalanceManager {
 	private Context context;
 
 	public static BalanceManager getInstance() {
-		if (instance == null) instance = new BalanceManager();
+		if (instance == null) {
+			synchronized (BalanceManager.class) {
+				if (instance == null) instance = new BalanceManager();
+			}
+		}
 		return instance;
 	}
 

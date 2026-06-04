@@ -85,6 +85,7 @@ public class FirestoreManager {
 	private void request(String method, String path, String body, Callback cb) {
 
 		executor.execute(() -> {
+			HttpURLConnection conn = null;
 			try {
 				String token = getToken();
 
@@ -96,7 +97,7 @@ public class FirestoreManager {
 				String separator = path.contains("?") ? "&" : "?";
 				URL url = new URL(BASE_URL + path + separator + "key=" + API_KEY);
 
-				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+				conn = (HttpURLConnection) url.openConnection();
 				conn.setRequestMethod(method);
 				conn.setRequestProperty("Content-Type", "application/json");
 				conn.setRequestProperty("Authorization", "Bearer " + token);
@@ -107,10 +108,9 @@ public class FirestoreManager {
 					conn.setDoOutput(true);
 
 					if (body != null) {
-						DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-						dos.write(body.getBytes("UTF-8"));
-						dos.flush();
-						dos.close();
+						try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+							dos.write(body.getBytes("UTF-8"));
+						}
 					}
 				}
 
@@ -128,7 +128,10 @@ public class FirestoreManager {
 				}
 
 			} catch (Exception e) {
-				handler.post(() -> cb.onError(e.getMessage()));
+				final String msg = e.getMessage();
+				handler.post(() -> cb.onError(msg));
+			} finally {
+				if (conn != null) conn.disconnect();
 			}
 		});
 	}
@@ -234,19 +237,13 @@ public class FirestoreManager {
 	}
 
 	private String safeRead(InputStream is) {
-		if (is == null)
-			return "";
+		if (is == null) return "";
 
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
-
-			while ((line = br.readLine()) != null)
-				sb.append(line);
-
+			while ((line = br.readLine()) != null) sb.append(line);
 			return sb.toString();
-
 		} catch (Exception e) {
 			return "";
 		}

@@ -1,21 +1,56 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# CoupleFinance ProGuard Rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Conserver les numéros de ligne pour le débogage des stack traces
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── Modèles de données ─────────────────────────────────────────────
+# Les modèles sérialisés vers/depuis Firestore doivent garder leurs noms
+-keep class com.couplefinance.models.** { *; }
+-keepclassmembers class com.couplefinance.models.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ── Firebase ───────────────────────────────────────────────────────
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# ── MLKit / OCR ────────────────────────────────────────────────────
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+
+# ── Tesseract ─────────────────────────────────────────────────────
+-keep class cz.adaptech.tesseract4android.** { *; }
+-dontwarn cz.adaptech.**
+
+# ── PDFBox ────────────────────────────────────────────────────────
+-keep class com.tom_roush.pdfbox.** { *; }
+-dontwarn com.tom_roush.**
+-dontwarn org.apache.**
+
+# ── BouncyCastle ──────────────────────────────────────────────────
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+
+# ── Widgets Android ───────────────────────────────────────────────
+-keep class com.couplefinance.widget.** { *; }
+
+# ── BroadcastReceivers ───────────────────────────────────────────
+-keep class com.couplefinance.data.BankAutoSyncManager$BankSyncReceiver { *; }
+-keep class com.couplefinance.utils.NotificationScheduler$ChargeAlarmReceiver { *; }
+
+# ── Sérialisation JSON (org.json) ─────────────────────────────────
+-keep class org.json.** { *; }
+
+# ── Androidx ─────────────────────────────────────────────────────
+-keep class androidx.** { *; }
+-dontwarn androidx.**
+
+# ── Règles générales Android ─────────────────────────────────────
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
