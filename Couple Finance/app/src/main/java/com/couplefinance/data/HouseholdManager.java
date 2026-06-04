@@ -68,6 +68,9 @@ public class HouseholdManager {
 	}
 
 	public String getHouseholdPath() {
+		if (householdId == null || householdId.trim().isEmpty()) {
+			throw new IllegalStateException("HouseholdManager: householdId non initialisé");
+		}
 		return "households/" + householdId;
 	}
 

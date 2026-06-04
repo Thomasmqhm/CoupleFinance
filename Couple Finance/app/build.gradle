@@ -39,13 +39,15 @@ android {
         exclude 'META-INF/*.kotlin_module'
     }
 
-    configurations.all {
-        exclude group: 'org.jetbrains.kotlin'
-    }
-
     buildTypes {
-        release {
+        debug {
             minifyEnabled false
+            debuggable true
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -53,15 +55,14 @@ android {
 dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.0')
 
-	implementation 'com.google.mlkit:text-recognition:16.0.1'	
-	implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
-	implementation 'com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0'
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0'
 
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
-	
-    implementation 'cz.adaptech.android:tesseract4android:4.7.0'
-	implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'
-	
+
+    // Suppression du doublon : cz.adaptech.android était un ancien group ID
+    implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'
 }

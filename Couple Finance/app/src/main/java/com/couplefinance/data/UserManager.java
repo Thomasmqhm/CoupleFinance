@@ -15,7 +15,7 @@ import java.util.Locale;
 
 public class UserManager {
 
-	private static UserManager instance;
+	private static volatile UserManager instance;
 
 	private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -28,8 +28,11 @@ public class UserManager {
 	}
 
 	public static UserManager getInstance() {
-		if (instance == null)
-			instance = new UserManager();
+		if (instance == null) {
+			synchronized (UserManager.class) {
+				if (instance == null) instance = new UserManager();
+			}
+		}
 		return instance;
 	}
 
