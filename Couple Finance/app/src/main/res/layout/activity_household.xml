@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="48dp"
+    android:background="#F9F5F2">
+
+    <!-- Logo centré -->
+    <LinearLayout
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:background="@drawable/logo_circle"
+        android:gravity="center"
+        android:layout_marginBottom="20dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$"
+            android:textSize="30sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Votre foyer"
+        android:textSize="26sp"
+        android:textColor="#1A2E2B"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Créez ou rejoignez un foyer pour commencer"
+        android:textSize="13sp"
+        android:textColor="#94A3B8"
+        android:gravity="center"
+        android:layout_marginBottom="48dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_white"
+        android:padding="28dp">
+
+        <!-- Créer -->
+        <Button
+            android:id="@+id/btnCreate"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:text="🏠  Créer un nouveau foyer"
+            android:background="@drawable/btn_primary"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Séparateur -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="20dp">
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#F0EAE5"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  ou rejoindre  "
+                android:textSize="11sp"
+                android:textColor="#94A3B8"/>
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#F0EAE5"/>
+        </LinearLayout>
+
+        <!-- Code invitation -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CODE D'INVITATION"
+            android:textSize="9sp"
+            android:textColor="#8B6914"
+            android:textStyle="bold"
+            android:letterSpacing="0.10"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/etCode"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:hint="A1B2C3"
+            android:inputType="textCapCharacters"
+            android:maxLength="6"
+            android:gravity="center"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1A2E2B"
+            android:background="@drawable/input_rounded"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:letterSpacing="0.3"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnJoin"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:text="Rejoindre ce foyer"
+            android:background="@drawable/btn_rounded_light"
+            android:textColor="#1A2E2B"
+            android:textSize="14sp"/>
+    </LinearLayout>
+
+</LinearLayout>

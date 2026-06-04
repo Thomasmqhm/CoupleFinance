@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    widget_solde_info.xml — Configuration du widget AppWidget.
+
+    Chemin : app/src/main/res/xml/widget_solde_info.xml
+
+    minWidth / minHeight :
+      La taille minimale est calculée en cellules (1 cellule ≈ 74dp).
+      2×2 cellules = environ 148×148dp (taille standard d'une petite card).
+
+    updatePeriodMillis :
+      0 = pas de mise à jour automatique par le système (économie batterie).
+      Le widget est mis à jour via sendBroadcast depuis HomeView.
+      Minimum Android = 1800000 (30 min) si > 0.
+-->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="100dp"
+    android:minResizeWidth="160dp"
+    android:minResizeHeight="80dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_solde"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description"
+    android:previewLayout="@layout/widget_solde"/>

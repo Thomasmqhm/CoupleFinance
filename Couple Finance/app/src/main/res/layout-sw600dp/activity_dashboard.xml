@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Layout TABLETTE : sidebar fixe à gauche, contenu à droite -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="#F7EFE7">
+
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="220dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#EFD6C4"
+        android:paddingTop="32dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="20dp">
+
+        <!-- Logo + nom -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="6dp"
+            android:layout_marginBottom="28dp">
+
+            <LinearLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/logo_circle"
+                android:gravity="center"
+                android:layout_marginEnd="11dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="$"
+                    android:textSize="17sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Foyer"
+                    android:textSize="15sp"
+                    android:textColor="#2E2926"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FINANCES À DEUX"
+                    android:textSize="8sp"
+                    android:textColor="#A68A78"
+                    android:letterSpacing="0.15"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section PRINCIPAL -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="PRINCIPAL"
+            android:textSize="9sp"
+            android:textColor="#A68A78"
+            android:textStyle="bold"
+            android:paddingStart="10dp"
+            android:letterSpacing="0.12"
+            android:layout_marginBottom="4dp"/>
+
+        <Button android:id="@+id/btnHome"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Tableau de bord"
+            android:drawableStart="@drawable/ic_home"
+            android:drawablePadding="10dp"
+            android:textColor="#C0614A" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@drawable/sidebar_item_active"
+            android:textStyle="bold"
+            android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnAgenda"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Agenda"
+            android:drawableStart="@drawable/ic_agenda"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnTransactions"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Transactions"
+            android:drawableStart="@drawable/ic_transactions"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+            
+        <Button android:id="@+id/btnAbonnements"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:text="Abonnements"
+        android:drawableStart="@drawable/ic_credits"
+        android:drawablePadding="12dp"
+        android:textColor="#6D5E55" android:textSize="13sp"
+        android:gravity="start|center_vertical" android:paddingStart="14dp"
+        android:background="@android:color/transparent"
+        android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnVirements"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Virements"
+            android:drawableStart="@drawable/ic_virements"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnBudget"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Budgets"
+            android:drawableStart="@drawable/ic_budget"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Section FINANCES -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="FINANCES"
+            android:textSize="9sp"
+            android:textColor="#A68A78"
+            android:textStyle="bold"
+            android:paddingStart="10dp"
+            android:letterSpacing="0.12"
+            android:layout_marginBottom="4dp"/>
+
+        <Button android:id="@+id/btnEpargne"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Épargne"
+            android:drawableStart="@drawable/ic_epargne"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnCredits"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Crédits"
+            android:drawableStart="@drawable/ic_credits"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
+        <Button android:id="@+id/btnVuePerso"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Répartition"
+            android:drawableStart="@drawable/ic_repartition"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
+        <!-- Spacer -->
+        <View android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <!-- Séparateur -->
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="#E8CBB8" android:layout_marginBottom="12dp"/>
+
+        <Button android:id="@+id/btnSettings"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Paramètres"
+            android:drawableStart="@drawable/ic_settings"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- User info card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#E8CBB8"
+            android:padding="10dp">
+
+            <!-- Avatar 1 (terracotta) -->
+            <LinearLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/avatar_terracotta"
+                android:gravity="center"
+                android:layout_marginEnd="-8dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="M"
+                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Avatar 2 (vert) -->
+            <LinearLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/avatar_darkgreen"
+                android:gravity="center"
+                android:layout_marginEnd="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="T"
+                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvSidebarUser"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Mon foyer"
+                android:textSize="11sp"
+                android:textColor="#CBD5E1"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="0sp"
+                android:textColor="#00FFFFFF"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- CONTENU PRINCIPAL -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="#F7EFE7">
+
+        <!-- tvFirebaseStatus invisible sur tablette (stub pour que le Java compile) -->
+        <TextView
+            android:id="@+id/tvFirebaseStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+        <!-- stub topbar/divider pour le Java -->
+        <View android:id="@+id/topbar" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+        <View android:id="@+id/topbarDivider" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+        <TextView android:id="@+id/btnHamburger" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#F7EFE7"/>
+
+    </LinearLayout>
+
+</LinearLayout>

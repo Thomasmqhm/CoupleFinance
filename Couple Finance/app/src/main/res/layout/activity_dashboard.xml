@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F7EFE7">
+
+    <!-- Topbar fine -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/topbar"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="18dp"
+            android:paddingEnd="12dp"
+            android:background="#F7EFE7">
+
+            <LinearLayout
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/logo_circle"
+                android:gravity="center"
+                android:layout_marginEnd="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="$"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Foyer"
+                android:textSize="17sp"
+                android:textColor="#2E2926"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvFirebaseStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Connecte"
+                android:textSize="10sp"
+                android:textColor="#22C55E"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/btnHamburger"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:text="..."
+                android:textSize="18sp"
+                android:textColor="#C0614A"
+                android:gravity="center"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <View
+            android:id="@+id/topbarDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#EAE0D8"/>
+
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+    </LinearLayout>
+
+    <!-- Bottom nav pill flottant - style moderne 2025 -->
+    <LinearLayout
+        android:id="@+id/bottomNav"
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="20dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bottom_nav_pill"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:elevation="16dp">
+
+        <!-- Accueil -->
+        <LinearLayout
+            android:id="@+id/tabHome"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:background="@drawable/nav_tab_active"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tabIconHome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#9675;"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="6dp"/>
+            <TextView
+                android:id="@+id/tabLabelHome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Accueil"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Operations -->
+        <LinearLayout
+            android:id="@+id/tabTransactions"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tabIconTransactions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#9654;"
+                android:textSize="14sp"
+                android:textColor="#8A7A70"
+                android:layout_marginEnd="6dp"/>
+            <TextView
+                android:id="@+id/tabLabelTransactions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Operations"
+                android:textSize="12sp"
+                android:textColor="#8A7A70"/>
+        </LinearLayout>
+
+        <!-- Budget -->
+        <LinearLayout
+            android:id="@+id/tabBudget"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tabIconBudget"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#9636;"
+                android:textSize="14sp"
+                android:textColor="#8A7A70"
+                android:layout_marginEnd="6dp"/>
+            <TextView
+                android:id="@+id/tabLabelBudget"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Budget"
+                android:textSize="12sp"
+                android:textColor="#8A7A70"/>
+        </LinearLayout>
+
+        <!-- Epargne -->
+        <LinearLayout
+            android:id="@+id/tabEpargne"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tabIconEpargne"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#9733;"
+                android:textSize="14sp"
+                android:textColor="#8A7A70"
+                android:layout_marginEnd="6dp"/>
+            <TextView
+                android:id="@+id/tabLabelEpargne"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Epargne"
+                android:textSize="12sp"
+                android:textColor="#8A7A70"/>
+        </LinearLayout>
+
+        <!-- Plus -->
+        <LinearLayout
+            android:id="@+id/tabMore"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tabIconMore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#9776;"
+                android:textSize="14sp"
+                android:textColor="#8A7A70"
+                android:layout_marginEnd="6dp"/>
+            <TextView
+                android:id="@+id/tabLabelMore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Plus"
+                android:textSize="12sp"
+                android:textColor="#8A7A70"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Sidebar -->
+    <LinearLayout
+        android:id="@+id/sidebar"
+        android:layout_width="270dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:elevation="20dp"
+        android:orientation="vertical"
+        android:background="#EDE0D6"
+        android:paddingTop="60dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+            <TextView
+                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="Navigation"
+                android:textSize="18sp" android:textColor="#2E2926" android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/btnCloseSidebar"
+                android:layout_width="44dp" android:layout_height="44dp"
+                android:text="X" android:textSize="16sp" android:textColor="#6D5E55"
+                android:gravity="center" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="#D8CAC0" android:layout_marginBottom="8dp"/>
+
+        <Button android:id="@+id/btnHome" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+        <Button android:id="@+id/btnTransactions" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+        <Button android:id="@+id/btnBudget" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+        <Button android:id="@+id/btnEpargne" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone"/>
+
+        <Button android:id="@+id/btnAgenda"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Agenda"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <Button android:id="@+id/btnVirements"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Virements"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <Button android:id="@+id/btnCredits"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Credits"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <Button android:id="@+id/btnVuePerso"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Repartition"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <Button android:id="@+id/btnAbonnements"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Abonnements"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="#D8CAC0" android:layout_marginBottom="8dp"/>
+
+        <Button android:id="@+id/btnSettings"
+            android:layout_width="match_parent" android:layout_height="52dp"
+            android:text="Parametres"
+            android:textColor="#2E2926" android:textSize="15sp" android:textStyle="bold"
+            android:gravity="start|center_vertical" android:paddingStart="24dp"
+            android:background="@android:color/transparent"/>
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="10dp">
+            <TextView
+                android:id="@+id/tvSidebarUser"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Mon foyer"
+                android:textSize="12sp" android:textColor="#6D5E55" android:textStyle="bold"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/sidebarScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#55000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"/>
+
+</FrameLayout>

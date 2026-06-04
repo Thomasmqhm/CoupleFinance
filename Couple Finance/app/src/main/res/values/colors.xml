@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <!-- Design system Foyer -->
+    <color name="bg_beige">#FFF9F5F2</color>
+    <color name="sidebar_dark">#FF1A2E2B</color>
+    <color name="sidebar_item">#FF243B37</color>
+    <color name="sidebar_label">#FF4A6B65</color>
+    <color name="sidebar_separator">#FF243B37</color>
+
+    <color name="accent_terracotta">#FFC0614A</color>
+    <color name="accent_terracotta_light">#FFFDF0ED</color>
+    <color name="accent_terracotta_medium">#FFF4D0C8</color>
+
+    <color name="green_dark">#FF2D5A4E</color>
+    <color name="green_dark_light">#FFE8F0EE</color>
+    <color name="green_success">#FF16A34A</color>
+    <color name="green_success_light">#FFECFDF5</color>
+
+    <color name="gold">#FF8B6914</color>
+    <color name="gold_light">#FFFDF8EC</color>
+    <color name="gold_medium">#FFFDE68A</color>
+
+    <color name="text_primary">#FF1A2E2B</color>
+    <color name="text_secondary">#FF64748B</color>
+    <color name="text_muted">#FF94A3B8</color>
+    <color name="text_label">#FF8B6914</color>
+
+    <color name="card_white">#FFFFFFFF</color>
+    <color name="card_border">#FFF0EAE5</color>
+    <color name="divider">#FFF5F0EC</color>
+
+    <color name="income_color">#FF16A34A</color>
+    <color name="expense_color">#FFC0614A</color>
+    <color name="saving_color">#FF8B6914</color>
+
+    <!-- Avatars -->
+    <color name="avatar_1">#FFC0614A</color><!-- terracotta -->
+    <color name="avatar_2">#FF2D5A4E</color><!-- green dark -->
+    <color name="avatar_3">#FF8B6914</color><!-- gold -->
+    <color name="avatar_4">#FF4A6B9A</color><!-- blue -->
+</resources>

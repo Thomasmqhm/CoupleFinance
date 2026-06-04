@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/accent_terracotta</item>
+        <item name="android:colorPrimaryDark">@color/sidebar_dark</item>
+        <item name="android:colorAccent">@color/accent_terracotta</item>
+        <item name="android:windowBackground">@color/bg_beige</item>
+        <item name="android:statusBarColor">@color/sidebar_dark</item>
+        <item name="android:navigationBarColor">@color/sidebar_dark</item>
+    </style>
+</resources>

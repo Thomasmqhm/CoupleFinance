@@ -1,0 +1,43 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#F5F1EC"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- HEADER -->
+    <LinearLayout
+        android:background="#E25D2A"
+        android:padding="16dp"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView android:text="Budgeté" android:textColor="#FFF"/>
+        <TextView android:id="@+id/tvBudget" android:textSize="22sp"/>
+
+        <TextView android:text="Dépensé"/>
+        <TextView android:id="@+id/tvSpent" android:textSize="22sp"/>
+
+        <TextView android:text="Restant"/>
+        <TextView android:id="@+id/tvRemaining" android:textSize="22sp"/>
+    </LinearLayout>
+
+    <!-- STATS -->
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/tvExceeded" android:text="0" android:layout_weight="1"/>
+        <TextView android:id="@+id/tvWarning" android:text="0" android:layout_weight="1"/>
+        <TextView android:id="@+id/tvSafe" android:text="0" android:layout_weight="1"/>
+    </LinearLayout>
+
+    <!-- LIST -->
+    <ListView
+        android:id="@+id/listBudgets"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+</LinearLayout>

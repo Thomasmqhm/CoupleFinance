@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F5F2">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <!-- HEADER -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LE POINT DU MOIS"
+            android:textSize="11sp"
+            android:textColor="#C0614A"
+            android:textStyle="bold"
+            android:letterSpacing="0.12"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Qui doit combien à qui ?"
+            android:textSize="34sp"
+            android:textColor="#1A2E2B"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:layout_marginBottom="6dp"/>
+
+        <!-- Mois en italique gris -->
+        <TextView
+            android:id="@+id/tvStatut"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ce mois-ci"
+            android:textSize="15sp"
+            android:textColor="#94A3B8"
+            android:textStyle="italic"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- LIGNE : 2 cartes côte à côte -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <!-- CARTE GAUCHE : total + barre répartition -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="55"
+                android:orientation="vertical"
+                android:background="@drawable/card_white"
+                android:padding="24dp"
+                android:layout_marginEnd="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TOTAL DES DÉPENSES COMMUNES"
+                    android:textSize="10sp"
+                    android:textColor="#8B6914"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.10"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvTotalDepenses"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textSize="36sp"
+                    android:textColor="#1A2E2B"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- Objectif de répartition label -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Objectif de répartition"
+                        android:textSize="12sp"
+                        android:textColor="#64748B"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="50% / 50%"
+                        android:textSize="12sp"
+                        android:textColor="#1A2E2B"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <!-- Barre répartition rouge + vert -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="10dp"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="#C0614A"/>
+
+                    <View
+                        android:layout_width="2dp"
+                        android:layout_height="match_parent"
+                        android:background="#F9F5F2"/>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="#2D5A4E"/>
+                </LinearLayout>
+
+                <!-- Labels idéal -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvPartIdéale"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="— idéal"
+                        android:textSize="12sp"
+                        android:textColor="#C0614A"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/tvPartIdéale2"
+                        android:text="— idéal"
+                        android:textSize="12sp"
+                        android:textColor="#2D5A4E"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARTE DROITE : L'état actuel -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="45"
+                android:orientation="vertical"
+                android:background="@drawable/card_white"
+                android:padding="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="L'état actuel"
+                    android:textSize="18sp"
+                    android:textColor="#1A2E2B"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="20dp"/>
+
+                <LinearLayout
+                    android:id="@+id/containerResultats"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- SECTION REMBOURSEMENTS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_white"
+            android:padding="32dp"
+            android:gravity="center">
+
+            <!-- Icône rond doré -->
+            <LinearLayout
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_marginBottom="20dp">
+                <View
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:background="#FFF3CD"
+                    android:alpha="1"/>
+            </LinearLayout>
+
+            <!-- On superpose l'icône -->
+            <TextView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:text="ⓘ"
+                android:textSize="28sp"
+                android:textColor="#8B6914"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_marginTop="-72dp"
+                android:layout_marginBottom="20dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Remboursements à effectuer"
+                android:textSize="22sp"
+                android:textColor="#1A2E2B"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pour équilibrer les comptes de ce mois-ci selon votre répartition 50/50, voici le virement nécessaire."
+                android:textSize="13sp"
+                android:textColor="#94A3B8"
+                android:gravity="center"
+                android:layout_marginBottom="24dp"/>
+
+            <!-- Contenu remboursements -->
+            <LinearLayout
+                android:id="@+id/containerHistorique"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"/>
+
+            <!-- Bouton tout régler -->
+            <Button
+                android:id="@+id/btnReglerTout"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="✓  Tout régler"
+                android:textSize="13sp"
+                android:background="@drawable/btn_primary"
+                android:textColor="#FFFFFF"
+                android:paddingStart="28dp"
+                android:paddingEnd="28dp"
+                android:layout_marginTop="16dp"/>
+
+            <!-- Bouton refresh discret -->
+            <Button
+                android:id="@+id/btnRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="↻  Recalculer"
+                android:textSize="11sp"
+                android:background="@android:color/transparent"
+                android:textColor="#94A3B8"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

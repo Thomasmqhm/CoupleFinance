@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  view_home.xml (variante tablette — layout-sw600dp)
+
+  Mise en page deux colonnes pour le Dashboard sur tablette :
+   - Colonne GAUCHE  : header + Solde commun + Santé financière + Top catégories
+   - Colonne DROITE  : cartes membres (prioritaires) + dernières opérations
+                       + widgets intelligents
+
+  IMPORTANT : tous les android:id sont strictement identiques à ceux du
+  layout téléphone (res/layout/view_home.xml). HomeView.findViewById(...)
+  doit retrouver exactement les mêmes vues, sinon l'app plante.
+
+  Les deux colonnes défilent ensemble (un seul ScrollView englobant).
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootHome"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F6F3EE"
+    android:foregroundTint="#08FFFFFF">
+
+    <ScrollView
+        android:id="@+id/homeScroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fadingEdgeLength="60dp"
+        android:requiresFadingEdge="vertical"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:overScrollMode="never">
+
+        <!-- Conteneur racine : HomeView référence dashboardContent.
+             On le garde vertical ; il contient l'unique rangée 2 colonnes. -->
+        <LinearLayout
+            android:id="@+id/dashboardContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:paddingLeft="28dp"
+            android:paddingTop="28dp"
+            android:paddingRight="28dp"
+            android:paddingBottom="120dp">
+
+            <!-- ====================================================== -->
+            <!-- RANGÉE PRINCIPALE : 2 COLONNES                          -->
+            <!-- ====================================================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <!-- ================================================== -->
+                <!-- COLONNE GAUCHE (~40%)                               -->
+                <!-- ================================================== -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="45"
+                    android:layout_marginRight="22dp"
+                    android:orientation="vertical"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <!-- HEADER -->
+                    <LinearLayout
+                        android:id="@+id/headerHome"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvSyncStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Mai 2026"
+                            android:textColor="#9B8F87"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvGreeting"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Bonne nuit Melissa"
+                                android:textColor="#191512"
+                                android:textSize="26sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvGreetingEmoji"
+                                android:layout_width="44dp"
+                                android:layout_height="44dp"
+                                android:gravity="center"
+                                android:text="🌙"
+                                android:textSize="22sp"
+                                android:background="#FFFFFFFF"
+                                android:elevation="2dp" />
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvNotification"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <!-- HERO SOLDE COMMUN -->
+                    <LinearLayout
+                        android:id="@+id/heroCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="245dp"
+                        android:layout_marginTop="22dp"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:paddingLeft="26dp"
+                        android:paddingTop="18dp"
+                        android:paddingRight="26dp"
+                        android:paddingBottom="16dp">
+
+                        <TextView
+                            android:id="@+id/tvEndBalance"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Solde commun"
+                            android:textColor="#EFFFFFFF"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvBalance"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:singleLine="true"
+                            android:text="0,00 €"
+                            android:textColor="#FFFFFF"
+                            android:textSize="38sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvEndBalanceDetail"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:paddingLeft="12dp"
+                            android:paddingTop="5dp"
+                            android:paddingRight="12dp"
+                            android:paddingBottom="5dp"
+                            android:text="Solde saisi le 13/05"
+                            android:textColor="#EFFFFFFF"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="16dp"
+                            android:background="#44FFFFFF" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="↓ REVENUS"
+                                android:textColor="#DFFFFFFF"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="↑ DÉPENSES"
+                                android:textColor="#DFFFFFFF"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="♡ ÉPARGNE"
+                                android:textColor="#DFFFFFFF"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvIncomeDetail"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="0,00 €"
+                                android:textColor="#FFFFFF"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvExpenses"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="0,00 €"
+                                android:textColor="#FFFFFF"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvSavings"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="0,00 €"
+                                android:textColor="#FFFFFF"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvSyncDot"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <!-- SANTÉ FINANCIÈRE -->
+                    <LinearLayout
+                        android:id="@+id/widgetStatsCards"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingLeft="22dp"
+                        android:paddingTop="20dp"
+                        android:paddingRight="22dp"
+                        android:paddingBottom="20dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="⌁ Santé financière"
+                                android:textColor="#191512"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvExpensesOld"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="Votre budget est équilibré"
+                                android:textColor="#9B8F87"
+                                android:textSize="13sp" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="9dp"
+                                android:layout_marginTop="18dp"
+                                android:background="#EFE7DF">
+
+                                <View
+                                    android:id="@+id/viewHealthProgress"
+                                    android:layout_width="140dp"
+                                    android:layout_height="match_parent"
+                                    android:background="#C0614A" />
+
+                            </FrameLayout>
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvIncomeCompare"
+                            android:layout_width="86dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginLeft="18dp"
+                            android:gravity="center"
+                            android:text="60/100"
+                            android:textColor="#C0614A"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <FrameLayout
+                            android:id="@+id/scoreGaugeContainer"
+                            android:layout_width="1dp"
+                            android:layout_height="1dp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tvSavingsOld"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <!-- CALENDRIER / PROGRESSION -->
+                    <LinearLayout
+                        android:id="@+id/widgetMonthProgress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:background="#FFFFFFFF"
+                        android:elevation="2dp">
+
+                        <TextView
+                            android:id="@+id/tvMonthProgressLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Cette semaine"
+                            android:textColor="#191512"
+                            android:textSize="23sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvCalMonth"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Mai 2026"
+                            android:textColor="#9B8F87"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <GridLayout
+                            android:id="@+id/calendarGrid"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="18dp"
+                            android:columnCount="7" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="8dp"
+                            android:layout_marginTop="12dp"
+                            android:background="#EFE7DF"
+                            android:orientation="horizontal">
+
+                            <View
+                                android:id="@+id/viewMonthProgressFill"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:background="#C0614A" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvMonthProgressDetail"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="13 jours restants"
+                                android:textColor="#9B8F87"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvMonthProgressPct"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="42%"
+                                android:textColor="#C0614A"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/btnCalPrev"
+                            android:layout_width="1dp"
+                            android:layout_height="1dp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/btnCalNext"
+                            android:layout_width="1dp"
+                            android:layout_height="1dp"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                    <!-- TOP CATÉGORIES -->
+                    <LinearLayout
+                        android:id="@+id/widgetTopCategories"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="vertical"
+                        android:background="#FFFFFFFF"
+                        android:elevation="2dp"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Répartition des dépenses"
+                            android:textColor="#191512"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvTopCategoriesEmpty"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Aucune dépense."
+                            android:textColor="#9B8F87"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvTopCategoriesTotal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                        <LinearLayout
+                            android:id="@+id/topCategoriesContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- WIDGETS INTELLIGENTS (déplacés à gauche en V2 :
+                         remplit l'espace et équilibre les deux colonnes) -->
+                    <TextView
+                        android:id="@+id/widgetsTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="30dp"
+                        android:text="Widgets intelligents"
+                        android:textColor="#191512"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/dynamicWidgetsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:id="@+id/btnDashboardWidgets"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:text="Widgets"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+                <!-- ================================================== -->
+                <!-- COLONNE DROITE (~55%)                               -->
+                <!-- ================================================== -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="55"
+                    android:orientation="vertical"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <!-- Point d'ancrage des icônes engrenage + notification.
+                         HomeNotifications y insère la barre d'actions si ce
+                         conteneur existe (tablette). Sur téléphone il est
+                         absent et le comportement habituel s'applique. -->
+                    <LinearLayout
+                        android:id="@+id/notifActionsAnchor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="right|center_vertical"
+                        android:orientation="horizontal"
+                        android:clipChildren="false"
+                        android:clipToPadding="false" />
+
+                    <!-- Point d'ancrage : HomeView y injecte la section
+                         "Comptes liés" (cartes membres) si ce conteneur
+                         existe. Sur téléphone il est absent, et HomeView
+                         retombe sur son comportement habituel. -->
+                    <LinearLayout
+                        android:id="@+id/memberSectionAnchor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:clipChildren="false"
+                        android:clipToPadding="false" />
+
+                    <!-- CARTES MEMBRES (prioritaires, rempli par HomeView) -->
+                    <LinearLayout
+                        android:id="@+id/personCards"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="#FFFFFFFF"
+                        android:elevation="2dp"
+                        android:padding="20dp" />
+
+                    <LinearLayout
+                        android:id="@+id/personBars"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+
+                    <!-- DERNIÈRES OPÉRATIONS -->
+                    <LinearLayout
+                        android:id="@+id/widgetBottomLine"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="vertical"
+                        android:background="#FFFFFFFF"
+                        android:elevation="2dp"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Dernières opérations"
+                                android:textColor="#191512"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/btnSeeAllTransactions"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Voir tout"
+                                android:textColor="#C0614A"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/categoryBars"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:id="@+id/tvTransactionCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tvFixedDetail"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tvEndBalanceDetail2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ====================================================== -->
+            <!-- VUES DE COMPATIBILITÉ (invisibles, référencées par code) -->
+            <!-- ====================================================== -->
+            <TextView
+                android:id="@+id/tvIncomeDetailOld"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvExpensesCompare"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvSavingsCompare"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</FrameLayout>

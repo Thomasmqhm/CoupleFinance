@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Layout minimal — tout l'UI est construit programmatiquement dans LoginActivity.java.
+    Ce fichier existe uniquement pour satisfaire setContentView() sur les anciens chemins
+    (AuthManager.isLoggedIn() → forceHousehold) qui appellent encore setContentView.
+
+    En pratique, LoginActivity.buildRootLayout() construit l'UI complet en Java
+    et appelle setContentView(scrollView) directement.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLogin"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F7EFE7"/>

@@ -1,0 +1,108 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.couplefinance" >
+
+    <!-- ── Permissions réseau ─────────────────────────────────── -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ── Permissions biométrie ─────────────────────────────── -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- ── Permissions stockage ──────────────────────────────── -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!-- ── Notifications ─────────────────────────────────────── -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        RECEIVE_BOOT_COMPLETED — permet de replanifier les alarmes
+        de rappel de prélèvement après un redémarrage du téléphone.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!--
+        SCHEDULE_EXACT_ALARM — nécessaire sur API 31+ pour
+        AlarmManager.setExactAndAllowWhileIdle() (rappels ponctuels).
+        Sur API < 31, la permission n'est pas nécessaire.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!--
+        USE_EXACT_ALARM — alternative à SCHEDULE_EXACT_ALARM sur API 33+
+        (accordée automatiquement, sans demande utilisateur).
+    -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="CoupleFinance"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar" >
+
+        <!-- ── Activités ─────────────────────────────────────── -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".LoginActivity" />
+        <activity
+            android:name=".ui.DashboardActivity"
+            android:exported="true" />
+        <activity android:name=".HouseholdActivity" />
+
+        <!-- ── Widget écran d'accueil ─────────────────────────── -->
+        <!--
+            SoldeWidget affiche le solde du foyer sur l'écran d'accueil.
+            android:exported="true" obligatoire pour les AppWidgetProvider.
+        -->
+        <receiver
+            android:name=".widget.SoldeWidget"
+            android:exported="true"
+            android:label="Solde CoupleFinance" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.couplefinance.UPDATE_WIDGET" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_solde_info" />
+        </receiver>
+        <receiver
+            android:name=".data.BankAutoSyncManager$BankSyncReceiver"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="com.couplefinance.BANK_AUTO_SYNC" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Rappels prélèvements (AlarmManager) ───────────── -->
+        <!--
+            ChargeAlarmReceiver reçoit :
+             1. Les alarmes planifiées par NotificationScheduler
+             2. BOOT_COMPLETED pour replanifier après redémarrage
+        -->
+        <receiver
+            android:name=".utils.NotificationScheduler$ChargeAlarmReceiver"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="com.couplefinance.CHARGE_REMINDER" />
+                <action android:name="com.couplefinance.BALANCE_REMINDER" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

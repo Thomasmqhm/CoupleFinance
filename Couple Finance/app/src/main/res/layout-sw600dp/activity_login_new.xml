@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLogin"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:background="#F7F3EE"
+    android:padding="28dp">
+
+    <LinearLayout
+        android:layout_width="720dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_white"
+        android:padding="54dp">
+
+        <!-- LOGO -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="40dp">
+
+            <TextView
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:gravity="center"
+                android:text="€"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/logo_circle"
+                android:layout_marginEnd="14dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CoupleFinance"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#202020"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Les finances du foyer"
+                    android:textSize="12sp"
+                    android:textColor="#8D8680"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- TITRE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Content de vous revoir"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:textColor="#202020"
+            android:layout_marginBottom="6dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connectez-vous pour gérer votre budget à deux."
+            android:textSize="15sp"
+            android:textColor="#8D8680"
+            android:layout_marginBottom="30dp"/>
+
+        <!-- EMAIL -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Adresse e-mail"
+            android:textStyle="bold"
+            android:textColor="#3A3531"
+            android:layout_marginBottom="6dp"/>
+
+        <EditText
+            android:id="@+id/etEmail"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="marie@exemple.fr"
+            android:textColor="#202020"
+            android:textColorHint="#B8B0A8"
+            android:background="@drawable/input_login"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_marginBottom="18dp"/>
+
+        <!-- PASSWORD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Mot de passe"
+                android:textStyle="bold"
+                android:textColor="#3A3531"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/tvForgotPassword"
+                android:text="Mot de passe oublié ?"
+                android:textColor="#B06A57"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:background="@drawable/input_login"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp"
+            android:layout_marginBottom="18dp">
+
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:hint="••••••••"
+                android:textColor="#202020"
+                android:textColorHint="#B8B0A8"
+                android:background="@null"/>
+
+            <TextView
+                android:id="@+id/tvTogglePassword"
+                android:layout_width="60dp"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="Voir"
+                android:textColor="#8D8680"/>
+        </LinearLayout>
+
+        <!-- REMEMBER -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <CheckBox
+                android:id="@+id/cbRemember"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Se souvenir de moi"
+                android:textColor="#6F6760"/>
+        </LinearLayout>
+
+        <!-- BUTTON -->
+        <Button
+            android:id="@+id/btnMain"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="SE CONNECTER  →"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/btn_primary"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- CREATE ACCOUNT -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pas encore de compte ? "
+                android:textColor="#8D8680"/>
+
+            <TextView
+                android:id="@+id/tvToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Créer un foyer"
+                android:textStyle="bold"
+                android:textColor="#B06A57"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

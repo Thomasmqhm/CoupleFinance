@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Couple Finance</string>
+    <string name="widget_description">Affiche le solde de votre foyer</string>
+</resources>

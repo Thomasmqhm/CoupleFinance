@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream ->
+        localProperties.load(stream)
+    }
+}
+
+android {
+    compileSdkVersion 34
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId "com.couplefinance"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        buildConfigField "String", "FIREBASE_API_KEY", "\"${localProperties['FIREBASE_API_KEY'] ?: ''}\""
+    }
+
+    packagingOptions {
+        pickFirst 'LICENSE.txt'
+        pickFirst 'META-INF/LICENSE'
+        pickFirst 'META-INF/LICENSE.txt'
+        pickFirst 'META-INF/NOTICE'
+        pickFirst 'META-INF/NOTICE.txt'
+
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/*.kotlin_module'
+    }
+
+    configurations.all {
+        exclude group: 'org.jetbrains.kotlin'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.1.0')
+
+	implementation 'com.google.mlkit:text-recognition:16.0.1'	
+	implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
+	implementation 'com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0'
+
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+	
+    implementation 'cz.adaptech.android:tesseract4android:4.7.0'
+	implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'
+	
+}

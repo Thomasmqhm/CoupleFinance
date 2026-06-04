@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F7F3EE"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <LinearLayout
+            android:layout_width="520dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_white"
+            android:paddingLeft="54dp"
+            android:paddingRight="54dp"
+            android:paddingTop="48dp"
+            android:paddingBottom="42dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="34dp">
+
+                <TextView
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:gravity="center"
+                    android:text="€"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/logo_circle"
+                    android:layout_marginEnd="12dp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CoupleFinance"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#202020" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Créer votre espace commun"
+                        android:textSize="12sp"
+                        android:textColor="#8D8680" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Créez votre foyer"
+                android:textSize="29sp"
+                android:textStyle="bold"
+                android:textColor="#202020"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Un compte, un foyer, une vision claire de vos finances à deux."
+                android:textSize="14sp"
+                android:textColor="#8D8680"
+                android:layout_marginBottom="30dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/input_login"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="28dp">
+
+                <TextView
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="1"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/logo_circle"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Vous"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#202020" />
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="1dp"
+                    android:background="#E8DDD6"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="2"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#8D8680"
+                    android:background="@drawable/btn_rounded_light"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Foyer"
+                    android:textSize="13sp"
+                    android:textColor="#8D8680" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Votre prénom"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#3A3531"
+                android:layout_marginBottom="7dp" />
+
+            <EditText
+                android:id="@+id/etFirstName"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:hint="ex : Marie"
+                android:textSize="14sp"
+                android:textColor="#202020"
+                android:textColorHint="#B8B0A8"
+                android:singleLine="true"
+                android:background="@drawable/input_login"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="18dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Adresse e-mail"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#3A3531"
+                android:layout_marginBottom="7dp" />
+
+            <EditText
+                android:id="@+id/etEmail"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:hint="marie@exemple.fr"
+                android:textSize="14sp"
+                android:textColor="#202020"
+                android:textColorHint="#B8B0A8"
+                android:singleLine="true"
+                android:inputType="textEmailAddress"
+                android:background="@drawable/input_login"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="18dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mot de passe"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#3A3531"
+                android:layout_marginBottom="7dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/input_login"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:layout_marginBottom="24dp">
+
+                <EditText
+                    android:id="@+id/etPassword"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="8 caractères minimum"
+                    android:textSize="14sp"
+                    android:textColor="#202020"
+                    android:textColorHint="#B8B0A8"
+                    android:singleLine="true"
+                    android:inputType="textPassword"
+                    android:background="@null" />
+
+                <TextView
+                    android:id="@+id/tvTogglePassword"
+                    android:layout_width="48dp"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="Voir"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#8D8680" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Votre couleur"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#3A3531"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:id="@+id/colorPicker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="30dp">
+
+                <FrameLayout
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginEnd="10dp">
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/avatar_terracotta" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="✓"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF" />
+                </FrameLayout>
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/avatar_darkgreen"
+                    android:layout_marginEnd="10dp" />
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="#E8C97A"
+                    android:layout_marginEnd="10dp" />
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="#D4B8A0"
+                    android:layout_marginEnd="10dp" />
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="#2D3A5A"
+                    android:layout_marginEnd="10dp" />
+
+                <View
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="#7A9E8E" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnMain"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="CONTINUER  →"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/btn_primary"
+                android:layout_marginBottom="24dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Déjà un compte ? "
+                    android:textSize="13sp"
+                    android:textColor="#8D8680" />
+
+                <TextView
+                    android:id="@+id/tvToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Se connecter"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#B06A57" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

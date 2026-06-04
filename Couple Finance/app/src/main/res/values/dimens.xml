@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Padding de page principal -->
+    <dimen name="padding_page">28dp</dimen>
+
+    <!-- Padding carte -->
+    <dimen name="padding_card">20dp</dimen>
+
+    <!-- Padding input -->
+    <dimen name="padding_input">16dp</dimen>
+
+    <!-- Gaps -->
+    <dimen name="gap">16dp</dimen>
+    <dimen name="gap_sm">10dp</dimen>
+    <dimen name="gap_lg">24dp</dimen>
+
+    <!-- Hauteurs boutons / inputs -->
+    <dimen name="btn_height">52dp</dimen>
+    <dimen name="input_height">56dp</dimen>
+
+    <!-- Rayons -->
+    <dimen name="radius_xs">8dp</dimen>
+    <dimen name="radius_sm">14dp</dimen>
+    <dimen name="radius_md">20dp</dimen>
+    <dimen name="radius_lg">26dp</dimen>
+    <dimen name="radius_xl">30dp</dimen>
+
+</resources>

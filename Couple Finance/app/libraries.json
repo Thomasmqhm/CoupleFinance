@@ -1,0 +1,22 @@
+[
+  {
+    "groupId": "com.tom-roush",
+    "artifactId": "pdfbox-android",
+    "versionName": "2.0.27.0"
+  },
+  {
+    "groupId": "com.google.android.gms",
+    "artifactId": "play-services-mlkit-text-recognition",
+    "versionName": "19.0.0"
+  },
+  {
+    "groupId": "com.google.android.gms",
+    "artifactId": "play-services-mlkit-text-recognition-common",
+    "versionName": "19.1.0"
+  },
+  {
+    "groupId": "cz.adaptech.tesseract4android",
+    "artifactId": "tesseract4android",
+    "versionName": "4.7.0"
+  }
+]

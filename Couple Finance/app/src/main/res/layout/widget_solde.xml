@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    widget_solde.xml — Layout du widget écran d'accueil CoupleFinance.
+
+    Contraintes RemoteViews :
+     • Pas de ConstraintLayout, pas de LinearLayout avec weight
+     • Pas de vues custom
+     • Vues supportées : FrameLayout, LinearLayout, RelativeLayout,
+       TextView, ImageView, Button, ProgressBar
+     • Pas de padding complexe — utiliser margin
+
+    Chemin : app/src/main/res/layout/widget_solde.xml
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_background"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Ligne titre + bouton refresh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="CoupleFinance"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#C0614A"
+            android:letterSpacing="0.08"/>
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:text="↻"
+            android:textSize="16sp"
+            android:textColor="#C0614A"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"/>
+
+    </LinearLayout>
+
+    <!-- Sous-titre -->
+    <TextView
+        android:id="@+id/widget_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Solde du foyer"
+        android:textSize="12sp"
+        android:textColor="#8D8680"
+        android:layout_marginBottom="4dp"/>
+
+    <!-- Solde principal -->
+    <TextView
+        android:id="@+id/widget_balance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="—"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#1A2E2B"
+        android:layout_marginBottom="10dp"/>
+
+    <!-- Séparateur -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E8DDD6"
+        android:layout_marginBottom="10dp"/>
+
+    <!-- Dépenses -->
+    <TextView
+        android:id="@+id/widget_expenses"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dépenses : —"
+        android:textSize="12sp"
+        android:textColor="#C0614A"
+        android:layout_marginBottom="3dp"/>
+
+    <!-- Revenus -->
+    <TextView
+        android:id="@+id/widget_income"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Revenus : —"
+        android:textSize="12sp"
+        android:textColor="#2D5A4E"/>
+
+</LinearLayout>

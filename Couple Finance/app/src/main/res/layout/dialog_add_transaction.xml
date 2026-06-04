@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/dialog_background"
+        android:padding="28dp">
+
+        <!-- Icône + rond -->
+        <FrameLayout
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginBottom="16dp">
+            <View android:layout_width="52dp" android:layout_height="52dp" android:background="#FFE8E0"/>
+            <TextView android:layout_width="match_parent" android:layout_height="match_parent"
+                android:text="+" android:textSize="26sp" android:textColor="#C0614A"
+                android:gravity="center" android:textStyle="bold"/>
+        </FrameLayout>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Nouvelle transaction" android:textSize="26sp"
+            android:textColor="#1A2E2B" android:textStyle="bold" android:layout_marginBottom="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Remplis les informations ci-dessous" android:textSize="13sp"
+            android:textColor="#94A3B8" android:layout_marginBottom="24dp"/>
+
+        <!-- LIGNE 1 : PERSONNE + TYPE -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="16dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="PERSONNE" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <FrameLayout android:layout_width="match_parent" android:layout_height="52dp"
+                    android:background="@drawable/input_dialog" android:clipChildren="true" android:clipToPadding="true">
+                    <Spinner android:id="@+id/spinnerPerson"
+                        style="@style/SpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@null"/>
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="TYPE" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <FrameLayout android:layout_width="match_parent" android:layout_height="52dp"
+                    android:background="@drawable/input_dialog" android:clipChildren="true" android:clipToPadding="true">
+                    <Spinner android:id="@+id/spinnerType"
+                        style="@style/SpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@null"/>
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- LIGNE 2 : DESCRIPTION + MONTANT -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="16dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="DESCRIPTION" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <EditText android:id="@+id/etLabel" android:layout_width="match_parent"
+                    android:layout_height="52dp" android:hint="Ex : Courses"
+                    android:background="@drawable/input_dialog" android:paddingStart="14dp"
+                    android:paddingEnd="14dp" android:textSize="14sp" android:textColor="#1A2E2B"
+                    android:inputType="text" android:singleLine="true"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="MONTANT €" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <EditText android:id="@+id/etAmount" android:layout_width="match_parent"
+                    android:layout_height="52dp" android:hint="0.00"
+                    android:background="@drawable/input_dialog" android:paddingStart="14dp"
+                    android:paddingEnd="14dp" android:textSize="16sp" android:textColor="#1A2E2B"
+                    android:textStyle="bold" android:inputType="numberDecimal" android:singleLine="true"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- LIGNE 3 : CATÉGORIE + SOUS-TYPE -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="16dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="CATÉGORIE" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <FrameLayout android:layout_width="match_parent" android:layout_height="52dp"
+                    android:background="@drawable/input_dialog" android:clipChildren="true" android:clipToPadding="true">
+                    <Spinner android:id="@+id/spinnerCategory"
+                        style="@style/SpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@null"/>
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="SOUS-TYPE" android:textSize="10sp" android:textColor="#8B6914"
+                    android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+                <FrameLayout android:layout_width="match_parent" android:layout_height="52dp"
+                    android:background="@drawable/input_dialog" android:clipChildren="true" android:clipToPadding="true">
+                    <Spinner android:id="@+id/spinnerChargeType"
+                        style="@style/SpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@null"/>
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- DATE : bouton ouvrant un mini calendrier -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginBottom="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="DATE" android:textSize="10sp" android:textColor="#8B6914"
+                android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+
+            <LinearLayout
+                android:id="@+id/btnDatePicker"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/input_dialog"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:id="@+id/tvSelectedDate"
+                    android:textSize="14sp"
+                    android:textColor="#1A2E2B"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📅"
+                    android:textSize="16sp"/>
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- PARTAGE -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginBottom="24dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="PARTAGE" android:textSize="10sp" android:textColor="#8B6914"
+                android:textStyle="bold" android:letterSpacing="0.10" android:layout_marginBottom="6dp"/>
+
+            <LinearLayout android:id="@+id/switchRow" android:layout_width="match_parent"
+                android:layout_height="52dp" android:background="@drawable/input_dialog"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:paddingStart="14dp" android:paddingEnd="10dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="👥" android:textSize="16sp" android:layout_marginEnd="8dp"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="50 / 50" android:textSize="13sp"
+                        android:textColor="#1A2E2B" android:textStyle="bold"/>
+                    <TextView android:id="@+id/tvPartageDesc" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="Désactivé"
+                        android:textSize="10sp" android:textColor="#94A3B8"/>
+                </LinearLayout>
+                <Switch android:id="@+id/switchPartage" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:checked="false"
+                    android:thumbTint="#FFFFFF" android:trackTint="#E0D5CE"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- BOUTONS -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnCancel" android:layout_width="0dp" android:layout_height="52dp"
+                android:layout_weight="1" android:text="Annuler" android:textSize="14sp"
+                android:textColor="#1A2E2B" android:background="@drawable/btn_dialog_cancel"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="12dp"/>
+            <Button android:id="@+id/btnSave" android:layout_width="0dp" android:layout_height="52dp"
+                android:layout_weight="1" android:text="Enregistrer" android:textSize="14sp"
+                android:textColor="#FFFFFF" android:background="@drawable/btn_dialog_save"
+                android:stateListAnimator="@null"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

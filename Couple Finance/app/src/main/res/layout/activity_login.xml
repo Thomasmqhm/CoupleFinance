@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ce fichier est remplacé par activity_login_new.xml -->
+<!-- Garder comme alias si MainActivity pointe dessus -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="#F9F5F2">
+
+    <!-- COLONNE GAUCHE : Formulaire -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="#F9F5F2"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="48dp"
+            android:gravity="center_vertical">
+
+            <!-- Logo + nom -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="56dp">
+
+                <LinearLayout
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="@drawable/logo_circle"
+                    android:gravity="center"
+                    android:layout_marginEnd="12dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$"
+                        android:textSize="18sp"
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Foyer"
+                        android:textSize="18sp"
+                        android:textColor="#1A2E2B"
+                        android:textStyle="bold"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FINANCES À DEUX"
+                        android:textSize="9sp"
+                        android:textColor="#8B6914"
+                        android:letterSpacing="0.12"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Titre -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Content de vous revoir"
+                android:textSize="28sp"
+                android:textColor="#1A2E2B"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Connectez-vous pour accéder à vos finances."
+                android:textSize="13sp"
+                android:textColor="#94A3B8"
+                android:layout_marginBottom="36dp"/>
+
+            <!-- Email -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ADRESSE EMAIL"
+                android:textSize="9sp"
+                android:textColor="#8B6914"
+                android:textStyle="bold"
+                android:letterSpacing="0.10"
+                android:layout_marginBottom="6dp"/>
+
+            <EditText
+                android:id="@+id/etEmail"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="prenom@email.com"
+                android:inputType="textEmailAddress"
+                android:background="@drawable/input_rounded"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textSize="14sp"
+                android:textColor="#1A2E2B"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Mot de passe -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MOT DE PASSE"
+                android:textSize="9sp"
+                android:textColor="#8B6914"
+                android:textStyle="bold"
+                android:letterSpacing="0.10"
+                android:layout_marginBottom="6dp"/>
+
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="••••••••"
+                android:inputType="textPassword"
+                android:background="@drawable/input_rounded"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textSize="14sp"
+                android:textColor="#1A2E2B"
+                android:layout_marginBottom="28dp"/>
+
+            <!-- Bouton connexion -->
+            <Button
+                android:id="@+id/btnLogin"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Se connecter"
+                android:background="@drawable/btn_primary"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Séparateur -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="#E8DDD6"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="  ou  "
+                    android:textSize="12sp"
+                    android:textColor="#94A3B8"/>
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="#E8DDD6"/>
+            </LinearLayout>
+
+            <!-- Bouton inscription -->
+            <Button
+                android:id="@+id/btnRegister"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Créer un compte"
+                android:background="@drawable/btn_rounded_light"
+                android:textColor="#1A2E2B"
+                android:textSize="14sp"/>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- COLONNE DROITE : Visuel décoratif -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="#1A2E2B"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="48dp">
+
+        <!-- Grand logo cercle terracotta -->
+        <LinearLayout
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:background="@drawable/logo_circle"
+            android:gravity="center"
+            android:layout_marginBottom="28dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="$"
+                android:textSize="40sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vos finances,"
+            android:textSize="28sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ensemble."
+            android:textSize="28sp"
+            android:textColor="#C0614A"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="20dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gérez vos revenus, dépenses et répartitions en couple, simplement."
+            android:textSize="13sp"
+            android:textColor="#4A6B65"
+            android:gravity="center"
+            android:layout_marginBottom="40dp"/>
+
+        <!-- 3 points clés -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="✓" android:textSize="13sp" android:textColor="#C0614A"
+                    android:textStyle="bold" android:layout_marginEnd="10dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Tableau de bord en temps réel"
+                    android:textSize="12sp" android:textColor="#94A3B8"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="✓" android:textSize="13sp" android:textColor="#C0614A"
+                    android:textStyle="bold" android:layout_marginEnd="10dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Répartition équitable automatique"
+                    android:textSize="12sp" android:textColor="#94A3B8"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="✓" android:textSize="13sp" android:textColor="#C0614A"
+                    android:textStyle="bold" android:layout_marginEnd="10dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Budgets &amp; objectifs partagés"
+                    android:textSize="12sp" android:textColor="#94A3B8"/>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>
