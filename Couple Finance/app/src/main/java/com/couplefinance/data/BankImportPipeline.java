@@ -184,7 +184,7 @@ public final class BankImportPipeline {
 
         for (ParsedTransaction pt : candidates) {
             RecurringChargeManager.getInstance().createFixedChargeFromTransaction(
-                    pt.label, pt.amount, pt.category, pt.dateMs, pt.person,
+                    pt.label, pt.amount, pt.category, pt.dateMs, pt.owner,
                     new FirestoreManager.Callback() {
                         @Override public void onSuccess(String r) {
                             if (!"EXISTS".equals(r)) created[0]++;
