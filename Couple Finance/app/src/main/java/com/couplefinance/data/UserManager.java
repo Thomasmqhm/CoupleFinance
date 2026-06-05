@@ -51,39 +51,20 @@ public class UserManager {
 	}
 
 	public String getReliableDisplayName() {
-		// 1) Priorité : prénom configuré dans le foyer (pas d'email, pas de point)
-		try {
-			com.couplefinance.ui.settings.SettingsModels.State state =
-					com.couplefinance.ui.settings.SettingsCache.get();
-			if (state != null && state.members != null && !state.members.isEmpty()) {
-				String uid = com.couplefinance.AuthManager.getInstance().getUserId();
-				for (com.couplefinance.ui.settings.SettingsModels.Member m : state.members) {
-					if (m.docPath != null && uid != null && m.docPath.contains(uid)
-							&& m.name != null && !m.name.trim().isEmpty()) {
-						return m.name.trim();
-					}
-				}
-			}
-		} catch (Exception ignored) {}
-
-		// 2) Profil UserSession (si prénom simple, sans @ ni .)
+		// 1) Profil UserSession (le plus fiable : chargé depuis Firestore)
 		UserProfile profile = UserSession.getInstance().getUser();
 		if (profile != null
 				&& profile.displayName != null
 				&& !profile.displayName.trim().isEmpty()
-				&& !profile.displayName.equalsIgnoreCase("Moi")
-				&& !profile.displayName.contains("@")
-				&& !profile.displayName.contains(".")) {
+				&& !profile.displayName.equalsIgnoreCase("Moi")) {
 			return profile.displayName.trim();
 		}
 
-		// 3) Nom Firebase Auth (si prénom simple)
+		// 2) Nom Firebase Auth
 		String name = com.couplefinance.AuthManager.getInstance().getDisplayName();
 		if (name != null
 				&& !name.trim().isEmpty()
-				&& !name.equalsIgnoreCase("Moi")
-				&& !name.contains("@")
-				&& !name.contains(".")) {
+				&& !name.equalsIgnoreCase("Moi")) {
 			return name.trim();
 		}
 
