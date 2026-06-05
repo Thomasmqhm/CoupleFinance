@@ -32,12 +32,11 @@ public class UserSession {
     public String getNameOrFallback() {
         // Ne jamais retourner un nom qui ressemble à une adresse mail ou un identifiant
         String name = getName();
-        if (!name.isEmpty() && !name.contains("@") && !name.contains(".")) return name;
+        if (!name.isEmpty()) return name;
 
         String dn = AuthManager.getInstance().getDisplayName();
-        if (dn != null && !dn.isEmpty() && !dn.contains("@") && !dn.contains(".")) return dn;
+        if (dn != null && !dn.isEmpty()) return dn;
 
-        // Dernier recours : "Moi" plutôt que l'email ou l'identifiant
         return "Moi";
     }
 }
