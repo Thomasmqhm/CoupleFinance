@@ -22,7 +22,9 @@ import com.couplefinance.core.ui.dialogs.DateDialog;
 import com.couplefinance.data.CategoryManager;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.JointAccountManager;
+import com.couplefinance.data.MerchantRuleManager;
 import com.couplefinance.data.RecurringChargeManager;
+import com.couplefinance.ui.credits.CreditsDialogs;
 import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.ui.settings.SettingsModels;
 
@@ -226,6 +228,7 @@ public final class TransactionsDialogs {
 
     public static void showEditDialog(Activity activity,
                                       TransactionsModels.Transaction tx,
+                                      List<TransactionsModels.Transaction> allTx,
                                       List<String> members,
                                       List<String[]> categories,
                                       OnActionDone callback) {
@@ -350,12 +353,33 @@ public final class TransactionsDialogs {
                             && person.equalsIgnoreCase(jointName);
                     String compte = isJointSelected ? "joint" : "";
 
+                    final String finalLabel    = label;
+                    final String finalCategory = category;
+                    final String finalPerson   = person;
+
                     TransactionsRepository.updateTransaction(
                             tx.docId, label, amount, type, category,
                             dateMs[0], person, tx.shared, compte,
                             activity,
                             new TransactionsRepository.OnWriteComplete() {
                                 public void onSuccess() {
+                                    // Mémoriser la règle commerçant + appliquer aux similaires
+                                    applyMerchantRuleToSimilar(activity, tx, finalLabel, finalCategory, allTx);
+
+                                    // Si catégorie = Crédits, proposer de créer un suivi
+                                    if ("Crédits".equals(finalCategory)
+                                            && (tx.category == null || !tx.category.equals("Crédits"))) {
+                                        new android.app.AlertDialog.Builder(activity)
+                                                .setTitle("Suivi de crédit")
+                                                .setMessage("Cette transaction est marquée \"Crédits\".\nVoulez-vous créer un suivi dans l'onglet Crédits ?")
+                                                .setPositiveButton("Créer", (d, w) ->
+                                                        CreditsDialogs.showAddDialog(activity, new CreditsDialogs.OnActionDone() {
+                                            public void reload() {}
+                                        }))
+                                                .setNegativeButton("Non", null)
+                                                .show();
+                                    }
+
                                     AppToast.success(activity, "Transaction modifiée");
                                     if (callback != null) callback.reload();
                                 }
@@ -831,6 +855,58 @@ public final class TransactionsDialogs {
                 AppToast.error(activity, "Abonnement non créé : " + e);
             }
         });
+    }
+
+    /**
+     * Mémorise la règle commerçant (label + catégorie) et l'applique en mémoire
+     * à toutes les transactions dont la clé commerçant correspond.
+     * Les mises à jour Firestore sont faites de manière best-effort, en arrière-plan.
+     */
+    private static void applyMerchantRuleToSimilar(Activity activity,
+            TransactionsModels.Transaction edited,
+            String newLabel, String newCategory,
+            List<TransactionsModels.Transaction> allTx) {
+
+        MerchantRuleManager mgr = MerchantRuleManager.getInstance();
+        String key = mgr.resolveMerchantKey(edited.description());
+        if (key == null || key.isEmpty()) return;
+
+        boolean labelChanged    = !newLabel.equals(edited.description());
+        boolean categoryChanged = newCategory != null && !newCategory.equals(edited.category);
+
+        if (labelChanged)    mgr.saveLabelRule(key, newLabel);
+        if (categoryChanged) mgr.saveCategoryRule(key, newCategory);
+
+        if (allTx == null || allTx.isEmpty()) return;
+        if (!labelChanged && !categoryChanged) return;
+
+        for (TransactionsModels.Transaction t : allTx) {
+            if (t.docId.equals(edited.docId)) continue;
+            String tKey = mgr.resolveMerchantKey(t.description());
+            if (!key.equals(tKey)) continue;
+
+            String updLabel = labelChanged    ? newLabel    : t.description();
+            String updCat   = categoryChanged ? newCategory : t.category;
+
+            TransactionsRepository.updateTransaction(
+                    t.docId, updLabel, t.amount, t.type, updCat,
+                    t.dateMs, t.person, t.shared, t.compte, activity,
+                    new TransactionsRepository.OnWriteComplete() {
+                        public void onSuccess() {}
+                        public void onError(String e) {}
+                    });
+        }
+
+        if (labelChanged || categoryChanged) {
+            int count = 0;
+            for (TransactionsModels.Transaction t : allTx) {
+                if (!t.docId.equals(edited.docId)
+                        && key.equals(mgr.resolveMerchantKey(t.description()))) count++;
+            }
+            if (count > 0) {
+                AppToast.success(activity, count + " transaction(s) similaire(s) mise(s) à jour ✓");
+            }
+        }
     }
 
     /** Devine une icône simple selon le libellé pour le FixedCharge. */

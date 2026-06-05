@@ -62,6 +62,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+    implementation 'androidx.core:core:1.13.1'
 
     // Suppression du doublon : cz.adaptech.android était un ancien group ID
     implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'

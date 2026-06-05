@@ -50,13 +50,19 @@ public class UserRepository {
                 String token = AuthManager.getInstance().getToken();
                 if (token == null || token.isEmpty()) return;
 
-                URL url = new URL(BASE_URL + "users/" + user.uid
+                // Inclure householdId si disponible — permet aux requêtes d'avatar de fonctionner
+                String householdId = com.couplefinance.data.HouseholdManager.getInstance().getHouseholdId();
+                boolean hasHousehold = householdId != null && !householdId.isEmpty();
+
+                String maskUrl = BASE_URL + "users/" + user.uid
                         + "?updateMask.fieldPaths=displayName"
                         + "&updateMask.fieldPaths=email"
                         + "&updateMask.fieldPaths=color"
                         + "&updateMask.fieldPaths=avatar"
-                        + "&updateMask.fieldPaths=createdAt");
+                        + "&updateMask.fieldPaths=createdAt"
+                        + (hasHousehold ? "&updateMask.fieldPaths=householdId" : "");
 
+                URL url = new URL(maskUrl);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("PATCH");
                 conn.setRequestProperty("Content-Type", "application/json");
@@ -72,6 +78,7 @@ public class UserRepository {
                 fields.put("color", sv(user.getColor()));
                 fields.put("avatar", sv(user.getAvatar()));
                 fields.put("createdAt", intv(user.createdAt));
+                if (hasHousehold) fields.put("householdId", sv(householdId));
                 String body = "{\"fields\":" + fields + "}";
 
                 try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
