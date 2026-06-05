@@ -186,8 +186,8 @@ public final class TransactionsDialogs {
                     StringBuilder hint = new StringBuilder("💡 Suggestion : ");
                     if (sug.category != null && !sug.category.isEmpty())
                         hint.append("Catégorie → ").append(sug.category);
-                    if (sug.amount > 0)
-                        hint.append("  ·  ").append(String.format(Locale.FRANCE, "%.2f €", sug.amount));
+                    if (sug.averageAmount > 0)
+                        hint.append("  ·  ").append(String.format(Locale.FRANCE, "%.2f €", sug.averageAmount));
                     tvAutoFill.setText(hint.toString());
                     tvAutoFill.setVisibility(View.VISIBLE);
                     tvAutoFill.setOnClickListener(v -> {
@@ -198,8 +198,8 @@ public final class TransactionsDialogs {
                                 acvCatHolder[0].setText(sug.category, false);
                             }
                         }
-                        if (sug.amount > 0 && etAmount.getText().toString().trim().isEmpty()) {
-                            etAmount.setText(Fmt.moneyInput(sug.amount));
+                        if (sug.averageAmount > 0 && etAmount.getText().toString().trim().isEmpty()) {
+                            etAmount.setText(Fmt.moneyInput(sug.averageAmount));
                         }
                         tvAutoFill.setVisibility(View.GONE);
                     });
