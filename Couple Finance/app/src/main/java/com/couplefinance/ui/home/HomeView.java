@@ -2944,17 +2944,20 @@ HomeMemberCard.Data jointData = jointEnabled
 		memberSection.render(memberSectionContainer, memberDataList, jointData, jointEnabled);
 
 		// Avatars des autres membres : requête users par householdId, puis re-render
-		if (avatarCache == null) {
+		// avatarCache null = pas encore chargé ; empty = chargé mais vide (on ré-essaiera)
+		if (avatarCache == null || avatarCache.isEmpty()) {
 			final List<HomeMemberCard.Data> fdl = memberDataList;
 			final HomeMemberCard.Data fjd = jointData;
 			final boolean fje = jointEnabled;
 			String hh = com.couplefinance.data.HouseholdManager.getInstance().getHouseholdId();
 			if (hh != null && !hh.isEmpty()) {
 				com.couplefinance.UserRepository.getInstance().loadHouseholdAvatars(hh, map -> {
-					avatarCache = map;
-					applyAvatarsToCards(fdl);
-					if (memberSection != null)
-						memberSection.render(memberSectionContainer, fdl, fjd, fje);
+					if (map != null && !map.isEmpty()) {
+						avatarCache = map;
+						applyAvatarsToCards(fdl);
+						if (memberSection != null)
+							memberSection.render(memberSectionContainer, fdl, fjd, fje);
+					}
 				});
 			}
 		}
