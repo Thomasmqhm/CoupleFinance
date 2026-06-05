@@ -143,6 +143,18 @@ public class SettingsMemberWriter {
         }
     }
 
+    public static void deleteMember(SettingsModels.Member member, Callback cb) {
+        if (member == null || member.docPath == null || member.docPath.trim().isEmpty()) {
+            if (cb != null) cb.onError("Chemin du membre introuvable");
+            return;
+        }
+        String path = cleanDocumentPath(member.docPath);
+        FirestoreManager.getInstance().deleteDocument(path, new FirestoreManager.Callback() {
+            public void onSuccess(String r) { if (cb != null) cb.onSuccess(); }
+            public void onError(String e)   { if (cb != null) cb.onError(e); }
+        });
+    }
+
     private static String cleanDocumentPath(String fullPath) {
         if (fullPath == null) return "";
 
