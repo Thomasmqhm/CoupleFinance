@@ -50,6 +50,19 @@ public class UserManager {
 		return reliable != null ? reliable : "Moi";
 	}
 
+	public String getCurrentDisplayName(android.content.Context ctx) {
+		// 1) SharedPreferences (le plus fiable — prénom configuré par l'utilisateur)
+		try {
+			String saved = ctx.getSharedPreferences("couplefinance_profile",
+					android.content.Context.MODE_PRIVATE).getString("display_name", "");
+			if (saved != null && !saved.trim().isEmpty()
+					&& !saved.equalsIgnoreCase("Moi")) return saved.trim();
+		} catch (Exception ignored) {}
+		// 2) Fallback classique
+		String reliable = getReliableDisplayName();
+		return reliable != null ? reliable : "";
+	}
+
 	public String getReliableDisplayName() {
 		// 1) Membre du foyer dont le userId correspond à l'utilisateur connecté
 		try {
