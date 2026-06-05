@@ -24,7 +24,7 @@ android {
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
-        buildConfigField "String", "FIREBASE_API_KEY", "\"${localProperties['FIREBASE_API_KEY'] ?: ''}\""
+
     }
 
     packagingOptions {

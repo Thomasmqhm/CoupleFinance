@@ -1,6 +1,6 @@
 package com.couplefinance.utils;
 
-import com.couplefinance.BuildConfig;
+import com.couplefinance.ApiKeys;
 
 public final class FirebaseConfig {
 
@@ -8,12 +8,7 @@ public final class FirebaseConfig {
 
 	public static final String PROJECT_ID = "couple-bacc7";
 
-	/**
-	 * Clé injectée au build via buildConfigField (app/build.gradle).
-	 * Lue depuis local.properties en dev, variable CI en production.
-	 * Ne jamais committer une valeur ici en clair.
-	 */
-	public static final String API_KEY = BuildConfig.FIREBASE_API_KEY;
+	public static final String API_KEY = ApiKeys.FIREBASE_API_KEY;
 
 	public static final String FIRESTORE_BASE_URL =
 			"https://firestore.googleapis.com/v1/projects/"
