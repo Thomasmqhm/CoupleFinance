@@ -5,6 +5,11 @@ import android.content.Context;
 
 import com.couplefinance.ui.agenda.AgendaModels;
 import com.couplefinance.ui.agenda.AgendaRepository;
+import com.couplefinance.ui.budget.BudgetModels;
+import com.couplefinance.ui.budget.BudgetRepository;
+import com.couplefinance.ui.epargne.EpargneCalculator;
+import com.couplefinance.ui.epargne.EpargneModels;
+import com.couplefinance.ui.epargne.EpargneParser;
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.ui.transactions.TransactionsRepository;
 
@@ -13,15 +18,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
- * Construit un résumé financier (soldes, mois en cours, dernières opérations,
- * prélèvements à venir, agenda) et l'envoie via Telegram.
+ * Construit un résumé financier enrichi et l'envoie via Telegram.
  *
- * Les sources sont lues en chaîne (best-effort) : si l'une échoue, le résumé
- * est tout de même envoyé avec les blocs disponibles.
+ * Chaîne : balances → transactions → prélèvements → budget → épargne → agenda → envoi.
+ * Chaque étape est best-effort : si elle échoue, le résumé part quand même avec les
+ * blocs déjà disponibles.
  */
 public final class TelegramSummary {
 
@@ -45,17 +52,18 @@ public final class TelegramSummary {
         final Context ctx = activity.getApplicationContext();
         final StringBuilder sb = new StringBuilder();
 
-        sb.append("<b>CoupleFinance \u2014 r\u00e9sum\u00e9</b>\n");
+        sb.append("<b>CoupleFinance — résumé</b>\n");
         sb.append("<i>").append(esc(dateHeader())).append("</i>\n");
 
         appendBalances(ctx, sb);
 
-        // 1) Transactions → ce mois-ci + dernières opérations
+        // 1) Transactions → ce mois-ci + top catégories + dernières opérations
         TransactionsRepository.loadAll(activity, new TransactionsRepository.OnDataLoaded() {
             @Override
             public void onLoaded(List<TransactionsModels.Transaction> transactions,
                                  List<String> members, List<String[]> categories) {
                 appendMonth(sb, transactions);
+                appendTopCategories(sb, transactions);
                 appendRecent(sb, transactions);
                 stepCharges(activity, sb, cb);
             }
@@ -76,26 +84,68 @@ public final class TelegramSummary {
                         @Override
                         public void onResult(double total, int count) {
                             if (count > 0) {
-                                sb.append("\n<b>Prochains pr\u00e9l\u00e8vements</b>\n");
-                                sb.append("\u2022 ").append(count)
-                                        .append(count > 1 ? " pr\u00e9l\u00e8vements \u00e0 venir : "
-                                                          : " pr\u00e9l\u00e8vement \u00e0 venir : ")
+                                sb.append("\n<b>Prochains prélèvements</b>\n");
+                                sb.append("• ").append(count)
+                                        .append(count > 1 ? " prélèvements à venir : "
+                                                          : " prélèvement à venir : ")
                                         .append(money(total)).append("\n");
                             }
-                            stepAgenda(activity, sb, cb);
+                            stepBudget(activity, sb, cb);
                         }
 
                         @Override
                         public void onError(String error) {
-                            stepAgenda(activity, sb, cb);
+                            stepBudget(activity, sb, cb);
                         }
                     });
+        } catch (Exception e) {
+            stepBudget(activity, sb, cb);
+        }
+    }
+
+    // 3) Budget — catégories dépassées ou en alerte
+    private static void stepBudget(final Activity activity, final StringBuilder sb, final Callback cb) {
+        try {
+            BudgetRepository.loadBudgets(new BudgetRepository.Callback() {
+                @Override
+                public void onResult(List<BudgetModels.CategoryBudget> list) {
+                    appendBudget(sb, list);
+                    stepSavings(activity, sb, cb);
+                }
+
+                @Override
+                public void onError(String error) {
+                    stepSavings(activity, sb, cb);
+                }
+            });
+        } catch (Exception e) {
+            stepSavings(activity, sb, cb);
+        }
+    }
+
+    // 4) Épargne — progression des objectifs actifs
+    private static void stepSavings(final Activity activity, final StringBuilder sb, final Callback cb) {
+        try {
+            SavingsManager.getInstance().init(activity);
+            SavingsManager.getInstance().getSavings(new FirestoreManager.Callback() {
+                @Override
+                public void onSuccess(String json) {
+                    List<EpargneModels.SavingsGoal> goals = EpargneParser.parseSavings(json);
+                    appendSavings(sb, goals);
+                    stepAgenda(activity, sb, cb);
+                }
+
+                @Override
+                public void onError(String error) {
+                    stepAgenda(activity, sb, cb);
+                }
+            });
         } catch (Exception e) {
             stepAgenda(activity, sb, cb);
         }
     }
 
-    // 3) Agenda → prochains rendez-vous
+    // 5) Agenda → prochains rendez-vous
     private static void stepAgenda(final Activity activity, final StringBuilder sb, final Callback cb) {
         try {
             AgendaRepository.loadAll(activity, new AgendaRepository.OnDataLoaded() {
@@ -126,12 +176,10 @@ public final class TelegramSummary {
 
     private static void appendBalances(Context ctx, StringBuilder sb) {
         try {
-            // Chat commun : on n'expose AUCUN solde personnel.
-            // Seul le compte joint (réellement partagé) apparaît.
             double joint = BankAutoSyncManager.getLiveBalanceFor(ctx, "Compte joint");
             if (!Double.isNaN(joint)) {
                 sb.append("\n<b>Compte joint</b>\n");
-                sb.append("\u2022 Solde : ").append(money(joint)).append("\n");
+                sb.append("• Solde : ").append(money(joint)).append("\n");
             }
         } catch (Exception ignored) {
         }
@@ -152,9 +200,105 @@ public final class TelegramSummary {
             else expense += Math.abs(t.amount);
         }
         sb.append("\n<b>Ce mois-ci</b>\n");
-        sb.append("\u2022 Revenus : +").append(money(income)).append("\n");
-        sb.append("\u2022 D\u00e9penses : -").append(money(expense)).append("\n");
-        sb.append("\u2022 Solde du mois : ").append(signed(income - expense)).append("\n");
+        sb.append("• Revenus : +").append(money(income)).append("\n");
+        sb.append("• Dépenses : -").append(money(expense)).append("\n");
+        sb.append("• Solde du mois : ").append(signed(income - expense)).append("\n");
+    }
+
+    private static void appendTopCategories(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
+        if (tx == null || tx.isEmpty()) return;
+        Calendar now = Calendar.getInstance();
+        int month = now.get(Calendar.MONTH), year = now.get(Calendar.YEAR);
+        Calendar c = Calendar.getInstance();
+        Map<String, Double> byCategory = new HashMap<>();
+        for (TransactionsModels.Transaction t : tx) {
+            if (t == null || "income".equals(t.type)) continue;
+            c.setTimeInMillis(t.dateMs);
+            if (c.get(Calendar.MONTH) != month || c.get(Calendar.YEAR) != year) continue;
+            String cat = (t.category != null && !t.category.isEmpty()) ? t.category : "Autre";
+            Double cur = byCategory.get(cat);
+            byCategory.put(cat, (cur == null ? 0 : cur) + Math.abs(t.amount));
+        }
+        if (byCategory.isEmpty()) return;
+
+        List<Map.Entry<String, Double>> entries = new ArrayList<>(byCategory.entrySet());
+        Collections.sort(entries, (a, b) -> Double.compare(b.getValue(), a.getValue()));
+
+        sb.append("\n<b>Top dépenses par catégorie</b>\n");
+        int n = Math.min(5, entries.size());
+        for (int i = 0; i < n; i++) {
+            Map.Entry<String, Double> e = entries.get(i);
+            sb.append("• ").append(esc(e.getKey())).append(" : -").append(money(e.getValue())).append("\n");
+        }
+    }
+
+    private static void appendBudget(StringBuilder sb, List<BudgetModels.CategoryBudget> list) {
+        if (list == null || list.isEmpty()) return;
+
+        List<BudgetModels.CategoryBudget> exceeded = new ArrayList<>();
+        List<BudgetModels.CategoryBudget> warning  = new ArrayList<>();
+        for (BudgetModels.CategoryBudget b : list) {
+            if (b.isExceeded()) exceeded.add(b);
+            else if (b.isWarning()) warning.add(b);
+        }
+
+        if (exceeded.isEmpty() && warning.isEmpty()) {
+            sb.append("\n<b>Budget</b>\n");
+            sb.append("• ✅ Toutes les catégories sont dans les limites\n");
+            return;
+        }
+
+        sb.append("\n<b>Budget</b>\n");
+        for (BudgetModels.CategoryBudget b : exceeded) {
+            double over = b.spent - b.budget;
+            sb.append("• 🔴 ").append(esc(b.name))
+              .append(" : dépassé de ").append(money(over))
+              .append(" (").append(b.getPercent()).append("%)\n");
+        }
+        for (BudgetModels.CategoryBudget b : warning) {
+            sb.append("• ⚠️ ").append(esc(b.name))
+              .append(" : ").append(b.getPercent()).append("% utilisé, reste ")
+              .append(money(b.getRemaining())).append("\n");
+        }
+    }
+
+    private static void appendSavings(StringBuilder sb, List<EpargneModels.SavingsGoal> goals) {
+        if (goals == null || goals.isEmpty()) return;
+
+        List<EpargneModels.SavingsGoal> active = new ArrayList<>();
+        int completed = 0;
+        for (EpargneModels.SavingsGoal g : goals) {
+            if (g.isCompleted()) completed++;
+            else active.add(g);
+        }
+
+        if (active.isEmpty() && completed == 0) return;
+
+        sb.append("\n<b>🌱 Épargne</b>\n");
+        if (completed > 0) {
+            sb.append("• ✅ ").append(completed)
+              .append(completed > 1 ? " objectifs atteints\n" : " objectif atteint\n");
+        }
+
+        Collections.sort(active, (a, b) -> {
+            int pa = EpargneCalculator.progressPercent(a);
+            int pb = EpargneCalculator.progressPercent(b);
+            return Integer.compare(pb, pa);
+        });
+
+        int n = Math.min(4, active.size());
+        for (int i = 0; i < n; i++) {
+            EpargneModels.SavingsGoal g = active.get(i);
+            int pct = EpargneCalculator.progressPercent(g);
+            String bar = progressBar(pct);
+            sb.append("• ").append(esc(g.name)).append(" ").append(bar)
+              .append(" ").append(pct).append("%");
+            if (g.hasDate()) {
+                int months = EpargneCalculator.monthsLeft(g);
+                sb.append(" — ").append(months).append(months > 1 ? " mois" : " mois");
+            }
+            sb.append("\n");
+        }
     }
 
     private static void appendRecent(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
@@ -162,20 +306,20 @@ public final class TelegramSummary {
         List<TransactionsModels.Transaction> sorted = new ArrayList<>(tx);
         Collections.sort(sorted, (a, b) -> Long.compare(b.dateMs, a.dateMs));
         SimpleDateFormat f = new SimpleDateFormat("dd/MM", Locale.FRANCE);
-        sb.append("\n<b>Derni\u00e8res op\u00e9rations</b>\n");
+        sb.append("\n<b>Dernières opérations</b>\n");
         int n = Math.min(5, sorted.size());
         for (int i = 0; i < n; i++) {
             TransactionsModels.Transaction t = sorted.get(i);
             String sign = "income".equals(t.type) ? "+" : "-";
-            sb.append("\u2022 ").append(sign).append(money(Math.abs(t.amount)))
-                    .append(" \u2014 ").append(esc(t.label))
+            sb.append("• ").append(sign).append(money(Math.abs(t.amount)))
+                    .append(" — ").append(esc(t.label))
                     .append(" (").append(f.format(new Date(t.dateMs))).append(")\n");
         }
     }
 
     private static void appendAgenda(StringBuilder sb, AgendaModels.AgendaData data) {
         if (data == null || data.events == null || data.events.isEmpty()) return;
-        long since = System.currentTimeMillis() - 86400000L; // tolère aujourd'hui
+        long since = System.currentTimeMillis() - 86400000L;
         List<AgendaModels.AgendaEvent> upcoming = new ArrayList<>();
         for (AgendaModels.AgendaEvent e : data.events) {
             if (e != null && e.dateMs >= since) upcoming.add(e);
@@ -187,15 +331,23 @@ public final class TelegramSummary {
         int n = Math.min(5, upcoming.size());
         for (int i = 0; i < n; i++) {
             AgendaModels.AgendaEvent e = upcoming.get(i);
-            sb.append("\u2022 ").append(f.format(new Date(e.dateMs)))
-                    .append(" \u2014 ").append(esc(e.title)).append("\n");
+            sb.append("• ").append(f.format(new Date(e.dateMs)))
+                    .append(" — ").append(esc(e.title)).append("\n");
         }
     }
 
     // ───────────────────────────── Helpers ─────────────────────────────
 
+    private static String progressBar(int pct) {
+        int filled = Math.min(10, (int) Math.round(pct / 10.0));
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < 10; i++) bar.append(i < filled ? "█" : "░");
+        bar.append("]");
+        return bar.toString();
+    }
+
     private static String money(double v) {
-        return String.format(Locale.FRANCE, "%,.2f \u20ac", v).replace('\u00a0', ' ');
+        return String.format(Locale.FRANCE, "%,.2f €", v).replace(' ', ' ');
     }
 
     private static String signed(double v) {
