@@ -25,6 +25,7 @@ import com.couplefinance.data.JointAccountManager;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 public class VirementView extends BaseView {
