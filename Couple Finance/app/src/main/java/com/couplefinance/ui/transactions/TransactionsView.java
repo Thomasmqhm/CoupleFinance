@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -11,6 +13,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.text.SimpleDateFormat;
 
 import com.couplefinance.R;
 import com.couplefinance.core.base.BaseView;
@@ -201,6 +209,12 @@ public class TransactionsView extends BaseView {
 					com.couplefinance.ocr.TransactionOcrImporter.openImagePicker(activity));
 		}
 
+		Button btnExportCsv = root.findViewById(R.id.btnExportCsv);
+		if (btnExportCsv != null) {
+			PressAnimations.applySoft(btnExportCsv);
+			btnExportCsv.setOnClickListener(v -> exportCsv());
+		}
+
 		// Bouton "Filtres" : replie / déplie la zone des filtres avancés
 		// (Personnes + Catégories). Repliée par défaut via android:visibility.
 		final Button btnToggleFilters = root.findViewById(R.id.btnToggleFilters);
@@ -213,6 +227,57 @@ public class TransactionsView extends BaseView {
 				btnToggleFilters.setText(willShow ? "⚙ Filtres ▴" : "⚙ Filtres");
 			});
 		}
+	}
+
+	private void exportCsv() {
+		List<TransactionsModels.Transaction> source = filtered.isEmpty() ? allTransactions : filtered;
+		if (source.isEmpty()) {
+			com.couplefinance.AppToast.info(activity, "Aucune transaction à exporter");
+			return;
+		}
+
+		try {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE);
+			File dir = activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+			if (dir == null) dir = activity.getFilesDir();
+			String stamp = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.FRANCE).format(new java.util.Date());
+			File file = new File(dir, "transactions_" + stamp + ".csv");
+
+			FileWriter fw = new FileWriter(file);
+			fw.write("Date,Libellé,Montant,Type,Catégorie,Personne,Compte\n");
+			for (TransactionsModels.Transaction t : source) {
+				String date = sdf.format(new java.util.Date(t.dateMs));
+				String label = csvEscape(t.label);
+				String amount = String.format(Locale.FRANCE, "%.2f", t.amount);
+				String type = "income".equals(t.type) ? "Revenu" : "Dépense";
+				String cat = csvEscape(t.category != null ? t.category : "");
+				String person = csvEscape(t.person != null ? t.person : "");
+				String compte = csvEscape(t.compte != null ? t.compte : "");
+				fw.write(date + "," + label + "," + amount + "," + type + "," + cat + "," + person + "," + compte + "\n");
+			}
+			fw.close();
+
+			Uri uri = FileProvider.getUriForFile(activity,
+					activity.getPackageName() + ".provider", file);
+
+			Intent share = new Intent(Intent.ACTION_SEND);
+			share.setType("text/csv");
+			share.putExtra(Intent.EXTRA_STREAM, uri);
+			share.putExtra(Intent.EXTRA_SUBJECT, "Transactions CoupleFinance");
+			share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+			activity.startActivity(Intent.createChooser(share, "Partager le CSV"));
+
+		} catch (Exception e) {
+			com.couplefinance.AppToast.error(activity, "Erreur export : " + e.getMessage());
+		}
+	}
+
+	private static String csvEscape(String s) {
+		if (s == null) return "";
+		if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+			return "\"" + s.replace("\"", "\"\"") + "\"";
+		}
+		return s;
 	}
 
 	private void styleAddButton(Button btn) {
