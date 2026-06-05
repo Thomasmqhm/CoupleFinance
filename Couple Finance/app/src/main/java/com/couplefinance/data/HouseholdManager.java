@@ -191,6 +191,16 @@ public class HouseholdManager {
 				writeBody(conn, body);
 				conn.getResponseCode();
 			} catch (Exception ignored) {}
+
+			// Mettre à jour le profil utilisateur complet avec le householdId
+			// afin que les requêtes d'avatar (loadHouseholdAvatars) fonctionnent.
+			try {
+				com.couplefinance.models.UserProfile profile =
+						com.couplefinance.UserSession.getInstance().getUser();
+				if (profile != null) {
+					com.couplefinance.UserRepository.getInstance().saveUser(profile);
+				}
+			} catch (Exception ignored) {}
 		});
 	}
 
