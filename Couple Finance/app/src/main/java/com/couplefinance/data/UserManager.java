@@ -56,7 +56,9 @@ public class UserManager {
 		if (profile != null
 				&& profile.displayName != null
 				&& !profile.displayName.trim().isEmpty()
-				&& !profile.displayName.equalsIgnoreCase("Moi")) {
+				&& !profile.displayName.equalsIgnoreCase("Moi")
+				&& !profile.displayName.contains("@")
+				&& !profile.displayName.contains(".")) {
 			return profile.displayName.trim();
 		}
 
@@ -64,7 +66,9 @@ public class UserManager {
 		String name = com.couplefinance.AuthManager.getInstance().getDisplayName();
 		if (name != null
 				&& !name.trim().isEmpty()
-				&& !name.equalsIgnoreCase("Moi")) {
+				&& !name.equalsIgnoreCase("Moi")
+				&& !name.contains("@")
+				&& !name.contains(".")) {
 			return name.trim();
 		}
 
