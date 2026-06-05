@@ -126,7 +126,6 @@ public final class TelegramSummary {
     // 4) Épargne — progression des objectifs actifs
     private static void stepSavings(final Activity activity, final StringBuilder sb, final Callback cb) {
         try {
-            SavingsManager.getInstance().init(activity);
             SavingsManager.getInstance().getSavings(new FirestoreManager.Callback() {
                 @Override
                 public void onSuccess(String json) {

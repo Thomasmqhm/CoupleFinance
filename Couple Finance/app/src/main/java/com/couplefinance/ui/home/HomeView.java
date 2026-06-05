@@ -135,6 +135,29 @@ public class HomeView {
 	}
 
 	private String getMyName() {
+		// 1) Priorité : prénom configuré dans le foyer (ex : "Thomas", "Melissa")
+		try {
+			com.couplefinance.ui.settings.SettingsModels.State state =
+					com.couplefinance.ui.settings.SettingsCache.get();
+			if (state != null && state.members != null && !state.members.isEmpty()) {
+				String uid = AuthManager.getInstance().getUserId();
+				// Chercher le membre correspondant à l'UID courant
+				for (com.couplefinance.ui.settings.SettingsModels.Member m : state.members) {
+					if (m.docPath != null && uid != null && m.docPath.contains(uid)
+							&& m.name != null && !m.name.trim().isEmpty()) {
+						return m.name.trim();
+					}
+				}
+				// Fallback : premier membre si un seul utilisateur configuré
+				String first = state.members.get(0).name;
+				if (first != null && !first.trim().isEmpty()
+						&& !first.contains(".") && !first.contains("@")) {
+					return first.trim();
+				}
+			}
+		} catch (Exception ignored) {}
+
+		// 2) Profil Firebase (UserSession)
 		return UserSession.getInstance().getNameOrFallback();
 	}
 
