@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * BankAutoSyncManager — Synchronisation bancaire automatique quotidienne.
@@ -71,6 +72,23 @@ public final class BankAutoSyncManager {
     private static final int    NOTIF_ID       = 2050;
 
     private BankAutoSyncManager() {}
+
+    // ─────────────────────────────────────────────────────────────
+    // Listeners — notifiés après chaque mise à jour des soldes
+    // ─────────────────────────────────────────────────────────────
+
+    public interface OnBalancesRefreshed { void onRefreshed(); }
+
+    private static final CopyOnWriteArrayList<OnBalancesRefreshed> balanceListeners
+            = new CopyOnWriteArrayList<>();
+
+    public static void addBalanceListener(OnBalancesRefreshed l) {
+        if (l != null) balanceListeners.addIfAbsent(l);
+    }
+
+    public static void removeBalanceListener(OnBalancesRefreshed l) {
+        balanceListeners.remove(l);
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Configuration
@@ -385,6 +403,11 @@ public final class BankAutoSyncManager {
         // « Solde début du mois ». Les cards liront ces valeurs nativement.
         // → la synchro bancaire devient la source unique du solde des cards.
         persistBalancesToManagers(app, bestByAccount);
+
+        // Notifier les écrans actifs (ex : HomeView) pour raffraîchir l'affichage
+        for (OnBalancesRefreshed l : balanceListeners) {
+            try { l.onRefreshed(); } catch (Exception ignored) {}
+        }
     }
 
     /**

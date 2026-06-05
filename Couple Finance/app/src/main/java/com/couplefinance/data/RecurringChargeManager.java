@@ -73,6 +73,12 @@ public class RecurringChargeManager {
     public void createFixedChargeFromTransaction(
             String label, double amount, String category,
             long dateMs, FirestoreManager.Callback cb) {
+        createFixedChargeFromTransaction(label, amount, category, dateMs, null, cb);
+    }
+
+    public void createFixedChargeFromTransaction(
+            String label, double amount, String category,
+            long dateMs, String person, FirestoreManager.Callback cb) {
 
         executor.execute(() -> {
             HttpURLConnection conn = null;
@@ -91,7 +97,8 @@ public class RecurringChargeManager {
                 String cleanCategory = category == null || category.trim().isEmpty() ? "Charges fixes"  : category.trim();
                 double cleanAmount   = Math.abs(amount);
                 int    day           = normalizeDueDay(extractDayOfMonth(dateMs));
-                String paidBy        = getCurrentPersonName();
+                String paidBy        = (person != null && !person.trim().isEmpty())
+                        ? person.trim() : getCurrentPersonName();
 
                 if (cleanAmount <= 0) { postError(cb, "Montant invalide"); return; }
 
