@@ -23,6 +23,8 @@ import com.couplefinance.core.ui.dialogs.PremiumDialog;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.HouseholdManager;
 import com.couplefinance.data.JointAccountManager;
+import com.couplefinance.UserRepository;
+import com.couplefinance.UserSession;
 
 import java.io.File;
 import java.util.Locale;
@@ -105,8 +107,41 @@ public final class SettingsDialogs {
                             "couplefinance_profile",
                             Activity.MODE_PRIVATE
                     );
-
                     prefs.edit().putString("display_name", value).apply();
+
+                    // Mettre à jour UserSession en mémoire et Firestore
+                    try {
+                        com.couplefinance.models.UserProfile p = UserSession.getInstance().getUser();
+                        if (p == null) {
+                            // Créer un profil minimal si absent (ex : premier login Melissa)
+                            String uid = AuthManager.getInstance().getUserId();
+                            String email = AuthManager.getInstance().getEmail();
+                            p = new com.couplefinance.models.UserProfile(uid, value, email, System.currentTimeMillis());
+                        }
+                        p.displayName = value;
+                        UserSession.getInstance().setUser(p);
+                        UserRepository.getInstance().saveUser(p);
+                    } catch (Exception ignored) {}
+
+                    // Mettre à jour le nom du membre dans le foyer
+                    try {
+                        SettingsModels.State st = SettingsCache.get();
+                        if (st != null && st.members != null && !st.members.isEmpty()) {
+                            String myId = AuthManager.getInstance().getUserId();
+                            for (SettingsModels.Member m : st.members) {
+                                // Le premier membre est soi-même, ou celui dont le nom correspond
+                                if (m.docPath != null && myId != null && m.docPath.contains(myId)) {
+                                    m.name = value;
+                                    SettingsMemberWriter.saveMember(m, new SettingsMemberWriter.Callback() {
+                                        public void onSuccess() {}
+                                        public void onError(String e) {}
+                                    });
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
+
                     AppToast.success(activity, "Profil mis à jour");
 
                     if (onChanged != null) onChanged.run();
@@ -521,6 +556,42 @@ public final class SettingsDialogs {
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
         sp.topMargin = DS.dp(activity, 14);
         card.addView(save, sp);
+
+        // ── Bouton Supprimer (masqué pour l'utilisateur courant) ──
+        String myId = "";
+        try { myId = AuthManager.getInstance().getUserId(); } catch (Exception ignored) {}
+        boolean isMe = member.docPath != null && myId != null && !myId.isEmpty()
+                && member.docPath.contains(myId);
+        if (!isMe && member.docPath != null && !member.docPath.trim().isEmpty()) {
+            final String myIdFinal = myId;
+            TextView delete = new TextView(activity);
+            delete.setText("Supprimer ce membre");
+            delete.setTextColor(com.couplefinance.core.theme.ThemeColors.danger());
+            delete.setTextSize(13f);
+            delete.setGravity(Gravity.CENTER);
+            delete.setPadding(DS.dp(activity, 14), DS.dp(activity, 10), DS.dp(activity, 14), DS.dp(activity, 10));
+            delete.setOnClickListener(v -> new android.app.AlertDialog.Builder(activity)
+                    .setTitle("Supprimer " + member.name + " ?")
+                    .setMessage("Cette action supprime le membre du foyer. Son compte Firebase reste actif.")
+                    .setPositiveButton("Supprimer", (d, w) ->
+                            SettingsMemberWriter.deleteMember(member, new SettingsMemberWriter.Callback() {
+                                public void onSuccess() {
+                                    activity.runOnUiThread(() -> {
+                                        AppToast.success(activity, member.name + " supprimé");
+                                        if (onChanged != null) onChanged.run();
+                                    });
+                                }
+                                public void onError(String e) {
+                                    activity.runOnUiThread(() ->
+                                            AppToast.error(activity, "Erreur : " + e));
+                                }
+                            }))
+                    .setNegativeButton("Annuler", null)
+                    .show());
+            LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
+            dp.topMargin = DS.dp(activity, 8);
+            card.addView(delete, dp);
+        }
 
         return card;
     }
