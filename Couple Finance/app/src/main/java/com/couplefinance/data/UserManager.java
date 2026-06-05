@@ -99,6 +99,13 @@ public class UserManager {
 		ensureDisplayNameThenRegister();
 	}
 
+	public void registerCurrentUserAsMemberWithName(String name) {
+		if (name == null || name.trim().isEmpty() || name.equalsIgnoreCase("Moi"))
+			return;
+		registerRetryCount = 0;
+		registerMemberInFirestore(name.trim());
+	}
+
 	private void ensureDisplayNameThenRegister() {
 		String name = getReliableDisplayName();
 
@@ -144,10 +151,16 @@ public class UserManager {
 
 		HouseholdManager.getInstance().getMembers(new FirestoreManager.Callback() {
 			public void onSuccess(String response) {
-				if (memberAlreadyExists(response, cleanName, currentUserId)) {
+				String existingDocPath = findExistingMemberDocPath(response, cleanName, currentUserId);
+
+				if (existingDocPath != null) {
 					registeredInFirestore = true;
 					registerRetryCount = 0;
-					android.util.Log.d("USER_MANAGER", "Membre déjà existant, aucun doublon créé : " + cleanName);
+					android.util.Log.d("USER_MANAGER", "Membre déjà existant : " + cleanName);
+					// Patch le document existant pour ajouter le userId s'il manque
+					if (currentUserId != null && !currentUserId.isEmpty()) {
+						patchMemberUserId(existingDocPath, currentUserId, cleanName);
+					}
 					return;
 				}
 
@@ -176,6 +189,58 @@ public class UserManager {
 				}
 			}
 		});
+	}
+
+	private void patchMemberUserId(String docPath, String userId, String name) {
+		if (docPath == null || docPath.trim().isEmpty()) return;
+		try {
+			// docPath = chemin complet Firestore REST : "projects/.../documents/..."
+			// FirestoreManager attend le chemin SANS le préfixe "projects/.../documents/"
+			String path = docPath;
+			if (path.startsWith("projects/")) {
+				int idx = path.indexOf("/documents/");
+				if (idx >= 0) path = path.substring(idx + "/documents/".length());
+			}
+			String body = "{\"fields\":{\"userId\":{\"stringValue\":\"" + userId + "\"}}}";
+			FirestoreManager.getInstance().patchDocument(path, body, "updateMask.fieldPaths=userId", new FirestoreManager.Callback() {
+				public void onSuccess(String r) {
+					android.util.Log.d("USER_MANAGER", "userId ajouté au membre : " + name);
+				}
+				public void onError(String e) {
+					android.util.Log.d("USER_MANAGER", "Impossible d'ajouter userId : " + e);
+				}
+			});
+		} catch (Exception e) {
+			android.util.Log.d("USER_MANAGER", "patchMemberUserId exception : " + e.getMessage());
+		}
+	}
+
+	private String findExistingMemberDocPath(String response, String name, String userId) {
+		if (response == null || response.trim().isEmpty()) return null;
+		try {
+			JSONObject json = new JSONObject(response);
+			JSONArray docs = json.optJSONArray("documents");
+			if (docs == null) return null;
+			String targetName = normalize(name);
+			String targetUserId = userId == null ? "" : userId.trim();
+			for (int i = 0; i < docs.length(); i++) {
+				JSONObject doc = docs.optJSONObject(i);
+				if (doc == null) continue;
+				JSONObject fields = doc.optJSONObject("fields");
+				if (fields == null) continue;
+				String existingName = firstNonEmpty(str(fields, "name"), str(fields, "displayName"),
+						str(fields, "prenom"), str(fields, "firstName"));
+				String existingUserId = str(fields, "userId");
+				boolean matchById = !targetUserId.isEmpty() && existingUserId != null
+						&& existingUserId.equals(targetUserId);
+				boolean matchByName = !targetName.isEmpty()
+						&& normalize(existingName).equals(targetName);
+				if (matchById || matchByName) {
+					return doc.optString("name", ""); // "name" = docPath in Firestore REST API
+				}
+			}
+		} catch (Exception ignored) {}
+		return null;
 	}
 
 	private boolean memberAlreadyExists(String response, String name, String userId) {
