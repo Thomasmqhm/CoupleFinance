@@ -3,6 +3,7 @@ package com.couplefinance.ui.analyse;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -152,6 +153,43 @@ public class AnalyseView {
     // ─────────────────────────────────────────────────────────────────────────
     // Chargement des données
     // ─────────────────────────────────────────────────────────────────────────
+
+    private void shareAnalysis() {
+        if (lastCalc == null) return;
+
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMMM yyyy", Locale.FRENCH);
+        String month = sdf.format(new java.util.Date());
+
+        double income   = lastCalc.getCycleIncome();
+        double expenses = lastCalc.getCycleExpenses();
+        double savings  = income - expenses;
+        int    score    = lastCalc.getHealthScore();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📊 Analyse CoupleFinance — ").append(month).append("\n\n");
+        sb.append("💰 Revenus : ").append(Fmt.money(income)).append("\n");
+        sb.append("💸 Dépenses : ").append(Fmt.money(expenses)).append("\n");
+        sb.append("🐷 Épargne nette : ").append(Fmt.money(savings)).append("\n");
+        sb.append("❤️ Score santé : ").append(score).append("/100\n\n");
+
+        List<AnalyseCalculator.MonthData> months = lastCalc.getLast6Months();
+        if (!months.isEmpty()) {
+            sb.append("📅 Évolution sur 6 mois :\n");
+            for (AnalyseCalculator.MonthData m : months) {
+                sb.append("  ").append(m.label).append(" → ").append(Fmt.money(m.expenses)).append("\n");
+            }
+        }
+
+        AnalyseCalculator.Forecast forecast = lastCalc.getForecast();
+        if (forecast != null && forecast.message != null && !forecast.message.isEmpty()) {
+            sb.append("\n🔮 Prévision : ").append(forecast.message);
+        }
+
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, sb.toString());
+        activity.startActivity(Intent.createChooser(intent, "Partager l'analyse"));
+    }
 
     private void loadData() {
         executor.execute(() -> {
