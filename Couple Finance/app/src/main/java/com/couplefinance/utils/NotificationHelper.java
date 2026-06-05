@@ -11,6 +11,7 @@ import android.os.Build;
 
 import com.couplefinance.R;
 import com.couplefinance.ui.DashboardActivity;
+import com.couplefinance.utils.ActivityLogger;
 
 /**
  * NotificationHelper — Notifications locales 100% Android natif.
@@ -53,12 +54,29 @@ public class NotificationHelper {
     // Canaux (Android 8+)
     // ─────────────────────────────────────────────────────────────
 
+    private static final String CHANNEL_BUDGET  = "channel_budget";
+    private static final String CHANNEL_SAVINGS = "channel_savings";
+
     private void createChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
 
         NotificationManager nm = (NotificationManager)
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
+
+        // Budget dépassé / en alerte
+        NotificationChannel budgetChannel = new NotificationChannel(
+                CHANNEL_BUDGET, "Alertes budget",
+                NotificationManager.IMPORTANCE_HIGH);
+        budgetChannel.setDescription("Alerte quand une catégorie dépasse son budget");
+        nm.createNotificationChannel(budgetChannel);
+
+        // Objectif épargne atteint
+        NotificationChannel savingsChannel = new NotificationChannel(
+                CHANNEL_SAVINGS, "Objectifs épargne",
+                NotificationManager.IMPORTANCE_DEFAULT);
+        savingsChannel.setDescription("Félicitations quand un objectif d'épargne est atteint");
+        nm.createNotificationChannel(savingsChannel);
 
         // Transactions partenaire
         NotificationChannel txChannel = new NotificationChannel(
@@ -217,5 +235,87 @@ public class NotificationHelper {
                 .edit()
                 .putLong(KEY_LAST_SEEN_TX, timestamp)
                 .apply();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Alertes budget
+    // ─────────────────────────────────────────────────────────────
+
+    public void notifyBudgetExceeded(String categoryName, double spent, double budget) {
+        String title = "🔴 Budget dépassé : " + categoryName;
+        double over = spent - budget;
+        String body = String.format(java.util.Locale.FRANCE,
+                "Dépassement de %.2f € (%.0f%% utilisé)", over, budget > 0 ? spent / budget * 100 : 100);
+        int id = 3000 + (categoryName != null ? categoryName.hashCode() & 0xFFF : 0);
+        sendNotification(CHANNEL_BUDGET, id, title, body, false);
+        ActivityLogger.logBudgetExceeded(context, categoryName, spent, budget);
+    }
+
+    public void notifyBudgetWarning(String categoryName, int percent) {
+        String title = "⚠️ Budget : " + categoryName;
+        String body = percent + "% du budget utilisé ce mois-ci";
+        int id = 3500 + (categoryName != null ? categoryName.hashCode() & 0xFFF : 0);
+        sendNotification(CHANNEL_BUDGET, id, title, body, false);
+    }
+
+    public void notifySavingsGoalCompleted(String goalName) {
+        String title = "🎉 Objectif atteint !";
+        String body = (goalName != null ? goalName : "Votre objectif") + " est entièrement financé.";
+        int id = 4000 + (goalName != null ? goalName.hashCode() & 0xFFF : 0);
+        sendNotification(CHANNEL_SAVINGS, id, title, body, false);
+        ActivityLogger.logSavingsGoal(context, goalName);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Bilan hebdomadaire (lundi matin, max 1 fois par semaine)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * À appeler au démarrage de l'app. Envoie un bilan hebdomadaire si :
+     * - on est lundi
+     * - le dernier bilan date de plus de 6 jours
+     *
+     * @param weekExpenses  Dépenses de la semaine passée (calculées par l'appelant)
+     * @param weekIncome    Revenus de la semaine passée
+     */
+    public void checkAndSendWeeklyRecap(double weekExpenses, double weekIncome) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        if (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) return;
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long lastWeeklyNotif = prefs.getLong("last_weekly_notif_ts", 0);
+        long now = System.currentTimeMillis();
+        if (now - lastWeeklyNotif < 6L * 24 * 60 * 60 * 1000) return;
+
+        prefs.edit().putLong("last_weekly_notif_ts", now).apply();
+
+        String title = "📊 Bilan de la semaine";
+        String body;
+        if (weekExpenses > 0 || weekIncome > 0) {
+            body = String.format(java.util.Locale.FRANCE,
+                    "Dépenses : %.2f € · Revenus : %.2f €", weekExpenses, weekIncome);
+        } else {
+            body = "Aucune transaction cette semaine. Pensez à saisir vos dépenses !";
+        }
+        sendNotification(CHANNEL_TRANSACTIONS, 5001, title, body, false);
+    }
+
+    // Vérifie tous les budgets et envoie les alertes nécessaires (appel best-effort)
+    public void checkAndNotifyBudgets(java.util.List<com.couplefinance.ui.budget.BudgetModels.CategoryBudget> budgets) {
+        if (budgets == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        for (com.couplefinance.ui.budget.BudgetModels.CategoryBudget b : budgets) {
+            if (b == null || b.budget <= 0) continue;
+            String key = "budget_notif_" + b.name + "_" + java.util.Calendar.getInstance().get(java.util.Calendar.MONTH);
+            int lastPct = prefs.getInt(key, 0);
+            int pct = b.getPercent();
+            if (b.isExceeded() && lastPct < 100) {
+                notifyBudgetExceeded(b.name, b.spent, b.budget);
+                prefs.edit().putInt(key, 100).apply();
+            } else if (pct >= 80 && lastPct < 80) {
+                notifyBudgetWarning(b.name, pct);
+                prefs.edit().putInt(key, 80).apply();
+            }
+        }
     }
 }

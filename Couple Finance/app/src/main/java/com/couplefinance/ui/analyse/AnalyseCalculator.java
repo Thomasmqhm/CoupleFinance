@@ -241,6 +241,69 @@ public class AnalyseCalculator {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Statistiques avancées
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Moyenne journalière de dépenses sur le cycle courant. */
+    public double getDailyAverageExpenses() {
+        double exp = getCycleExpenses();
+        long elapsed = Math.max(1, now - cycleStart);
+        double daysElapsed = elapsed / 86400000.0;
+        if (daysElapsed < 1) daysElapsed = 1;
+        return exp / daysElapsed;
+    }
+
+    /** La transaction la plus élevée du cycle (dépense). Null si aucune. */
+    public Tx getLargestExpense() {
+        Tx max = null;
+        for (Tx tx : txs) {
+            if (!isInCycle(tx) || !isUsableExpense(tx)) continue;
+            if (max == null || tx.amount > max.amount) max = tx;
+        }
+        return max;
+    }
+
+    /** Label de la plus grosse transaction (ou "" si aucune). */
+    public String getLargestExpenseLabel() {
+        Tx t = getLargestExpense();
+        return t != null ? (t.merchant != null && !t.merchant.isEmpty() ? t.merchant : t.label) : "";
+    }
+
+    /** Montant de la plus grosse transaction (0 si aucune). */
+    public double getLargestExpenseAmount() {
+        Tx t = getLargestExpense();
+        return t != null ? t.amount : 0;
+    }
+
+    /** Nombre de transactions de dépense dans le cycle. */
+    public int getExpenseCount() {
+        int count = 0;
+        for (Tx tx : txs) {
+            if (isInCycle(tx) && isUsableExpense(tx)) count++;
+        }
+        return count;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Dépenses par jour de semaine (0=Lun, 6=Dim)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Retourne un tableau [7] : total dépenses (non-income) par jour de semaine du cycle courant. */
+    public double[] getSpendingByDayOfWeek() {
+        double[] byDay = new double[7];
+        Calendar cal = Calendar.getInstance();
+        for (Tx tx : txs) {
+            if (!isInCycle(tx) || !isUsableExpense(tx)) continue;
+            cal.setTimeInMillis(tx.dateMs);
+            int dow = cal.get(Calendar.DAY_OF_WEEK); // 1=Sun…7=Sat
+            int idx = (dow == Calendar.SUNDAY) ? 6 : dow - 2; // 0=Lun…6=Dim
+            if (idx < 0) idx = 0;
+            byDay[idx] += tx.amount;
+        }
+        return byDay;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 

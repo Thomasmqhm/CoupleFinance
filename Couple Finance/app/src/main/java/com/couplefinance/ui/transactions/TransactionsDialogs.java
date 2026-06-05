@@ -27,7 +27,10 @@ import com.couplefinance.data.RecurringChargeManager;
 import com.couplefinance.ui.credits.CreditsDialogs;
 import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.ui.settings.SettingsModels;
+import com.couplefinance.utils.ActivityLogger;
 
+import android.text.Editable;
+import android.text.TextWatcher;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +42,21 @@ import java.util.Locale;
 public final class TransactionsDialogs {
 
     private TransactionsDialogs() {}
+
+    /** Clé "label:amount" → timestamp de la dernière soumission. Détection de doublons. */
+    private static final java.util.HashMap<String, Long> recentSubmissions = new java.util.HashMap<>();
+    private static final long DUPLICATE_WINDOW_MS = 60_000; // 60 secondes
+
+    private static boolean isDuplicate(String label, double amount) {
+        String key = label.toLowerCase(Locale.FRANCE) + ":" + Math.round(amount * 100);
+        Long last = recentSubmissions.get(key);
+        return last != null && (System.currentTimeMillis() - last) < DUPLICATE_WINDOW_MS;
+    }
+
+    private static void markSubmitted(String label, double amount) {
+        String key = label.toLowerCase(Locale.FRANCE) + ":" + Math.round(amount * 100);
+        recentSubmissions.put(key, System.currentTimeMillis());
+    }
 
     public interface OnActionDone {
         void reload();
@@ -149,6 +167,48 @@ public final class TransactionsDialogs {
             }
         });
 
+        // ── Auto-remplissage catégorie sur saisie du libellé ─────
+        etLabel.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            public void afterTextChanged(Editable s) {
+                String input = s.toString().trim();
+                if (input.length() < 3) {
+                    tvAutoFill.setVisibility(View.GONE);
+                    return;
+                }
+                TransactionSuggestion sug = TransactionAutoFill.suggest(
+                        input,
+                        new ArrayList<>(),
+                        new ArrayList<>(categories != null ? categories : new ArrayList<>()),
+                        new ArrayList<>(persons));
+                if (sug.found) {
+                    StringBuilder hint = new StringBuilder("💡 Suggestion : ");
+                    if (sug.category != null && !sug.category.isEmpty())
+                        hint.append("Catégorie → ").append(sug.category);
+                    if (sug.amount > 0)
+                        hint.append("  ·  ").append(String.format(Locale.FRANCE, "%.2f €", sug.amount));
+                    tvAutoFill.setText(hint.toString());
+                    tvAutoFill.setVisibility(View.VISIBLE);
+                    tvAutoFill.setOnClickListener(v -> {
+                        if (sug.category != null && !sug.category.isEmpty()) {
+                            int idx = findIndex(catNames, sug.category);
+                            if (idx >= 0) {
+                                catIdx[0] = idx;
+                                acvCatHolder[0].setText(sug.category, false);
+                            }
+                        }
+                        if (sug.amount > 0 && etAmount.getText().toString().trim().isEmpty()) {
+                            etAmount.setText(Fmt.moneyInput(sug.amount));
+                        }
+                        tvAutoFill.setVisibility(View.GONE);
+                    });
+                } else {
+                    tvAutoFill.setVisibility(View.GONE);
+                }
+            }
+        });
+
         // ── Partage ───────────────────────────────────────────────
         final boolean[] shared = {false};
         content.addView(buildShareToggle(activity, shared));
@@ -195,6 +255,12 @@ public final class TransactionsDialogs {
                             && person.equalsIgnoreCase(jointName);
                     String compte = isJointSelected ? "joint" : "";
 
+                    if (isDuplicate(label, amount)) {
+                        AppToast.error(activity, "Transaction similaire déjà ajoutée (moins d'1 min)");
+                        return;
+                    }
+                    markSubmitted(label, amount);
+
                     TransactionsRepository.addTransaction(
                             label, amount, type, category,
                             dateMs[0], person, shared[0], false, compte,
@@ -211,6 +277,9 @@ public final class TransactionsDialogs {
                                                 activity, label, amount, category,
                                                 dateMs[0], finalPerson);
                                     }
+                                    ActivityLogger.logTransaction(
+                                            activity, person, label, amount,
+                                            "income".equals(type));
                                     AppToast.success(activity, "Transaction ajoutée");
                                     if (callback != null) callback.reload();
                                 }
@@ -314,6 +383,45 @@ public final class TransactionsDialogs {
         if (jointEnabled) {
             content.addView(buildJointInfo(activity));
         }
+
+        // ── Bouton Dupliquer ──────────────────────────────────────
+        TextView btnDuplicate = new TextView(activity);
+        btnDuplicate.setText("⊕ Dupliquer avec la date du jour");
+        btnDuplicate.setTextColor(com.couplefinance.core.theme.ThemeColors.primary());
+        btnDuplicate.setTextSize(DS.TEXT_SM);
+        btnDuplicate.setGravity(android.view.Gravity.CENTER);
+        btnDuplicate.setPadding(0, DS.dp(activity, 12), 0, DS.dp(activity, 4));
+        btnDuplicate.setTypeface(null, Typeface.BOLD);
+        btnDuplicate.setOnClickListener(v -> {
+            String dupLabel  = tx.description();
+            double dupAmount = tx.amount;
+            String dupType   = tx.type;
+            String dupCat    = tx.category;
+            String dupPerson = tx.person;
+            if (isDuplicate(dupLabel, dupAmount)) {
+                AppToast.error(activity, "Doublon détecté — transaction similaire récente");
+                return;
+            }
+            markSubmitted(dupLabel, dupAmount);
+            String compte = (jointEnabled && dupPerson.equalsIgnoreCase(jointName)) ? "joint" : "";
+            TransactionsRepository.addTransaction(
+                    dupLabel, dupAmount, dupType, dupCat,
+                    System.currentTimeMillis(), dupPerson, tx.shared, false, compte,
+                    activity,
+                    new TransactionsRepository.OnWriteComplete() {
+                        public void onSuccess() {
+                            ActivityLogger.logTransaction(activity, dupPerson, dupLabel, dupAmount, tx.isIncome());
+                            AppToast.success(activity, "Transaction dupliquée pour aujourd'hui");
+                            if (callback != null) callback.reload();
+                        }
+                        public void onError(String e) {
+                            AppToast.error(activity, "Erreur : " + e);
+                        }
+                    });
+        });
+        LinearLayout.LayoutParams dupLp = new LinearLayout.LayoutParams(-1, -2);
+        dupLp.topMargin = DS.dp(activity, 8);
+        content.addView(btnDuplicate, dupLp);
 
         // ── Bouton Enregistrer ────────────────────────────────────
         new AppDialog.Builder(activity)

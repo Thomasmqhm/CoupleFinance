@@ -37,6 +37,7 @@ import com.couplefinance.widget.SoldeWidget;
 import com.couplefinance.data.CreditManager;
 import com.couplefinance.ui.credits.CreditsModels;
 import com.couplefinance.ui.credits.CreditsParser;
+import com.couplefinance.utils.ActivityLogger;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -128,6 +129,11 @@ public class HomeView {
 
 	private double overdraftLimit = 0;
 	private boolean overdraftDefined = false;
+
+	// Snapshot des métriques du cycle — utilisé par shareMonthSummary()
+	private double snapshotIncome   = 0;
+	private double snapshotExpenses = 0;
+	private double snapshotBalance  = 0;
 
 	public HomeView(Activity activity) {
 		this.activity = activity;
@@ -453,6 +459,11 @@ public class HomeView {
 				heroLp.height = DS.dp(activity, 240);
 				heroCard.setLayoutParams(heroLp);
 			}
+
+			heroCard.setOnLongClickListener(v -> {
+				shareMonthSummary();
+				return true;
+			});
 		}
 
 		if (dashboardContent != null) {
@@ -702,6 +713,33 @@ public class HomeView {
 				list.add(toNotificationItem(insight));
 			}
 		}
+
+		// ── Activité récente du foyer (3 derniers événements) ────
+		try {
+			java.util.List<ActivityLogger.Event> recent = ActivityLogger.getRecentEvents(activity);
+			int shown = 0;
+			for (ActivityLogger.Event ev : recent) {
+				if (shown >= 3) break;
+				int color, bgColor, borderColor;
+				if ("budget".equals(ev.type)) {
+					color = Color.parseColor("#B04A3A");
+					bgColor = Color.parseColor("#FFF1EC");
+					borderColor = Color.parseColor("#F4C7B8");
+				} else if ("savings".equals(ev.type)) {
+					color = Color.parseColor("#2D7A55");
+					bgColor = Color.parseColor("#EFFAF3");
+					borderColor = Color.parseColor("#CFEBD8");
+				} else {
+					color = Color.parseColor("#4076A8");
+					bgColor = Color.parseColor("#EEF6FF");
+					borderColor = Color.parseColor("#CFE3F5");
+				}
+				list.add(new HomeNotificationItem(ev.icon,
+						ev.title, ev.subtitle + " · " + ev.relativeTime(),
+						color, bgColor, borderColor));
+				shown++;
+			}
+		} catch (Exception ignored) {}
 
 		if (list.isEmpty()) {
 			list.add(new HomeNotificationItem("✓", "Tout est à jour", "Aucune alerte détectée sur tes données du mois.",
@@ -1227,6 +1265,7 @@ public class HomeView {
 				setSyncStatus("ok");
 				cachedTransactions = parseAllTransactions(response);
 				checkPartnerNotifications(cachedTransactions);
+				checkWeeklyRecap(cachedTransactions);
 				loadFinancialSettingsThenProcess();
 				renderCalendar();
 			}
@@ -1305,6 +1344,53 @@ public class HomeView {
 			nh.notifyNewPartnerTransaction(partnerName, partnerLabel, partnerAmount, maxPartnerTs);
 			nh.markTransactionsAsSeen(maxPartnerTs);
 		}
+	}
+
+	private void shareMonthSummary() {
+		SimpleDateFormat sdf = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH);
+		String month = sdf.format(new Date());
+
+		double sav = snapshotIncome - snapshotExpenses;
+		int score = HomeCalculator.financialScoreDetailed(
+				snapshotIncome, snapshotExpenses, snapshotBalance,
+				overdraftDefined, overdraftLimit, 0);
+
+		String myName = getMyName();
+		String greeting = myName.isEmpty() ? "Foyer" : myName;
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("💑 Bilan de ").append(greeting).append(" — ").append(month).append("\n\n");
+		sb.append("💰 Revenus    : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotIncome)).append("\n");
+		sb.append("💸 Dépenses   : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotExpenses)).append("\n");
+		sb.append("🐷 Épargne    : ").append(String.format(Locale.FRANCE, "%.2f €", sav)).append("\n");
+		sb.append("💳 Solde      : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotBalance)).append("\n");
+		sb.append("❤️ Santé      : ").append(score).append("/100\n");
+		sb.append("\nPartagé depuis CoupleFinance 📱");
+
+		android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+		intent.setType("text/plain");
+		intent.putExtra(android.content.Intent.EXTRA_TEXT, sb.toString());
+		activity.startActivity(android.content.Intent.createChooser(intent, "Partager le bilan"));
+	}
+
+	private void checkWeeklyRecap(List<String[]> transactions) {
+		try {
+			long weekStart = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000;
+			double weekExp = 0, weekInc = 0;
+			for (String[] tx : transactions) {
+				if (tx.length < 5) continue;
+				long ts = 0;
+				try { ts = Long.parseLong(tx[4]); } catch (Exception ignored) {}
+				if (ts < weekStart) continue;
+				String type = tx.length > 2 ? tx[2] : "";
+				double amount = 0;
+				try { amount = Double.parseDouble(tx[1]); } catch (Exception ignored) {}
+				if ("income".equalsIgnoreCase(type)) weekInc += amount;
+				else weekExp += amount;
+			}
+			com.couplefinance.utils.NotificationHelper.getInstance(activity)
+					.checkAndSendWeeklyRecap(weekExp, weekInc);
+		} catch (Exception ignored) {}
 	}
 
 	private String getOverdraftCacheKey() {
@@ -1986,6 +2072,11 @@ public class HomeView {
 			}
 
 			if (person != null && !person.isEmpty()) {
+				// "Moi" est un nom legacy — on le redirige vers le vrai prénom de l'utilisateur
+				if (person.equalsIgnoreCase("Moi") && myName != null && !myName.isEmpty()) {
+					person = myName;
+				}
+
 				String existingKey = null;
 
 				for (String k : personBalances.keySet()) {
@@ -2191,13 +2282,23 @@ public class HomeView {
 			if (!isActive)
 				return;
 
+			// Snapshot pour le partage
+			snapshotIncome   = inc;
+			snapshotExpenses = exp;
+			snapshotBalance  = realBalance;
+
 			renderCalendar();
 
 			// B1 : mise à jour du score de santé et de la barre de progression
 			updateHealthScoreWidget(fHealthScore);
 
 			tvExpenses.setText(String.format(Locale.getDefault(), "%,.2f €", exp));
-			tvSavings.setText(String.format(Locale.getDefault(), "%,.2f €", sav));
+			if (inc > 0.01) {
+				int savingsPct = (int) Math.round((sav / inc) * 100.0);
+				tvSavings.setText(String.format(Locale.getDefault(), "%,.2f € (%d%%)", sav, savingsPct));
+			} else {
+				tvSavings.setText(String.format(Locale.getDefault(), "%,.2f €", sav));
+			}
 			tvIncomeDetail.setText(String.format(Locale.getDefault(), "%,.2f €", inc));
 
 			if (tvIncomeHealth != null)

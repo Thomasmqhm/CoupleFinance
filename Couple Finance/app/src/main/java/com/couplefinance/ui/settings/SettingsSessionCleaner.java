@@ -65,6 +65,7 @@ public final class SettingsSessionCleaner {
         clear(activity, "couplefinance_session");
         clear(activity, "couplefinance_cache");
         clear(activity, "couplefinance_profile"); // prénom sauvegardé — doit être vidé au changement d'utilisateur
+        clear(activity, "activity_log");          // journal d'activité local — propre à chaque session
         clear(activity, "dashboard_runtime");
         clear(activity, "settings_runtime");
         clear(activity, "household_prefs");   // householdId du foyer précédent

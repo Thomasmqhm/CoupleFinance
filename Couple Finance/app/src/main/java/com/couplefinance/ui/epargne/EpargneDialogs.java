@@ -334,6 +334,11 @@ public final class EpargneDialogs {
 													+ Fmt.money(goal.target) + " épargnés 🎉";
 											TelegramManager.getInstance().sendMessage(msg, null);
 										} catch (Exception ignored) {}
+										try {
+											com.couplefinance.utils.NotificationHelper
+													.getInstance(activity)
+													.notifySavingsGoalCompleted(goal.name);
+										} catch (Exception ignored) {}
 									}
 
 									dismissThenReload(dialogRef[0], callback);
