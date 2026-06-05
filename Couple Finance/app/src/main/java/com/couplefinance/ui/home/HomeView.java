@@ -155,17 +155,19 @@ public class HomeView {
 			}
 		} catch (Exception ignored) {}
 
-		// 3) UserSession — seulement si pas un email/identifiant
+		// 3) UserSession — seulement si pas un email/identifiant/fallback
 		try {
 			String name = UserSession.getInstance().getName();
 			if (name != null && !name.trim().isEmpty()
+					&& !name.equalsIgnoreCase("Moi")
 					&& !name.contains("@") && !name.contains(".")) return name.trim();
 		} catch (Exception ignored) {}
 
-		// 4) AuthManager — seulement si pas un email/identifiant
+		// 4) AuthManager — seulement si pas un email/identifiant/fallback
 		try {
 			String dn = AuthManager.getInstance().getDisplayName();
 			if (dn != null && !dn.trim().isEmpty()
+					&& !dn.equalsIgnoreCase("Moi")
 					&& !dn.contains("@") && !dn.contains(".")) return dn.trim();
 		} catch (Exception ignored) {}
 
@@ -1131,13 +1133,35 @@ public class HomeView {
 
 				// Mettre à jour la map globale userId → nom
 				userIdToName = parsedUserIdToName;
+
+				// Si notre uid n'est pas dans la map, tenter de l'associer
+				// au seul membre non encore lié (userId absent du doc Firestore)
+				String myUid = AuthManager.getInstance().getUserId();
+				if (myUid != null && !myUid.isEmpty() && !userIdToName.containsKey(myUid)) {
+					List<String> unlinkedMembers = new ArrayList<>(firestoreMembers);
+					for (String linkedName : parsedUserIdToName.values()) {
+						unlinkedMembers.removeIf(m -> m.equalsIgnoreCase(linkedName));
+					}
+					if (unlinkedMembers.size() == 1) {
+						String inferredName = unlinkedMembers.get(0);
+						userIdToName.put(myUid, inferredName);
+						activity.getSharedPreferences("couplefinance_profile", Activity.MODE_PRIVATE)
+								.edit().putString("display_name", inferredName).apply();
+						com.couplefinance.data.UserManager.getInstance()
+								.registerCurrentUserAsMemberWithName(inferredName);
+					} else {
+						com.couplefinance.data.UserManager.getInstance().registerCurrentUserAsMember();
+					}
+				}
+
+				// Mettre à jour le greeting avec le prénom résolu
 				updateGreeting();
 
 				String myName = getMyName();
 
-				if (myName.isEmpty() || myName.equals("Moi")) {
-					if (!firestoreMembers.isEmpty())
-						myName = firestoreMembers.get(0);
+				if (myName.isEmpty()) {
+					// Pas de correspondance userId : on ne prend PAS le premier membre
+					// au hasard — mieux vaut laisser le greeting sans prénom
 				}
 
 				List<String> allNames = new ArrayList<>();
