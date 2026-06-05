@@ -135,26 +135,41 @@ public class HomeView {
 	}
 
 	private String getMyName() {
-		// 1) Prénom saisi par l'utilisateur dans son profil (le plus fiable)
+		// 1) Prénom sauvegardé manuellement dans le profil
 		try {
 			String saved = activity.getSharedPreferences("couplefinance_profile", Activity.MODE_PRIVATE)
 					.getString("display_name", "");
 			if (saved != null && !saved.trim().isEmpty()) return saved.trim();
 		} catch (Exception ignored) {}
 
-		// 2) UserSession (profil Firestore)
+		// 2) Map userId→nom chargée depuis les membres du foyer
+		try {
+			String myUid = AuthManager.getInstance().getUserId();
+			if (myUid != null && !myUid.isEmpty() && userIdToName != null) {
+				String n = userIdToName.get(myUid);
+				if (n != null && !n.trim().isEmpty()) {
+					activity.getSharedPreferences("couplefinance_profile", Activity.MODE_PRIVATE)
+							.edit().putString("display_name", n.trim()).apply();
+					return n.trim();
+				}
+			}
+		} catch (Exception ignored) {}
+
+		// 3) UserSession — seulement si pas un email/identifiant
 		try {
 			String name = UserSession.getInstance().getName();
-			if (name != null && !name.trim().isEmpty()) return name.trim();
+			if (name != null && !name.trim().isEmpty()
+					&& !name.contains("@") && !name.contains(".")) return name.trim();
 		} catch (Exception ignored) {}
 
-		// 3) AuthManager (Firebase Auth)
+		// 4) AuthManager — seulement si pas un email/identifiant
 		try {
 			String dn = AuthManager.getInstance().getDisplayName();
-			if (dn != null && !dn.trim().isEmpty()) return dn.trim();
+			if (dn != null && !dn.trim().isEmpty()
+					&& !dn.contains("@") && !dn.contains(".")) return dn.trim();
 		} catch (Exception ignored) {}
 
-		return "Moi";
+		return "";
 	}
 
 	public View getView() {
@@ -1116,6 +1131,7 @@ public class HomeView {
 
 				// Mettre à jour la map globale userId → nom
 				userIdToName = parsedUserIdToName;
+				updateGreeting();
 
 				String myName = getMyName();
 
@@ -2448,9 +2464,8 @@ public class HomeView {
 			emoji = " 🌙";
 		}
 
-		// Récupère le prénom (sans fallback "Moi")
-		String name = UserSession.getInstance().getNameOrFallback();
-		if (name != null && !name.isEmpty() && !name.equalsIgnoreCase("Moi")) {
+		String name = getMyName();
+		if (name != null && !name.isEmpty()) {
 			tvGreeting.setText(greeting + " " + name + ",");
 		} else {
 			tvGreeting.setText(greeting + ",");

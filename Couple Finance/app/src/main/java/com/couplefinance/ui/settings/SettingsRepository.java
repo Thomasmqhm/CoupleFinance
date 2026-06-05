@@ -123,6 +123,7 @@ public class SettingsRepository {
 										isMe ? "ADMINISTRATEUR" : "MEMBRE", defaultColor(state.members.size()), isMe);
 
 								m.docPath = doc.optString("name", "");
+								m.userId = str(fields, "userId");
 								m.role = firstNonEmpty(str(fields, "role"), m.role);
 								m.color = firstNonEmpty(str(fields, "color"), m.color);
 
