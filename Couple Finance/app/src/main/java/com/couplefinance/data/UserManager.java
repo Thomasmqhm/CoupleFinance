@@ -51,20 +51,40 @@ public class UserManager {
 	}
 
 	public String getReliableDisplayName() {
-		// 1) Profil UserSession (le plus fiable : chargé depuis Firestore)
+		// 1) Membre du foyer dont le userId correspond à l'utilisateur connecté
+		try {
+			String myUid = AuthManager.getInstance().getUserId();
+			if (myUid != null && !myUid.isEmpty()) {
+				com.couplefinance.ui.settings.SettingsModels.State state =
+						com.couplefinance.ui.settings.SettingsCache.get();
+				if (state != null && state.members != null) {
+					for (com.couplefinance.ui.settings.SettingsModels.Member m : state.members) {
+						if (myUid.equals(m.userId) && m.name != null && !m.name.trim().isEmpty()) {
+							return m.name.trim();
+						}
+					}
+				}
+			}
+		} catch (Exception ignored) {}
+
+		// 2) Profil UserSession — seulement si pas un email/identifiant
 		UserProfile profile = UserSession.getInstance().getUser();
 		if (profile != null
 				&& profile.displayName != null
 				&& !profile.displayName.trim().isEmpty()
-				&& !profile.displayName.equalsIgnoreCase("Moi")) {
+				&& !profile.displayName.equalsIgnoreCase("Moi")
+				&& !profile.displayName.contains("@")
+				&& !profile.displayName.contains(".")) {
 			return profile.displayName.trim();
 		}
 
-		// 2) Nom Firebase Auth
-		String name = com.couplefinance.AuthManager.getInstance().getDisplayName();
+		// 3) Nom Firebase Auth — seulement si pas un email/identifiant
+		String name = AuthManager.getInstance().getDisplayName();
 		if (name != null
 				&& !name.trim().isEmpty()
-				&& !name.equalsIgnoreCase("Moi")) {
+				&& !name.equalsIgnoreCase("Moi")
+				&& !name.contains("@")
+				&& !name.contains(".")) {
 			return name.trim();
 		}
 

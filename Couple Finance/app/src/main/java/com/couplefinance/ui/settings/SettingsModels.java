@@ -7,6 +7,7 @@ public class SettingsModels {
     public static class Member {
         public String docPath;
         public String name;
+        public String userId;
         public String role;
         public String color;
         public double income;
