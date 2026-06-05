@@ -80,6 +80,19 @@
                     android:textSize="17sp" />
 
                 <Button
+                    android:id="@+id/btnExportCsv"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/input_rounded"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:padding="0dp"
+                    android:text="📊"
+                    android:textAllCaps="false"
+                    android:textSize="17sp" />
+
+                <Button
                     android:id="@+id/btnAdd"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
