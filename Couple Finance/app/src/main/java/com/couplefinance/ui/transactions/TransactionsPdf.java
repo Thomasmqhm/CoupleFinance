@@ -539,7 +539,7 @@ public final class TransactionsPdf {
 
 		for (TransactionsModels.Transaction tx : fixedToCreate) {
 			RecurringChargeManager.getInstance().createFixedChargeFromTransaction(tx.label, tx.amount, tx.category,
-					tx.dateMs, new FirestoreManager.Callback() {
+					tx.dateMs, tx.person, new FirestoreManager.Callback() {
 						public void onSuccess(String response) {
 							done[0]++;
 							if (done[0] >= total && onDone != null)

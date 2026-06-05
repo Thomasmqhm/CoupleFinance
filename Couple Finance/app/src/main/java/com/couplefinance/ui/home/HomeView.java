@@ -270,6 +270,10 @@ public class HomeView {
 		startAutoRefresh();
 		renderCalendar();
 
+		final BankAutoSyncManager.OnBalancesRefreshed balanceRefreshListener = () ->
+				activity.runOnUiThread(() -> { if (isActive) loadData(); });
+		BankAutoSyncManager.addBalanceListener(balanceRefreshListener);
+
 		view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
 			public void onViewAttachedToWindow(View v) {
 				isActive = true;
@@ -279,6 +283,7 @@ public class HomeView {
 			public void onViewDetachedFromWindow(View v) {
 				isActive = false;
 				refreshHandler.removeCallbacksAndMessages(null);
+				BankAutoSyncManager.removeBalanceListener(balanceRefreshListener);
 			}
 		});
 

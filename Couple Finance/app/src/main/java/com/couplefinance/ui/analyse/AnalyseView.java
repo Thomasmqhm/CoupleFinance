@@ -69,7 +69,9 @@ public class AnalyseView {
     private LinearLayout rootLayout;
     private LinearLayout contentContainer;
     private TextView tvLoading;
+    private TextView btnShare;
 
+    private AnalyseCalculator lastCalc;
     private boolean isActive = true;
 
     public AnalyseView(Activity activity) {
@@ -105,13 +107,28 @@ public class AnalyseView {
         title.setTextColor(ThemeColors.text());
         header.addView(title);
 
+        LinearLayout subRow = new LinearLayout(activity);
+        subRow.setOrientation(LinearLayout.HORIZONTAL);
+        subRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams subRowLp = new LinearLayout.LayoutParams(-1, -2);
+        subRowLp.topMargin = DS.dp(activity, 4);
+        header.addView(subRow, subRowLp);
+
         TextView sub = new TextView(activity);
         sub.setText(CycleManager.getInstance().getCurrentCycleLabel());
         sub.setTextSize(13f);
         sub.setTextColor(ThemeColors.subtext());
-        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
-        subLp.topMargin = DS.dp(activity, 4);
-        header.addView(sub, subLp);
+        subRow.addView(sub, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        btnShare = new TextView(activity);
+        btnShare.setText("↗ Partager");
+        btnShare.setTextSize(12f);
+        btnShare.setTypeface(null, Typeface.BOLD);
+        btnShare.setTextColor(ThemeColors.primary());
+        btnShare.setPadding(DS.dp(activity, 10), DS.dp(activity, 6), DS.dp(activity, 10), DS.dp(activity, 6));
+        btnShare.setVisibility(View.GONE);
+        btnShare.setOnClickListener(v -> shareAnalysis());
+        subRow.addView(btnShare);
 
         rootLayout.addView(header);
     }
@@ -187,6 +204,7 @@ public class AnalyseView {
         contentContainer.removeAllViews();
 
         AnalyseCalculator calc = new AnalyseCalculator(txs);
+        lastCalc = calc;
 
         buildScoreCard(calc);
         buildCycleSummary(calc);
@@ -195,6 +213,8 @@ public class AnalyseView {
         buildForecast(calc);
         buildTopMerchants(calc);
         buildInsights(txs);
+
+        if (btnShare != null) btnShare.setVisibility(View.VISIBLE);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

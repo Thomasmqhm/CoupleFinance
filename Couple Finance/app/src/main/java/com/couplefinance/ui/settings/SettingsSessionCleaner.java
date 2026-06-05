@@ -7,6 +7,8 @@ import android.content.SharedPreferences;
 
 import com.couplefinance.AuthManager;
 import com.couplefinance.LoginActivity;
+import com.couplefinance.UserSession;
+import com.couplefinance.data.HouseholdManager;
 
 /**
  * SettingsSessionCleaner
@@ -34,6 +36,10 @@ public final class SettingsSessionCleaner {
         } catch (Exception ignored) {
         }
 
+        // Réinitialiser les singletons qui cachent des données utilisateur en mémoire
+        try { HouseholdManager.getInstance().clearHousehold(); } catch (Exception ignored) {}
+        try { UserSession.getInstance().clear(); } catch (Exception ignored) {}
+
         clearRuntimePrefs(activity);
 
         Intent intent = new Intent(activity, LoginActivity.class);
@@ -60,6 +66,9 @@ public final class SettingsSessionCleaner {
         clear(activity, "couplefinance_cache");
         clear(activity, "dashboard_runtime");
         clear(activity, "settings_runtime");
+        clear(activity, "household_prefs");   // householdId du foyer précédent
+        clear(activity, "user_session");      // données de session utilisateur
+        clear(activity, "auth_prefs");        // token / userId / refreshToken
 
         /*
          * On garde volontairement :
