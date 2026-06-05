@@ -493,9 +493,13 @@ public class DashboardActivity extends Activity {
 		});
 	}
 
+	public void refreshSidebarUser() {
+		updateSidebarUser();
+	}
+
 	private void updateSidebarUser() {
 		try {
-			final String name = UserManager.getInstance().getCurrentDisplayNameOrFallback();
+			final String name = UserManager.getInstance().getCurrentDisplayName(this);
 			final TextView tv = findViewById(R.id.tvSidebarUser);
 			if (tv == null) return;
 			tv.setText(name);

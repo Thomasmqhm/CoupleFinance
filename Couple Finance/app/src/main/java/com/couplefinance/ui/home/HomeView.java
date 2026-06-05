@@ -1149,6 +1149,10 @@ public class HomeView {
 								.edit().putString("display_name", inferredName).apply();
 						com.couplefinance.data.UserManager.getInstance()
 								.registerCurrentUserAsMemberWithName(inferredName);
+						// Mettre à jour le sidebar avec le prénom résolu
+						if (activity instanceof com.couplefinance.ui.DashboardActivity) {
+							((com.couplefinance.ui.DashboardActivity) activity).refreshSidebarUser();
+						}
 					} else {
 						com.couplefinance.data.UserManager.getInstance().registerCurrentUserAsMember();
 					}
