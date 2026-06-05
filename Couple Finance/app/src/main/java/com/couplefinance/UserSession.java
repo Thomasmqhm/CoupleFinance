@@ -25,6 +25,10 @@ public class UserSession {
                 ? currentUser.displayName : "";
     }
 
+    public void clear() {
+        this.currentUser = null;
+    }
+
     public String getNameOrFallback() {
         String name = getName();
         if (!name.isEmpty()) return name;
