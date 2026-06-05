@@ -109,27 +109,31 @@ public class SettingsView {
 		if (headerView != null) headerView.setVisibility(View.VISIBLE);
 		if (heroView != null) heroView.setVisibility(View.VISIBLE);
 
-		menuGroup("MON COMPTE",
-				menuRow("Compte", "Profil, sécurité, notifications", false,
-						v -> openCategory("Compte", this::buildAccountSection)),
-				menuRow("Foyer", "Membres, répartition, cycle", false,
-						v -> openCategory("Foyer", this::buildHouseholdSection)));
+		menuGroup("👤  PROFIL & FOYER",
+				menuRow("Profil personnel", "Nom, photo, sécurité", false,
+						v -> openCategory("Profil", this::buildAccountSection)),
+				menuRow("Foyer & cycle", "Membres, répartition, catégories, cycle", false,
+						v -> openCategory("Foyer & cycle", this::buildHouseholdSection)));
 
-		menuGroup("FINANCES & SYNCHRONISATION",
-				menuRow("Connexion bancaire", "Synchro automatique, comptes", false,
+		menuGroup("🏦  BANQUE & SYNCHRONISATION",
+				menuRow("Connexion bancaire", "Comptes liés, import automatique", false,
 						v -> openCategory("Connexion bancaire", this::buildBankingSection)),
+				menuRow("Notifications & Telegram", "Alertes Telegram, digest, seuils", false,
+						v -> openCategory("Notifications & Telegram", this::buildNotificationsSection)));
+
+		menuGroup("🎨  APPARENCE & DASHBOARD",
+				menuRow("Apparence", "Thème sombre, couleur principale", false,
+						v -> openCategory("Apparence", this::buildAppearanceSection)),
 				menuRow("Widgets du dashboard", "Personnaliser le tableau de bord", false,
 						v -> openCategory("Widgets du dashboard", this::buildWidgetsSection)));
 
-		menuGroup("PERSONNALISATION",
-				menuRow("Apparence", "Thème de l'application", false,
-						v -> openCategory("Apparence", this::buildAppearanceSection)),
-				menuRow("Données", "Import, export, historique", false,
-						v -> openCategory("Données", this::buildDataSection)));
+		menuGroup("📊  DONNÉES",
+				menuRow("Export & Import", "CSV, PDF, historique", false,
+						v -> openCategory("Export & Import", this::buildDataSection)));
 
-		menuGroup("ZONE DE DANGER",
-				menuRow("Avancé", "Quitter le foyer, supprimer le compte", true,
-						v -> openCategory("Avancé", this::buildDangerSection)));
+		menuGroup("⚠️  ZONE DE DANGER",
+				menuRow("Actions sensibles", "Déconnexion, quitter le foyer, supprimer le compte", true,
+						v -> openCategory("Actions sensibles", this::buildDangerSection)));
 	}
 
 	/** Un groupe = un titre de section + une carte contenant les lignes (avec séparateurs). */
@@ -367,52 +371,48 @@ public class SettingsView {
 	}
 
 	private void buildAccountSection() {
-		LinearLayout card = sectionCard("COMPTE");
+		LinearLayout card = sectionCard("MON PROFIL");
 
-		card.addView(row("♙", "Profil personnel", "Modifier vos informations",
+		card.addView(row("👤", "Profil personnel", "Nom affiché, avatar",
 				v -> SettingsDialogs.showProfile(activity, this::refresh)));
 
 		card.addView(divider());
 
-		card.addView(row("▢", "Sécurité", "Mot de passe et authentification",
+		card.addView(row("🔒", "Sécurité", "Changer le mot de passe",
 				v -> SettingsDialogs.showSecurity(activity, this::refresh)));
 
 		card.addView(divider());
 
-		card.addView(row("♧", "Notifications", "Gérer les alertes",
+		card.addView(row("🔔", "Notifications locales", "Alertes, rappels de charges",
 				v -> SettingsDialogs.showNotifications(activity, this::refresh)));
-
-		card.addView(divider());
-
-		card.addView(row("✈", "Notifications Telegram", "Prévenir ta partenaire (iOS)",
-				v -> showTelegramDialog()));
 	}
 
 	private void buildHouseholdSection() {
 		LinearLayout card = sectionCard("FOYER");
 
-		card.addView(row("♧", "Membres du foyer", "Gérer les accès", v -> SettingsDialogs.showMembers(activity)));
+		card.addView(row("👥", "Membres du foyer", "Gérer les accès et invitations",
+				v -> SettingsDialogs.showMembers(activity)));
 
 		card.addView(divider());
 
-		card.addView(rowWithValue("％", "Ratio de répartition", getRatioValue(),
+		card.addView(rowWithValue("⚖️", "Ratio de répartition", getRatioValue(),
 				v -> SettingsDialogs.showRatio(activity, this::refresh)));
 
 		card.addView(divider());
 
-		card.addView(
-				row("◇", "Catégories", "Personnaliser les catégories", v -> SettingsDialogs.showCategories(activity)));
+		card.addView(row("🏷️", "Catégories", "Ajouter ou renommer les catégories",
+				v -> SettingsDialogs.showCategories(activity)));
 
 		card.addView(divider());
 
-		card.addView(rowWithValue("▣", "Compte joint", jointAccountValue(),
+		card.addView(rowWithValue("🏦", "Compte joint", jointAccountValue(),
 				v -> SettingsDialogs.showJointAccount(activity, this::refresh)));
 
 		card.addView(divider());
 
 		int cycleDay = CycleManager.getInstance().getCycleStartDay();
 		String cycleValue = cycleDay == 1 ? "1er du mois" : "Le " + cycleDay + " du mois";
-		card.addView(rowWithValue("↻", "Début de cycle", cycleValue, v -> showCycleStartDayDialog()));
+		card.addView(rowWithValue("📅", "Début de cycle", cycleValue, v -> showCycleStartDayDialog()));
 	}
 
 	private void showCycleStartDayDialog() {
@@ -479,32 +479,206 @@ public class SettingsView {
 	 * Intègre BankConnectionView avec la détection des doublons.
 	 */
 	private void buildBankingSection() {
-		LinearLayout card = sectionCard("CONNEXION BANCAIRE");
+		LinearLayout card = sectionCard("COMPTES LIÉS");
 
-		card.addView(row("🏦", "Gérer les comptes bancaires", "Importer automatiquement vos transactions",
+		card.addView(row("🔗", "Gérer les comptes bancaires",
+				"Connecter ou reconnecter votre banque",
 				v -> onBankConnectionClicked()));
 
 		card.addView(divider());
 
-		// Synchro automatique quotidienne (toggle)
 		card.addView(bankAutoSyncRow());
 
 		card.addView(divider());
 
-		// Heure + minutes de synchro (tappable)
-		card.addView(rowWithValue("🕐", "Heure de synchro",
+		card.addView(rowWithValue("🕐", "Heure de synchro automatique",
 				BankAutoSyncManager.getTimeLabel(activity),
 				v -> showSyncTimeDialog()));
 
 		card.addView(divider());
 
-		// Notifier chaque transaction (toggle)
 		card.addView(bankNotifyEachRow());
+	}
+
+	private void buildNotificationsSection() {
+		LinearLayout card = sectionCard("ALERTES TELEGRAM");
+
+		card.addView(row("✈️", "Configurer Telegram",
+				"Token du bot, chat_id de votre partenaire",
+				v -> showTelegramDialog()));
 
 		card.addView(divider());
 
-		card.addView(row("📊", "Historique d'import", "Voir les transactions importées",
-				v -> AppToast.info(activity, "Fonctionnalité à venir")));
+		card.addView(telegramDigestRow());
+
+		card.addView(divider());
+
+		card.addView(row("⚠️", "Alertes seuils",
+				"Compte joint bas, prélèvements non couverts",
+				v -> showTelegramAlertsDialog()));
+
+		LinearLayout card2 = sectionCard("NOTIFICATIONS LOCALES");
+
+		card2.addView(row("🔔", "Rappels et alertes",
+				"Charges à venir, début de cycle",
+				v -> SettingsDialogs.showNotifications(activity, this::refresh)));
+	}
+
+	private View telegramDigestRow() {
+		LinearLayout row = new LinearLayout(activity);
+		row.setOrientation(LinearLayout.HORIZONTAL);
+		row.setGravity(Gravity.CENTER_VERTICAL);
+		row.setPadding(DS.dp(activity, 18), DS.dp(activity, 16), DS.dp(activity, 18), DS.dp(activity, 16));
+
+		LinearLayout texts = new LinearLayout(activity);
+		texts.setOrientation(LinearLayout.VERTICAL);
+
+		TextView tvTitle = new TextView(activity);
+		tvTitle.setText("Résumé automatique");
+		tvTitle.setTextColor(ThemeColors.text());
+		tvTitle.setTextSize(17f);
+		tvTitle.setTypeface(null, Typeface.BOLD);
+		texts.addView(tvTitle);
+
+		String freq = TelegramScheduler.getDigestFrequency(activity);
+		String freqLabel = TelegramScheduler.OFF.equals(freq) ? "Désactivé"
+				: TelegramScheduler.WEEKLY.equals(freq) ? "Hebdomadaire" : "Mensuel";
+		TextView tvSub = new TextView(activity);
+		tvSub.setText("Envoi : " + freqLabel);
+		tvSub.setTextColor(ThemeColors.subtext());
+		tvSub.setTextSize(13f);
+		LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
+		subLp.topMargin = DS.dp(activity, 2);
+		texts.addView(tvSub, subLp);
+
+		row.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
+
+		TextView chev = new TextView(activity);
+		chev.setText("›");
+		chev.setTextColor(ThemeColors.subtext());
+		chev.setTextSize(28f);
+		row.addView(chev);
+
+		row.setClickable(true);
+		row.setFocusable(true);
+		row.setOnClickListener(v -> showTelegramFrequencyDialog());
+
+		return row;
+	}
+
+	private void showTelegramFrequencyDialog() {
+		final String[] selFreq = { TelegramScheduler.getDigestFrequency(activity) };
+		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
+		final String[] labels = { "Désactivé", "Hebdomadaire", "Mensuel" };
+
+		LinearLayout box = new LinearLayout(activity);
+		box.setOrientation(LinearLayout.VERTICAL);
+
+		final TextView[] chips = new TextView[3];
+		final Runnable restyle = () -> {
+			for (int i = 0; i < 3; i++) {
+				boolean on = codes[i].equals(selFreq[0]);
+				GradientDrawable bg = new GradientDrawable();
+				bg.setColor(on ? ThemeColors.primary() : ThemeColors.surfaceSoft());
+				bg.setCornerRadius(DS.dp(activity, 10));
+				chips[i].setBackground(bg);
+				chips[i].setTextColor(on ? ThemeColors.white() : ThemeColors.subtext());
+			}
+		};
+
+		LinearLayout freqRow = new LinearLayout(activity);
+		freqRow.setOrientation(LinearLayout.HORIZONTAL);
+		for (int i = 0; i < 3; i++) {
+			final int idx = i;
+			TextView chip = new TextView(activity);
+			chip.setText(labels[i]);
+			chip.setGravity(Gravity.CENTER);
+			chip.setTextSize(DS.TEXT_SM);
+			chip.setTypeface(null, Typeface.BOLD);
+			int pv = DS.dp(activity, 12);
+			int ph = DS.dp(activity, 8);
+			chip.setPadding(ph, pv, ph, pv);
+			chip.setOnClickListener(v -> {
+				selFreq[0] = codes[idx];
+				TelegramScheduler.setDigestFrequency(activity, selFreq[0]);
+				restyle.run();
+			});
+			chips[i] = chip;
+			LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, -2, 1f);
+			if (i > 0) clp.leftMargin = DS.dp(activity, 8);
+			freqRow.addView(chip, clp);
+		}
+		restyle.run();
+		box.addView(freqRow);
+
+		TextView desc = new TextView(activity);
+		desc.setText("Le résumé est envoyé la première fois que l'app est ouverte dans la nouvelle période.");
+		desc.setTextColor(ThemeColors.subtext());
+		desc.setTextSize(13f);
+		LinearLayout.LayoutParams descLp = new LinearLayout.LayoutParams(-1, -2);
+		descLp.topMargin = DS.dp(activity, 14);
+		box.addView(desc, descLp);
+
+		final AlertDialog[] h = {null};
+		h[0] = new AppDialog.Builder(activity)
+				.icon("📅").title("Fréquence du digest").subtitle("Résumé Telegram automatique")
+				.content(box)
+				.primaryBtn("FERMER", () -> {
+					refresh();
+					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
+				}).show();
+	}
+
+	private void showTelegramAlertsDialog() {
+		LinearLayout box = new LinearLayout(activity);
+		box.setOrientation(LinearLayout.VERTICAL);
+
+		TextView tvThresholdLabel = new TextView(activity);
+		tvThresholdLabel.setText("Alerte si le compte joint passe sous (€) :");
+		tvThresholdLabel.setTextColor(ThemeColors.text());
+		tvThresholdLabel.setTextSize(14f);
+		tvThresholdLabel.setTypeface(null, Typeface.BOLD);
+		box.addView(tvThresholdLabel);
+
+		final EditText etThreshold = new EditText(activity);
+		etThreshold.setHint("Ex: 200");
+		double curTh = TelegramScheduler.getLowJointThreshold(activity);
+		if (!Double.isNaN(curTh)) {
+			etThreshold.setText(curTh == Math.floor(curTh)
+					? String.valueOf((long) curTh) : String.valueOf(curTh));
+		}
+		etThreshold.setTextColor(ThemeColors.text());
+		etThreshold.setHintTextColor(ThemeColors.muted());
+		etThreshold.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+				| android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+		LinearLayout.LayoutParams etLp = new LinearLayout.LayoutParams(-1, -2);
+		etLp.topMargin = DS.dp(activity, 8);
+		box.addView(etThreshold, etLp);
+
+		final android.widget.CheckBox cbCoverage = new android.widget.CheckBox(activity);
+		cbCoverage.setText("Alerter si le joint ne couvre pas les prélèvements à venir");
+		cbCoverage.setTextColor(ThemeColors.subtext());
+		cbCoverage.setTextSize(14f);
+		cbCoverage.setChecked(TelegramScheduler.isCoverageAlert(activity));
+		LinearLayout.LayoutParams cbLp = new LinearLayout.LayoutParams(-1, -2);
+		cbLp.topMargin = DS.dp(activity, 16);
+		box.addView(cbCoverage, cbLp);
+
+		final AlertDialog[] h = {null};
+		h[0] = new AppDialog.Builder(activity)
+				.icon("⚠️").title("Alertes Telegram").subtitle("Seuils de déclenchement")
+				.content(box)
+				.primaryBtn("ENREGISTRER", () -> {
+					String th = etThreshold.getText().toString().trim().replace(',', '.');
+					if (th.isEmpty()) TelegramScheduler.setLowJointThreshold(activity, Double.NaN);
+					else {
+						try { TelegramScheduler.setLowJointThreshold(activity, Double.parseDouble(th)); }
+						catch (Exception ignored) {}
+					}
+					TelegramScheduler.setCoverageAlert(activity, cbCoverage.isChecked());
+					AppToast.success(activity, "Alertes enregistrées");
+					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
+				}).show();
 	}
 
 	/** Toggle : active/désactive la synchro bancaire automatique quotidienne. */
@@ -942,16 +1116,16 @@ public class SettingsView {
 	private void buildDataSection() {
 		LinearLayout card = sectionCard("DONNÉES");
 
-		card.addView(row("⇩", "Exporter les données", "CSV ou PDF", v -> SettingsDialogs.showExport(activity)));
+		card.addView(row("📤", "Exporter les données", "CSV ou PDF", v -> SettingsDialogs.showExport(activity)));
 
 		card.addView(divider());
 
-		card.addView(row("⇧", "Importer", "Depuis un fichier CSV ou PDF", v -> SettingsDialogs.showImport(activity)));
+		card.addView(row("📥", "Importer", "Depuis un fichier CSV ou PDF", v -> SettingsDialogs.showImport(activity)));
 
 		card.addView(divider());
 
-		card.addView(
-				row("↻", "Synchronisation", lastSyncLabel(), v -> SettingsDialogs.showSync(activity, this::refresh)));
+		card.addView(row("🔄", "Synchronisation", lastSyncLabel(),
+				v -> SettingsDialogs.showSync(activity, this::refresh)));
 	}
 
 	private void buildDangerSection() {

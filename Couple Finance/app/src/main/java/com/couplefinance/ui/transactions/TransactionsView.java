@@ -97,7 +97,7 @@ public class TransactionsView extends BaseView {
 		listTransactions.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
 		listTransactions.setOnItemClickListener((parent, v, pos, id) -> TransactionsDialogs.showEditDialog(activity,
-				filtered.get(pos), members, categories, this::reloadAfterWrite));
+				filtered.get(pos), allTransactions, members, categories, this::reloadAfterWrite));
 
 		listTransactions.setOnItemLongClickListener((parent, v, pos, id) -> {
 			TransactionsDialogs.showDeleteDialog(activity, filtered.get(pos), allTransactions, this::reloadAfterWrite);

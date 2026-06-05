@@ -262,7 +262,11 @@ public class HomeNotifications {
 		footer.setGravity(Gravity.CENTER);
 		footer.setIncludeFontPadding(false);
 		footer.setPadding(0, DS.dp(activity, 12), 0, DS.dp(activity, 4));
-		footer.setOnClickListener(v -> dismiss());
+		footer.setOnClickListener(v -> {
+			notifications.clear();
+			updateBadge();
+			dismiss();
+		});
 
 		panel.addView(
 				footer,

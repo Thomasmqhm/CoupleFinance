@@ -336,13 +336,29 @@ public class VirementView extends BaseView {
 		historyCard.addView(historyList, hlp);
 	}
 
+	private static List<VirementModels.Transfer> dedupTransfers(List<VirementModels.Transfer> raw) {
+		if (raw == null) return new java.util.ArrayList<>();
+		java.util.LinkedHashMap<String, VirementModels.Transfer> seen = new java.util.LinkedHashMap<>();
+		for (VirementModels.Transfer t : raw) {
+			// Clé : from|to|montant arrondi à 2 décimales|jour (ms tronqué au jour)
+			long dayMs = (t.dateMs / 86400000L) * 86400000L;
+			String key = t.from + "|" + t.to + "|"
+					+ String.format(java.util.Locale.US, "%.2f", t.amount) + "|" + dayMs;
+			// On garde le premier (docPath non vide en priorité)
+			if (!seen.containsKey(key) || seen.get(key).docPath.isEmpty()) {
+				seen.put(key, t);
+			}
+		}
+		return new java.util.ArrayList<>(seen.values());
+	}
+
 	private void load() {
 		repository.loadAll(activity, data -> {
 			allBeneficiaries.clear();
 			allBeneficiaries.addAll(data.beneficiaries);
 
 			allTransfers.clear();
-			allTransfers.addAll(data.transfers);
+			allTransfers.addAll(dedupTransfers(data.transfers));
 
 			Collections.sort(allTransfers, (a, b) -> Long.compare(b.dateMs, a.dateMs));
 
