@@ -743,13 +743,58 @@ public final class SettingsDialogs {
 
     public static void showCategories(Activity activity) {
         if (activity == null) return;
-        PremiumDialog.builder(activity)
-                .icon("🏷️")
-                .title("Catégories")
-                .subtitle("La gestion complète des catégories est disponible dans la section dédiée.")
-                .primary("OK", null)
-                .noSecondary()
-                .show();
+
+        android.app.Dialog dialog = new android.app.Dialog(activity,
+                android.R.style.Theme_Material_Light_NoActionBar_Fullscreen);
+        dialog.setContentView(buildCategoriesContent(activity, dialog));
+        dialog.show();
+    }
+
+    private static android.view.ViewGroup buildCategoriesContent(
+            Activity activity, android.app.Dialog dialog) {
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
+        scroll.setBackgroundColor(ThemeColors.background());
+
+        LinearLayout root = new LinearLayout(activity);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int p = DS.dp(activity, 16);
+        root.setPadding(p, DS.dp(activity, 48), p, p);
+        scroll.addView(root);
+
+        // Header row: back button + title
+        LinearLayout header = new LinearLayout(activity);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+        TextView btnBack = new TextView(activity);
+        btnBack.setText("←");
+        btnBack.setTextSize(22);
+        btnBack.setTextColor(ThemeColors.accent());
+        btnBack.setPadding(0, 0, DS.dp(activity, 12), 0);
+        btnBack.setOnClickListener(v -> dialog.dismiss());
+        header.addView(btnBack);
+
+        TextView title = new TextView(activity);
+        title.setText("Catégories");
+        title.setTextSize(20);
+        title.setTextColor(ThemeColors.text());
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        header.addView(title);
+
+        root.addView(header);
+
+        // Spacer
+        View spacer = new View(activity);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, DS.dp(activity, 16)));
+        root.addView(spacer);
+
+        // SettingsCategoriesSection content
+        View section = new SettingsCategoriesSection(activity).build();
+        root.addView(section);
+
+        return scroll;
     }
 
     public static void showCategoryEditor(

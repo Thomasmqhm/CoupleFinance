@@ -619,9 +619,15 @@ public class AbonnementsView {
         arLp.topMargin = DS.dp(activity, 8);
         actRow.setLayoutParams(arLp);
 
+        TextView btnLabel = miniAction("Libellé", ThemeColors.primary());
+        btnLabel.setOnClickListener(v -> showEditLabelDialog(charge));
+        actRow.addView(btnLabel);
+
         TextView btnAmt = miniAction("Montant", ThemeColors.primary());
+        LinearLayout.LayoutParams amtLp = new LinearLayout.LayoutParams(-2, -2);
+        amtLp.leftMargin = DS.dp(activity, 12);
         btnAmt.setOnClickListener(v -> showEditAmountDialog(charge));
-        actRow.addView(btnAmt);
+        actRow.addView(btnAmt, amtLp);
 
         TextView btnPayer = miniAction("Payeur", ThemeColors.primary());
         LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(-2, -2);
@@ -814,6 +820,55 @@ public class AbonnementsView {
         });
     }
 
+    private void showEditLabelDialog(SettingsModels.FixedCharge charge) {
+        // Find other charges with same label to warn the user
+        List<SettingsModels.FixedCharge> sameLabel = new ArrayList<>();
+        for (SettingsModels.FixedCharge c : charges) {
+            if (c != charge && c.name != null && c.name.equalsIgnoreCase(charge.name)) {
+                sameLabel.add(c);
+            }
+        }
+
+        android.widget.EditText input = new android.widget.EditText(activity);
+        input.setText(charge.name);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+
+        LinearLayout wrap = new LinearLayout(activity);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        int p = DS.dp(activity, 20);
+        wrap.setPadding(p, DS.dp(activity, 8), p, 0);
+
+        if (!sameLabel.isEmpty()) {
+            // Multiple charges with same label — clarify which one we're editing
+            TextView warn = new TextView(activity);
+            warn.setText("⚠️  " + sameLabel.size() + " autre(s) charge(s) portent ce libellé.\n"
+                    + "Vous modifiez celle-ci : "
+                    + Fmt.money(charge.amount) + " · le " + charge.dayOfMonth + " du mois.");
+            warn.setTextColor(0xFFF59E0B);
+            warn.setTextSize(DS.TEXT_SM);
+            warn.setLineSpacing(DS.dp(activity, 3), 1f);
+            LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(-1, -2);
+            wlp.bottomMargin = DS.dp(activity, 12);
+            wrap.addView(warn, wlp);
+        }
+
+        wrap.addView(input);
+
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Renommer la charge")
+                .setView(wrap)
+                .setPositiveButton("Enregistrer", (d, w) -> {
+                    String newName = input.getText().toString().trim();
+                    if (newName.isEmpty()) return;
+                    charge.name = newName;
+                    saveAndRefresh(charge, "Libellé mis à jour ✓");
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
     private void showEditAmountDialog(SettingsModels.FixedCharge charge) {
         SettingsDialog.showAmountDialog(
                 activity,
@@ -994,18 +1049,32 @@ public class AbonnementsView {
         });
     }
 
+    /** Exclut les charges dont la catégorie est "Crédits" (géré par l'onglet Crédits). */
+    private List<SettingsModels.FixedCharge> filterOutCreditCharges(List<SettingsModels.FixedCharge> all) {
+        List<SettingsModels.FixedCharge> result = new ArrayList<>();
+        for (SettingsModels.FixedCharge c : all) {
+            if (c == null) continue;
+            String cat = c.category == null ? "" : c.category.trim().toLowerCase(java.util.Locale.FRENCH);
+            if (cat.equals("crédits") || cat.equals("crédit") || cat.equals("credits") || cat.equals("credit")) continue;
+            result.add(c);
+        }
+        return result;
+    }
+
     private void loadData() {
         SettingsModels.State cached = SettingsCache.get();
 
         if (cached.charges != null && !cached.charges.isEmpty()) {
-            charges = new ArrayList<>(cached.charges);
+            charges = filterOutCreditCharges(new ArrayList<>(cached.charges));
             refresh();
         }
 
         new SettingsRepository(activity).load(new SettingsRepository.LoadCallback() {
             public void onLoaded(SettingsModels.State state) {
                 activity.runOnUiThread(() -> {
-                    charges = state.charges != null ? new ArrayList<>(state.charges) : new ArrayList<>();
+                    List<SettingsModels.FixedCharge> raw = state.charges != null
+                            ? new ArrayList<>(state.charges) : new ArrayList<>();
+                    charges = filterOutCreditCharges(raw);
                     refresh();
                 });
             }
@@ -1150,13 +1219,25 @@ private int memberCount() {
             name = UserSession.getInstance().getNameOrFallback();
         } catch (Exception ignored) {}
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
             try {
                 name = AuthManager.getInstance().getDisplayName();
             } catch (Exception ignored) {}
         }
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
+            // Dernière tentative : premier membre du foyer depuis SettingsCache
+            try {
+                SettingsModels.State state = SettingsCache.get();
+                if (state != null && state.members != null) {
+                    for (SettingsModels.Member m : state.members) {
+                        if (m != null && m.name != null && !m.name.trim().isEmpty()
+                                && !"Moi".equals(m.name.trim())) {
+                            return m.name.trim();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
             return "Moi";
         }
 

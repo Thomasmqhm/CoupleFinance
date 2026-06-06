@@ -26,7 +26,10 @@ import com.couplefinance.core.ui.DS;
 import com.couplefinance.core.ui.UiFactory;
 import com.couplefinance.data.BankImportPipeline;
 import com.couplefinance.data.CategoryManager;
+import com.couplefinance.data.CreditManager;
 import com.couplefinance.data.CycleManager;
+import com.couplefinance.ui.credits.CreditsModels;
+import com.couplefinance.ui.credits.CreditsParser;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.EnableBankingManager;
 import com.couplefinance.data.JointAccountManager;
@@ -559,7 +562,17 @@ public final class BankConnectionView {
                 List<String> cats = parseCategoryNames(response);
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, cats);
                 BankImportPipeline.detectDuplicates(parsed, existing);
-                showPreview(a, parsed, existing, cats);
+                // Cross-check against managed credits to auto-uncheck matching transactions
+                CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
+                    @Override public void onSuccess(String creditsJson) {
+                        List<CreditsModels.Credit> credits = CreditsParser.parseCredits(creditsJson);
+                        BankImportPipeline.markCreditDuplicates(parsed, credits);
+                        showPreview(a, parsed, existing, cats);
+                    }
+                    @Override public void onError(String e) {
+                        showPreview(a, parsed, existing, cats);
+                    }
+                });
             }
             @Override public void onError(String error) {
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, null);
@@ -979,9 +992,10 @@ public final class BankConnectionView {
 
         // Créer une nouvelle catégorie
         View createRow = choiceRow(a, "➕  Créer une catégorie", "Saisir un nouveau nom");
+        final List<String> sharedCats = categories != null ? categories : new ArrayList<>();
         createRow.setOnClickListener(v -> {
             dismiss(h);
-            showCreateCategoryDialog(a, pt, onPicked);
+            showCreateCategoryDialog(a, pt, sharedCats, onPicked);
         });
         box.addView(createRow);
 
@@ -1007,23 +1021,56 @@ public final class BankConnectionView {
                 .primaryBtn("ANNULER", () -> dismiss(h)).show();
     }
 
-    private static void showCreateCategoryDialog(Activity a, ParsedTransaction pt, Runnable onPicked) {
+    private static void showCreateCategoryDialog(Activity a, ParsedTransaction pt,
+                                                   List<String> sharedCategories, Runnable onPicked) {
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.VERTICAL);
-        EditText input = editText(a, "Nom de la catégorie", false);
-        box.addView(input);
+
+        EditText etName = editText(a, "Nom de la catégorie", false);
+        box.addView(etName);
+
+        EditText etEmoji = editText(a, "Emoji (optionnel)", false);
+        LinearLayout.LayoutParams eLp = new LinearLayout.LayoutParams(-1, -2);
+        eLp.topMargin = DS.dp(a, DS.GAP_SM);
+        box.addView(etEmoji, eLp);
 
         final AlertDialog[] h = {null};
         h[0] = new AppDialog.Builder(a).icon("➕")
-                .title("Nouvelle catégorie").subtitle("Elle sera créée à l'import")
+                .title("Nouvelle catégorie").subtitle("Sera enregistrée et disponible partout")
                 .content(box)
-                .primaryBtn("VALIDER", () -> {
-                    String name = input.getText().toString().trim();
-                    if (name.isEmpty()) { AppToast.error(a, "Nom vide"); return; }
-                    pt.category = name;
+                .primaryBtn("CRÉER", () -> {
+                    String rawInput = etName.getText().toString();
+                    String name = rawInput.trim();
+                    if (name.isEmpty()) { AppToast.error(a, "Nom requis"); return; }
+                    if (!rawInput.equals(name)) { AppToast.error(a, "Pas d'espace en début ou en fin de nom"); return; }
+                    String nLow = name.toLowerCase(java.util.Locale.FRENCH);
+                    if (nLow.equals("virements") || nLow.equals("virement")
+                            || nLow.equals("crédits") || nLow.equals("crédit")
+                            || nLow.equals("credits") || nLow.equals("credit")) {
+                        AppToast.error(a, "\"" + name + "\" est une catégorie système réservée");
+                        return;
+                    }
+                    String emoji = etEmoji.getText().toString().trim();
+                    if (emoji.isEmpty()) emoji = "🏷️";
                     dismiss(h);
+                    final String finalEmoji = emoji;
+                    // Ajouter immédiatement dans la liste partagée pour les autres lignes
+                    boolean alreadyThere = false;
+                    for (String s : sharedCategories) { if (s.equalsIgnoreCase(name)) { alreadyThere = true; break; } }
+                    if (!alreadyThere) sharedCategories.add(name);
+                    pt.category = name;
                     if (onPicked != null) onPicked.run();
-                    AppToast.success(a, "Catégorie : " + name);
+                    // Sauvegarder dans Firestore en arrière-plan
+                    com.couplefinance.data.CategoryManager.getInstance().addCategory(
+                            name, finalEmoji,
+                            new com.couplefinance.data.FirestoreManager.Callback() {
+                                @Override public void onSuccess(String r) {
+                                    AppToast.success(a, "Catégorie \"" + name + "\" créée ✓");
+                                }
+                                @Override public void onError(String e) {
+                                    AppToast.error(a, "Sauvegarde échouée : " + e);
+                                }
+                            });
                 }).show();
     }
 
@@ -1425,7 +1472,10 @@ public final class BankConnectionView {
     }
 
     private static List<String> parseCategoryNames(String response) {
+        // Les catégories système sont toujours présentes en premier
         List<String> names = new ArrayList<>();
+        names.add("Virements");
+        names.add("Crédits");
         try {
             org.json.JSONObject root = new org.json.JSONObject(response);
             org.json.JSONArray docs  = root.optJSONArray("documents");

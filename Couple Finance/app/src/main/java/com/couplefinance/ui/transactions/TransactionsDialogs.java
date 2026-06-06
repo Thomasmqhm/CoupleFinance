@@ -638,6 +638,14 @@ public final class TransactionsDialogs {
                 AppToast.error(activity, "Le nom est requis");
                 return;
             }
+            if (!etCatName.getText().toString().equals(etCatName.getText().toString().trim())) {
+                AppToast.error(activity, "Le nom ne doit pas avoir d'espace en début ou en fin");
+                return;
+            }
+            if (isReservedCategoryName(newName)) {
+                AppToast.error(activity, "\"" + newName + "\" est une catégorie système réservée");
+                return;
+            }
             if (containsIgnoreCase(catNames, newName)) {
                 AppToast.error(activity, "Cette catégorie existe déjà");
                 return;
@@ -674,7 +682,7 @@ public final class TransactionsDialogs {
                             } else {
                                 colCat.addView(newSelector);
                             }
-                            colCat.addView(tvNewCatChip);
+                            // tvNewCatChip est déjà enfant de colCat — on remet juste sa visibilité
                             tvNewCatChip.setVisibility(View.VISIBLE);
 
                             AppToast.success(activity, "Catégorie \"" + newName + "\" créée");
@@ -863,6 +871,14 @@ public final class TransactionsDialogs {
             if (item != null && item.equalsIgnoreCase(value)) return i;
         }
         return 0;
+    }
+
+    private static boolean isReservedCategoryName(String name) {
+        if (name == null) return false;
+        String n = name.trim().toLowerCase(java.util.Locale.FRENCH);
+        return n.equals("virements") || n.equals("virement")
+                || n.equals("crédits") || n.equals("crédit")
+                || n.equals("credits") || n.equals("credit");
     }
 
     private static boolean containsIgnoreCase(List<String> list, String value) {
