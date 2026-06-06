@@ -54,6 +54,9 @@ import com.couplefinance.ui.transactions.TransactionsRepository;
 
 public class DashboardActivity extends Activity {
 
+	/** Extra : ouvre directement le dialog d'ajout rapide (depuis le widget). */
+	public static final String EXTRA_QUICK_ADD = "com.couplefinance.OPEN_QUICK_ADD";
+
 	private FrameLayout container;
 	private LinearLayout sidebar;
 	private TextView tvFirebaseStatus;
@@ -115,6 +118,10 @@ public class DashboardActivity extends Activity {
 		// (La méthode reste utilisée par la notification de début de cycle.)
 		// checkMonthlyBalance();
 		navigateToHome();
+		// Ouverture directe de l'ajout rapide depuis le widget (démarrage à froid)
+		if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_QUICK_ADD, false)) {
+			container.post(this::showQuickAddDialog);
+		}
 		requestNotificationPermission();
 		UserManager.getInstance().registerCurrentUserAsMember();
 		try {
@@ -161,6 +168,9 @@ public class DashboardActivity extends Activity {
 		if (intent != null
 				&& intent.getBooleanExtra(NotificationHelper.EXTRA_OPEN_BALANCE_DIALOG, false)) {
 			showMonthlyBalanceDialog();
+		}
+		if (intent != null && intent.getBooleanExtra(EXTRA_QUICK_ADD, false)) {
+			container.post(this::showQuickAddDialog);
 		}
 	}
 
