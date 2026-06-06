@@ -386,6 +386,11 @@ public final class BankAutoSyncManager {
         StringBuilder map = new StringBuilder();  // parseable: label=montant|||…
         for (java.util.Map.Entry<Integer, Double> e : bestByAccount.entrySet()) {
             String owner = EnableBankingManager.getInstance().getOwnerForIndex(e.getKey());
+            // Si le propriétaire n'est pas configuré, on attribue au compte de l'utilisateur courant
+            if (owner == null || owner.isEmpty()) {
+                String fallback = currentUserName(app);
+                if (!fallback.isEmpty()) owner = fallback;
+            }
             String label = ownerLabel(owner);
             if (label.isEmpty()) label = "Compte " + (e.getKey() + 1);
             if (sb.length() > 0) sb.append("  ·  ");
@@ -438,6 +443,9 @@ public final class BankAutoSyncManager {
                 } catch (Exception ex) { Log.w(TAG, "saveMonthlyStartBalance joint", ex); }
                 continue;
             }
+
+            // Compte sans propriétaire configuré → attribuer à l'utilisateur courant
+            if ((owner == null || owner.isEmpty()) && !me.isEmpty()) owner = me;
 
             if (owner != null && !owner.isEmpty() && !me.isEmpty()) {
                 String oLc = owner.trim().toLowerCase(Locale.FRENCH);
