@@ -395,6 +395,14 @@ public class SettingsCategoriesSection {
         });
     }
 
+    private static final java.util.Set<String> SYSTEM_CATEGORIES;
+    static {
+        SYSTEM_CATEGORIES = new java.util.HashSet<>();
+        SYSTEM_CATEGORIES.add("virements");
+        SYSTEM_CATEGORIES.add("crédits");
+        SYSTEM_CATEGORIES.add("credits");
+    }
+
     private void deleteCategory(SettingsModels.Category category) {
         if (category != null && category.name != null && isSystemCategory(category.name)) {
             AppToast.error(activity, "\"" + category.name + "\" est une catégorie système et ne peut pas être supprimée.");
