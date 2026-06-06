@@ -537,7 +537,7 @@ public class DashboardActivity extends Activity {
 		});
 	}
 
-	private void refreshCurrentView() {
+	void refreshCurrentView() {
 		// Recharge la vue courante pour refléter la nouvelle transaction
 		if (isPhoneMode) {
 			switchPhoneTab(currentPhoneTab);
@@ -760,6 +760,4 @@ public class DashboardActivity extends Activity {
 			currentTransactionsView.onPdfActivityResult(requestCode, resultCode, data);
 	}
 
-	public void refreshCurrentView() {
-	}
 }
