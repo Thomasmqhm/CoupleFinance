@@ -2072,6 +2072,11 @@ public class HomeView {
 			}
 
 			if (person != null && !person.isEmpty()) {
+				// "Moi" est un nom legacy — on le redirige vers le vrai prénom de l'utilisateur
+				if (person.equalsIgnoreCase("Moi") && myName != null && !myName.isEmpty()) {
+					person = myName;
+				}
+
 				String existingKey = null;
 
 				for (String k : personBalances.keySet()) {
