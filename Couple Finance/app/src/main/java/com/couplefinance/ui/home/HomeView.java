@@ -130,6 +130,11 @@ public class HomeView {
 	private double overdraftLimit = 0;
 	private boolean overdraftDefined = false;
 
+	// Snapshot des métriques du cycle — utilisé par shareMonthSummary()
+	private double snapshotIncome   = 0;
+	private double snapshotExpenses = 0;
+	private double snapshotBalance  = 0;
+
 	public HomeView(Activity activity) {
 		this.activity = activity;
 		BalanceManager.getInstance().init(activity);
@@ -454,6 +459,11 @@ public class HomeView {
 				heroLp.height = DS.dp(activity, 240);
 				heroCard.setLayoutParams(heroLp);
 			}
+
+			heroCard.setOnLongClickListener(v -> {
+				shareMonthSummary();
+				return true;
+			});
 		}
 
 		if (dashboardContent != null) {
@@ -1334,6 +1344,33 @@ public class HomeView {
 			nh.notifyNewPartnerTransaction(partnerName, partnerLabel, partnerAmount, maxPartnerTs);
 			nh.markTransactionsAsSeen(maxPartnerTs);
 		}
+	}
+
+	private void shareMonthSummary() {
+		SimpleDateFormat sdf = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH);
+		String month = sdf.format(new Date());
+
+		double sav = snapshotIncome - snapshotExpenses;
+		int score = HomeCalculator.financialScoreDetailed(
+				snapshotIncome, snapshotExpenses, snapshotBalance,
+				overdraftDefined, overdraftLimit, 0);
+
+		String myName = getMyName();
+		String greeting = myName.isEmpty() ? "Foyer" : myName;
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("💑 Bilan de ").append(greeting).append(" — ").append(month).append("\n\n");
+		sb.append("💰 Revenus    : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotIncome)).append("\n");
+		sb.append("💸 Dépenses   : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotExpenses)).append("\n");
+		sb.append("🐷 Épargne    : ").append(String.format(Locale.FRANCE, "%.2f €", sav)).append("\n");
+		sb.append("💳 Solde      : ").append(String.format(Locale.FRANCE, "%.2f €", snapshotBalance)).append("\n");
+		sb.append("❤️ Santé      : ").append(score).append("/100\n");
+		sb.append("\nPartagé depuis CoupleFinance 📱");
+
+		android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+		intent.setType("text/plain");
+		intent.putExtra(android.content.Intent.EXTRA_TEXT, sb.toString());
+		activity.startActivity(android.content.Intent.createChooser(intent, "Partager le bilan"));
 	}
 
 	private void checkWeeklyRecap(List<String[]> transactions) {
@@ -2239,6 +2276,11 @@ public class HomeView {
 		activity.runOnUiThread(() -> {
 			if (!isActive)
 				return;
+
+			// Snapshot pour le partage
+			snapshotIncome   = inc;
+			snapshotExpenses = exp;
+			snapshotBalance  = realBalance;
 
 			renderCalendar();
 
