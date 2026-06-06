@@ -979,9 +979,10 @@ public final class BankConnectionView {
 
         // Créer une nouvelle catégorie
         View createRow = choiceRow(a, "➕  Créer une catégorie", "Saisir un nouveau nom");
+        final List<String> sharedCats = categories != null ? categories : new ArrayList<>();
         createRow.setOnClickListener(v -> {
             dismiss(h);
-            showCreateCategoryDialog(a, pt, onPicked);
+            showCreateCategoryDialog(a, pt, sharedCats, onPicked);
         });
         box.addView(createRow);
 
@@ -1007,23 +1008,47 @@ public final class BankConnectionView {
                 .primaryBtn("ANNULER", () -> dismiss(h)).show();
     }
 
-    private static void showCreateCategoryDialog(Activity a, ParsedTransaction pt, Runnable onPicked) {
+    private static void showCreateCategoryDialog(Activity a, ParsedTransaction pt,
+                                                   List<String> sharedCategories, Runnable onPicked) {
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.VERTICAL);
-        EditText input = editText(a, "Nom de la catégorie", false);
-        box.addView(input);
+
+        EditText etName = editText(a, "Nom de la catégorie", false);
+        box.addView(etName);
+
+        EditText etEmoji = editText(a, "Emoji (optionnel)", false);
+        LinearLayout.LayoutParams eLp = new LinearLayout.LayoutParams(-1, -2);
+        eLp.topMargin = DS.dp(a, DS.GAP_SM);
+        box.addView(etEmoji, eLp);
 
         final AlertDialog[] h = {null};
         h[0] = new AppDialog.Builder(a).icon("➕")
-                .title("Nouvelle catégorie").subtitle("Elle sera créée à l'import")
+                .title("Nouvelle catégorie").subtitle("Sera enregistrée et disponible partout")
                 .content(box)
-                .primaryBtn("VALIDER", () -> {
-                    String name = input.getText().toString().trim();
-                    if (name.isEmpty()) { AppToast.error(a, "Nom vide"); return; }
-                    pt.category = name;
+                .primaryBtn("CRÉER", () -> {
+                    String name = etName.getText().toString().trim();
+                    if (name.isEmpty()) { AppToast.error(a, "Nom requis"); return; }
+                    String emoji = etEmoji.getText().toString().trim();
+                    if (emoji.isEmpty()) emoji = "🏷️";
                     dismiss(h);
+                    final String finalEmoji = emoji;
+                    // Ajouter immédiatement dans la liste partagée pour les autres lignes
+                    boolean alreadyThere = false;
+                    for (String s : sharedCategories) { if (s.equalsIgnoreCase(name)) { alreadyThere = true; break; } }
+                    if (!alreadyThere) sharedCategories.add(name);
+                    pt.category = name;
                     if (onPicked != null) onPicked.run();
-                    AppToast.success(a, "Catégorie : " + name);
+                    // Sauvegarder dans Firestore en arrière-plan
+                    com.couplefinance.data.CategoryManager.getInstance().addCategory(
+                            name, finalEmoji,
+                            new com.couplefinance.data.FirestoreManager.Callback() {
+                                @Override public void onSuccess(String r) {
+                                    AppToast.success(a, "Catégorie \"" + name + "\" créée ✓");
+                                }
+                                @Override public void onError(String e) {
+                                    AppToast.error(a, "Sauvegarde échouée : " + e);
+                                }
+                            });
                 }).show();
     }
 
@@ -1425,21 +1450,25 @@ public final class BankConnectionView {
     }
 
     private static List<String> parseCategoryNames(String response) {
+        // Les catégories système sont toujours présentes en premier
         List<String> names = new ArrayList<>();
+        names.add("Virements");
+        names.add("Crédits");
         try {
             org.json.JSONObject root = new org.json.JSONObject(response);
             org.json.JSONArray docs  = root.optJSONArray("documents");
-            if (docs==null) return names;
-            for (int i=0;i<docs.length();i++) {
-                org.json.JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
-                if (fields==null) continue;
-                org.json.JSONObject no = fields.optJSONObject("name");
-                if (no==null) continue;
-                String name = no.optString("stringValue","").trim();
-                String clean = name.replace("|expense","").replace("|income","").trim();
-                boolean dup = false;
-                for (String n : names) { if (n.equalsIgnoreCase(clean)) { dup = true; break; } }
-                if (!clean.isEmpty() && !dup) names.add(clean);
+            if (docs != null) {
+                for (int i = 0; i < docs.length(); i++) {
+                    org.json.JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
+                    if (fields == null) continue;
+                    org.json.JSONObject no = fields.optJSONObject("name");
+                    if (no == null) continue;
+                    String name = no.optString("stringValue", "").trim();
+                    String clean = name.replace("|expense", "").replace("|income", "").trim();
+                    boolean dup = false;
+                    for (String n : names) { if (n.equalsIgnoreCase(clean)) { dup = true; break; } }
+                    if (!clean.isEmpty() && !dup) names.add(clean);
+                }
             }
         } catch (Exception ignored) {}
         return names;
