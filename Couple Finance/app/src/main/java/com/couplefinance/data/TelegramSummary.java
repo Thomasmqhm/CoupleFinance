@@ -131,6 +131,28 @@ public final class TelegramSummary {
                 public void onSuccess(String json) {
                     List<EpargneModels.SavingsGoal> goals = EpargneParser.parseSavings(json);
                     appendSavings(sb, goals);
+                    stepCredits(activity, sb, cb);
+                }
+
+                @Override
+                public void onError(String error) {
+                    stepCredits(activity, sb, cb);
+                }
+            });
+        } catch (Exception e) {
+            stepCredits(activity, sb, cb);
+        }
+    }
+
+    // 4bis) Crédits → mensualités et capital restant
+    private static void stepCredits(final Activity activity, final StringBuilder sb, final Callback cb) {
+        try {
+            CreditManager.getInstance().init(activity);
+            CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
+                @Override
+                public void onSuccess(String json) {
+                    appendCredits(sb,
+                            com.couplefinance.ui.credits.CreditsParser.parseCredits(json));
                     stepAgenda(activity, sb, cb);
                 }
 
@@ -296,6 +318,37 @@ public final class TelegramSummary {
                 int months = EpargneCalculator.monthsLeft(g);
                 sb.append(" — ").append(months).append(months > 1 ? " mois" : " mois");
             }
+            sb.append("\n");
+        }
+    }
+
+    private static void appendCredits(StringBuilder sb,
+            List<com.couplefinance.ui.credits.CreditsModels.Credit> credits) {
+        if (credits == null || credits.isEmpty()) return;
+
+        double totalMonthly = com.couplefinance.ui.credits.CreditsCalculator.totalMonthly(credits);
+        double totalRemaining = com.couplefinance.ui.credits.CreditsCalculator.totalRemaining(credits);
+
+        sb.append("\n<b>🏦 Crédits</b>\n");
+        sb.append("• Mensualités : ").append(money(totalMonthly)).append("/mois\n");
+        sb.append("• Capital restant dû : ").append(money(totalRemaining)).append("\n");
+
+        // Détail des crédits actifs (capital restant > 0), triés par mensualité décroissante
+        List<com.couplefinance.ui.credits.CreditsModels.Credit> active = new ArrayList<>();
+        for (com.couplefinance.ui.credits.CreditsModels.Credit c : credits) {
+            if (c != null
+                    && com.couplefinance.ui.credits.CreditsCalculator.computeRemaining(c) > 0.01) {
+                active.add(c);
+            }
+        }
+        Collections.sort(active, (a, b) -> Double.compare(b.monthlyPayment, a.monthlyPayment));
+        int n = Math.min(4, active.size());
+        for (int i = 0; i < n; i++) {
+            com.couplefinance.ui.credits.CreditsModels.Credit c = active.get(i);
+            int months = com.couplefinance.ui.credits.CreditsCalculator.monthsLeft(c);
+            sb.append("• ").append(esc(c.name))
+              .append(" : ").append(money(c.monthlyPayment)).append("/mois");
+            if (months > 0) sb.append(" — ").append(months).append(months > 1 ? " mois restants" : " mois restant");
             sb.append("\n");
         }
     }
