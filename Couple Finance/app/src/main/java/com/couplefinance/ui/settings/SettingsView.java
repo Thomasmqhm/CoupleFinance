@@ -517,12 +517,6 @@ public class SettingsView {
 				"Grosse dépense, solde bas — seuils personnalisables",
 				v -> showSmartAlertsDialog()));
 
-		card.addView(divider());
-
-		card.addView(row("💡", "Alertes intelligentes",
-				"Grosse dépense, solde bas — seuils personnalisables",
-				v -> showSmartAlertsDialog()));
-
 		LinearLayout card2 = sectionCard("NOTIFICATIONS LOCALES");
 
 		card2.addView(row("🔔", "Rappels et alertes",

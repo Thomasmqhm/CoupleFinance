@@ -343,10 +343,10 @@ public final class TelegramSummary {
         // Détail depuis SettingsCache
         try {
             SettingsModels.State state = SettingsCache.get();
-            if (state != null && state.fixedCharges != null && !state.fixedCharges.isEmpty()) {
+            if (state != null && state.charges != null && !state.charges.isEmpty()) {
                 int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
                 List<SettingsModels.FixedCharge> upcoming = new ArrayList<>();
-                for (SettingsModels.FixedCharge fc : state.fixedCharges) {
+                for (SettingsModels.FixedCharge fc : state.charges) {
                     if (fc == null) continue;
                     if (fc.dayOfMonth > today) upcoming.add(fc);
                 }
@@ -463,37 +463,6 @@ public final class TelegramSummary {
             sb.append("\n");
         }
         sb.append(sep());
-    }
-
-    private static void appendCredits(StringBuilder sb,
-            List<com.couplefinance.ui.credits.CreditsModels.Credit> credits) {
-        if (credits == null || credits.isEmpty()) return;
-
-        double totalMonthly = com.couplefinance.ui.credits.CreditsCalculator.totalMonthly(credits);
-        double totalRemaining = com.couplefinance.ui.credits.CreditsCalculator.totalRemaining(credits);
-
-        sb.append("\n<b>🏦 Crédits</b>\n");
-        sb.append("• Mensualités : ").append(money(totalMonthly)).append("/mois\n");
-        sb.append("• Capital restant dû : ").append(money(totalRemaining)).append("\n");
-
-        // Détail des crédits actifs (capital restant > 0), triés par mensualité décroissante
-        List<com.couplefinance.ui.credits.CreditsModels.Credit> active = new ArrayList<>();
-        for (com.couplefinance.ui.credits.CreditsModels.Credit c : credits) {
-            if (c != null
-                    && com.couplefinance.ui.credits.CreditsCalculator.computeRemaining(c) > 0.01) {
-                active.add(c);
-            }
-        }
-        Collections.sort(active, (a, b) -> Double.compare(b.monthlyPayment, a.monthlyPayment));
-        int n = Math.min(4, active.size());
-        for (int i = 0; i < n; i++) {
-            com.couplefinance.ui.credits.CreditsModels.Credit c = active.get(i);
-            int months = com.couplefinance.ui.credits.CreditsCalculator.monthsLeft(c);
-            sb.append("• ").append(esc(c.name))
-              .append(" : ").append(money(c.monthlyPayment)).append("/mois");
-            if (months > 0) sb.append(" — ").append(months).append(months > 1 ? " mois restants" : " mois restant");
-            sb.append("\n");
-        }
     }
 
     private static void appendRecent(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
