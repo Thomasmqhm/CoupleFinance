@@ -3078,7 +3078,15 @@ HomeMemberCard.Data jointData = jointEnabled
 			for (HomeMemberCard.Data d : memberDataList) {
 				if (d == null || d.name == null) continue;
 				double live = liveBalanceFor(d.name);
-				if (!Double.isNaN(live)) d.liveBalance = live;
+				if (!Double.isNaN(live)) {
+					// Le solde live (banque) est prioritaire sur le solde calculé.
+					// On l'applique directement à currentBalance/forecastBalance car
+					// buildMemberDataList() écrase currentBalance APRÈS compute() — il
+					// faut donc le réappliquer ici, après coup.
+					d.liveBalance = live;
+					d.currentBalance = live;
+					d.forecastBalance = live - Math.max(0, d.upcomingExpenses);
+				}
 				// Avatar animal de l'utilisateur courant (depuis la session)
 				if (myName != null && d.name.equalsIgnoreCase(myName)) {
 					try {
@@ -3097,6 +3105,8 @@ HomeMemberCard.Data jointData = jointEnabled
     double live = liveBalanceFor(jointName);
     if (!Double.isNaN(live)) {
         jointData.liveBalance = live;
+        jointData.currentBalance = live;
+        jointData.forecastBalance = live - Math.max(0, jointData.upcomingExpenses);
     }
 }
 
