@@ -49,6 +49,8 @@ import com.couplefinance.data.TelegramScheduler;
 import com.couplefinance.utils.NotificationHelper;
 import com.couplefinance.utils.NotificationScheduler;
 import com.couplefinance.ui.analyse.AnalyseView;
+import com.couplefinance.ui.transactions.TransactionsDialogs;
+import com.couplefinance.ui.transactions.TransactionsRepository;
 
 public class DashboardActivity extends Activity {
 
@@ -167,6 +169,7 @@ public class DashboardActivity extends Activity {
 		sidebar = findViewById(R.id.sidebar);
 		tvFirebaseStatus = findViewById(R.id.tvFirebaseStatus);
 		sidebarScrim = findViewById(R.id.sidebarScrim);
+		setupFab();
 		btnHome = findViewById(R.id.btnHome);
 		btnAgenda = findViewById(R.id.btnAgenda);
 		btnTransactions = findViewById(R.id.btnTransactions);
@@ -495,6 +498,52 @@ public class DashboardActivity extends Activity {
 
 	public void refreshSidebarUser() {
 		updateSidebarUser();
+	}
+
+	// ── FAB ajout rapide ─────────────────────────────────────────────────────
+
+	private void setupFab() {
+		TextView fab = findViewById(R.id.fabQuickAdd);
+		if (fab == null) return;
+
+		// Style dynamique (couleur du thème)
+		android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+		bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+		bg.setColor(com.couplefinance.core.theme.ThemeColors.primary());
+		bg.setCornerRadius(999);
+		fab.setBackground(bg);
+
+		com.couplefinance.core.ui.animations.PressAnimations.apply(fab);
+		fab.setOnClickListener(v -> showQuickAddDialog());
+	}
+
+	private void showQuickAddDialog() {
+		TransactionsRepository.loadAll(this, new TransactionsRepository.OnDataLoaded() {
+			@Override
+			public void onLoaded(java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> transactions,
+								 java.util.List<String> members,
+								 java.util.List<String[]> categories) {
+				runOnUiThread(() -> TransactionsDialogs.showAddDialog(
+						DashboardActivity.this, members, categories,
+						() -> refreshCurrentView()));
+			}
+
+			@Override
+			public void onError(String error) {
+				runOnUiThread(() -> TransactionsDialogs.showAddDialog(
+						DashboardActivity.this, null, null,
+						() -> refreshCurrentView()));
+			}
+		});
+	}
+
+	private void refreshCurrentView() {
+		// Recharge la vue courante pour refléter la nouvelle transaction
+		if (isPhoneMode) {
+			switchPhoneTab(currentPhoneTab);
+		} else {
+			navigateToHome();
+		}
 	}
 
 	private void updateSidebarUser() {
