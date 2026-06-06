@@ -78,6 +78,70 @@ public class CategoryManager {
 		});
 	}
 
+	/**
+	 * Garantit que les catégories système "Virements" et "Crédits" existent dans Firestore.
+	 * Vérifie d'abord la liste existante et ne crée que celles qui manquent.
+	 * À appeler une fois au démarrage (DashboardActivity.onCreate).
+	 */
+	public void seedSystemCategories() {
+		executor.execute(() -> {
+			try {
+				String token = AuthManager.getInstance().getToken();
+				HttpURLConnection conn = open(
+						FirebaseConfig.BASE_URL + getCategoriesPath() + "?key=" + FirebaseConfig.API_KEY,
+						"GET", token, false);
+				String response = conn.getResponseCode() == 200
+						? safeRead(conn.getInputStream()) : "{\"documents\":[]}";
+				conn.disconnect();
+
+				// Collecter les noms existants
+				java.util.Set<String> existing = new java.util.HashSet<>();
+				try {
+					org.json.JSONObject root = new org.json.JSONObject(response);
+					org.json.JSONArray docs = root.optJSONArray("documents");
+					if (docs != null) {
+						for (int i = 0; i < docs.length(); i++) {
+							org.json.JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
+							if (fields == null) continue;
+							org.json.JSONObject no = fields.optJSONObject("name");
+							if (no == null) continue;
+							existing.add(no.optString("stringValue", "").trim().toLowerCase(java.util.Locale.FRENCH));
+						}
+					}
+				} catch (Exception ignored) {}
+
+				// Créer celles qui manquent
+				String[][] seeds = {{"Virements", "🔄", "expense"}, {"Crédits", "🏦", "expense"}};
+				for (String[] seed : seeds) {
+					String key = seed[0].toLowerCase(java.util.Locale.FRENCH);
+					if (!existing.contains(key)) {
+						createSystemCategory(seed[0], seed[1], seed[2], token);
+					}
+				}
+			} catch (Exception ignored) {}
+		});
+	}
+
+	private void createSystemCategory(String name, String emoji, String type, String token) {
+		HttpURLConnection conn = null;
+		try {
+			conn = open(FirebaseConfig.BASE_URL + getCategoriesPath() + "?key=" + FirebaseConfig.API_KEY,
+					"POST", token, true);
+			String body = "{\"fields\":{"
+					+ "\"name\":{\"stringValue\":\"" + safeJson(name) + "\"},"
+					+ "\"type\":{\"stringValue\":\"" + safeJson(type) + "\"},"
+					+ "\"emoji\":{\"stringValue\":\"" + safeJson(emoji) + "\"}"
+					+ "}}";
+			try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+				dos.write(body.getBytes("UTF-8"));
+			}
+			conn.getResponseCode();
+		} catch (Exception ignored) {
+		} finally {
+			if (conn != null) conn.disconnect();
+		}
+	}
+
 	public void getCategories(FirestoreManager.Callback cb) {
 		executor.execute(() -> {
 			HttpURLConnection conn = null;
