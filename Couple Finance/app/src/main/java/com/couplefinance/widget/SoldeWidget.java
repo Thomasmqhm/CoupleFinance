@@ -11,6 +11,7 @@ import android.os.Build;
 import android.widget.RemoteViews;
 
 import com.couplefinance.R;
+import com.couplefinance.data.BankAutoSyncManager;
 import com.couplefinance.ui.DashboardActivity;
 
 /**
@@ -105,14 +106,43 @@ public class SoldeWidget extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_title, "CoupleFinance");
         views.setTextViewText(R.id.widget_subtitle, "Solde du foyer");
 
-        // Clic sur le widget → ouvre le dashboard
-        Intent openIntent = new Intent(ctx, DashboardActivity.class);
-        openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        // ── Solde live du compte joint (source : synchro bancaire, autonome) ──
+        // Lu directement depuis les préférences de BankAutoSyncManager, mises à
+        // jour même quand l'app est fermée. Le widget reste donc « connecté ».
+        double joint = Double.NaN;
+        try {
+            joint = BankAutoSyncManager.getLiveBalanceFor(ctx, "Compte joint");
+        } catch (Exception ignored) {
+        }
+        if (!Double.isNaN(joint)) {
+            String jointDisplay = (joint >= 0 ? "" : "−") + formatMoney(joint);
+            views.setTextViewText(R.id.widget_joint, "Compte joint : " + jointDisplay);
+            views.setViewVisibility(R.id.widget_joint, android.view.View.VISIBLE);
+        } else {
+            views.setViewVisibility(R.id.widget_joint, android.view.View.GONE);
+        }
+
+        // ── Horodatage de la dernière synchro bancaire ──
+        try {
+            long lastSync = BankAutoSyncManager.getLastSync(ctx);
+            if (lastSync > 0) {
+                String when = new java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.FRANCE)
+                        .format(new java.util.Date(lastSync));
+                views.setTextViewText(R.id.widget_updated, "Sync " + when);
+            } else {
+                views.setTextViewText(R.id.widget_updated, "");
+            }
+        } catch (Exception ignored) {
+            views.setTextViewText(R.id.widget_updated, "");
+        }
 
         int flags = Build.VERSION.SDK_INT >= 23
                 ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                 : PendingIntent.FLAG_UPDATE_CURRENT;
 
+        // Clic sur le widget → ouvre le dashboard
+        Intent openIntent = new Intent(ctx, DashboardActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openPi = PendingIntent.getActivity(ctx, 0, openIntent, flags);
         views.setOnClickPendingIntent(R.id.widget_root, openPi);
 
@@ -122,7 +152,26 @@ public class SoldeWidget extends AppWidgetProvider {
         PendingIntent refreshPi = PendingIntent.getBroadcast(ctx, 1, refreshIntent, flags);
         views.setOnClickPendingIntent(R.id.widget_refresh, refreshPi);
 
+        // Clic sur "＋ Ajouter" → ouvre directement l'ajout rapide de transaction
+        Intent addIntent = new Intent(ctx, DashboardActivity.class);
+        addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        addIntent.putExtra(DashboardActivity.EXTRA_QUICK_ADD, true);
+        PendingIntent addPi = PendingIntent.getActivity(ctx, 2, addIntent, flags);
+        views.setOnClickPendingIntent(R.id.widget_add, addPi);
+
         manager.updateAppWidget(widgetId, views);
+    }
+
+    /**
+     * Demande une mise à jour de tous les widgets installés. À appeler depuis la
+     * synchro bancaire (BankAutoSyncManager) pour que le widget reflète les
+     * nouveaux soldes même app fermée.
+     */
+    public static void requestRefresh(Context ctx) {
+        if (ctx == null) return;
+        Intent intent = new Intent(ctx, SoldeWidget.class);
+        intent.setAction("com.couplefinance.UPDATE_WIDGET");
+        ctx.sendBroadcast(intent);
     }
 
     // ─────────────────────────────────────────────────────────────
