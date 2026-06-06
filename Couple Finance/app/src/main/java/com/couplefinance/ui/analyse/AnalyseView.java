@@ -251,6 +251,7 @@ public class AnalyseView {
         buildCategoryBreakdown(calc);
         buildForecast(calc);
         buildTopMerchants(calc);
+        buildAdvancedStats(calc);
         buildDayOfWeekHeatmap(calc);
         buildInsights(txs);
 
@@ -734,6 +735,61 @@ public class AnalyseView {
     // ─────────────────────────────────────────────────────────────────────────
     // Insights automatiques
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Statistiques avancées du cycle
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void buildAdvancedStats(AnalyseCalculator calc) {
+        double daily    = calc.getDailyAverageExpenses();
+        int    count    = calc.getExpenseCount();
+        String bigLabel = calc.getLargestExpenseLabel();
+        double bigAmt   = calc.getLargestExpenseAmount();
+
+        if (daily <= 0 && count == 0) return;
+
+        LinearLayout card = makeCard();
+        card.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
+        titleLp.bottomMargin = DS.dp(activity, 12);
+        card.addView(sectionTitle("📈 Statistiques avancées"), titleLp);
+
+        card.addView(statRow("Dépense journalière moy.",
+                String.format(Locale.FRANCE, "%.2f €/jour", daily)));
+        card.addView(statRow("Nombre de dépenses",
+                count + " opération" + (count > 1 ? "s" : "")));
+        if (bigAmt > 0.01 && !bigLabel.isEmpty()) {
+            card.addView(statRow("Plus grosse dépense",
+                    bigLabel + " · " + String.format(Locale.FRANCE, "%.2f €", bigAmt)));
+        }
+
+        addCard(card);
+    }
+
+    private LinearLayout statRow(String label, String value) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1, -2);
+        rlp.bottomMargin = DS.dp(activity, 8);
+        row.setLayoutParams(rlp);
+
+        TextView tvLabel = new TextView(activity);
+        tvLabel.setText(label);
+        tvLabel.setTextSize(DS.TEXT_SM);
+        tvLabel.setTextColor(ThemeColors.subtext());
+        row.addView(tvLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView tvVal = new TextView(activity);
+        tvVal.setText(value);
+        tvVal.setTextSize(DS.TEXT_SM);
+        tvVal.setTypeface(null, Typeface.BOLD);
+        tvVal.setTextColor(ThemeColors.text());
+        tvVal.setGravity(Gravity.END);
+        row.addView(tvVal, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        return row;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Heatmap dépenses par jour de semaine
