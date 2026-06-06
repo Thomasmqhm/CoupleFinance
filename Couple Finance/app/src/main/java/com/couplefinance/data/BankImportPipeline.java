@@ -2,7 +2,9 @@ package com.couplefinance.data;
 
 import android.content.Context;
 
+import com.couplefinance.core.ui.Fmt;
 import com.couplefinance.ocr.OcrMerchantRules;
+import com.couplefinance.ui.credits.CreditsModels;
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.utils.ParsedTransaction;
 import com.couplefinance.utils.PdfTransactionParser;
@@ -140,6 +142,48 @@ public final class BankImportPipeline {
             }
 
             importKeys.add(key);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Crédits gérés — évite les doublons à l'import
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Décoche automatiquement les transactions bancaires qui correspondent
+     * à un crédit déjà géré dans CoupleFinance.
+     * Correspondance : montant identique (±0.50 €) ET jour du mois proche (±3 jours).
+     */
+    public static void markCreditDuplicates(
+            List<ParsedTransaction> parsed,
+            List<CreditsModels.Credit> credits) {
+
+        if (parsed == null || credits == null || credits.isEmpty()) return;
+
+        for (ParsedTransaction pt : parsed) {
+            if (pt == null || pt.duplicate || !"expense".equals(pt.type)) continue;
+
+            double absAmt = Math.abs(pt.amount);
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(pt.dateMs);
+            int txDay = cal.get(Calendar.DAY_OF_MONTH);
+
+            for (CreditsModels.Credit credit : credits) {
+                if (Math.abs(Math.abs(credit.monthlyPayment) - absAmt) < 0.51) {
+                    int delta = Math.abs(txDay - credit.paymentDay);
+                    delta = Math.min(delta, 28 - delta); // handle month-end wrap
+                    if (delta <= 3) {
+                        pt.duplicate = true;
+                        pt.selected = false;
+                        pt.duplicateReason = "Correspond au crédit \""
+                                + credit.name + "\" ("
+                                + Fmt.money(credit.monthlyPayment)
+                                + "/mois) déjà géré dans CoupleFinance";
+                        pt.duplicateWarning = "Crédit géré";
+                        break;
+                    }
+                }
+            }
         }
     }
 

@@ -517,6 +517,12 @@ public class SettingsView {
 				"Grosse dépense, solde bas — seuils personnalisables",
 				v -> showSmartAlertsDialog()));
 
+		card.addView(divider());
+
+		card.addView(row("💡", "Alertes intelligentes",
+				"Grosse dépense, solde bas — seuils personnalisables",
+				v -> showSmartAlertsDialog()));
+
 		LinearLayout card2 = sectionCard("NOTIFICATIONS LOCALES");
 
 		card2.addView(row("🔔", "Rappels et alertes",
@@ -1001,13 +1007,12 @@ public class SettingsView {
 		box.addView(tgSectionLabel("⏰ Fréquence d'envoi automatique"), tgTop(20));
 
 		final String[] selFreq = { TelegramScheduler.getDigestFrequency(activity) };
-		final String[] freqCodes   = { TelegramScheduler.OFF, TelegramScheduler.DAILY,
-				TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
-		final String[] freqLabels  = { "Désactivé", "Quotidien", "Hebdo", "Mensuel" };
-		final TextView[] freqChips = new TextView[freqCodes.length];
-		final Runnable restyleFreq = () -> {
-			for (int i = 0; i < freqCodes.length; i++) {
-				boolean on = freqCodes[i].equals(selFreq[0]);
+		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.DAILY, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
+		final String[] labels = { "Off", "Quotidien", "Hebdo", "Mensuel" };
+		final TextView[] chips = new TextView[codes.length];
+		final Runnable restyle = () -> {
+			for (int i = 0; i < codes.length; i++) {
+				boolean on = codes[i].equals(selFreq[0]);
 				GradientDrawable bg = new GradientDrawable();
 				bg.setColor(on ? ThemeColors.primary() : ThemeColors.surfaceSoft());
 				bg.setCornerRadius(DS.dp(activity, 10));
@@ -1017,7 +1022,7 @@ public class SettingsView {
 		};
 		LinearLayout freqRow = new LinearLayout(activity);
 		freqRow.setOrientation(LinearLayout.HORIZONTAL);
-		for (int i = 0; i < freqCodes.length; i++) {
+		for (int i = 0; i < codes.length; i++) {
 			final int idx = i;
 			TextView chip = new TextView(activity);
 			chip.setText(freqLabels[i]);

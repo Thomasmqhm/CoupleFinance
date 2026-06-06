@@ -619,9 +619,15 @@ public class AbonnementsView {
         arLp.topMargin = DS.dp(activity, 8);
         actRow.setLayoutParams(arLp);
 
+        TextView btnLabel = miniAction("Libellé", ThemeColors.primary());
+        btnLabel.setOnClickListener(v -> showEditLabelDialog(charge));
+        actRow.addView(btnLabel);
+
         TextView btnAmt = miniAction("Montant", ThemeColors.primary());
+        LinearLayout.LayoutParams amtLp = new LinearLayout.LayoutParams(-2, -2);
+        amtLp.leftMargin = DS.dp(activity, 12);
         btnAmt.setOnClickListener(v -> showEditAmountDialog(charge));
-        actRow.addView(btnAmt);
+        actRow.addView(btnAmt, amtLp);
 
         TextView btnPayer = miniAction("Payeur", ThemeColors.primary());
         LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(-2, -2);
@@ -812,6 +818,55 @@ public class AbonnementsView {
                 activity.runOnUiThread(() -> AppToast.error(activity, "Sauvegarde impossible"));
             }
         });
+    }
+
+    private void showEditLabelDialog(SettingsModels.FixedCharge charge) {
+        // Find other charges with same label to warn the user
+        List<SettingsModels.FixedCharge> sameLabel = new ArrayList<>();
+        for (SettingsModels.FixedCharge c : charges) {
+            if (c != charge && c.name != null && c.name.equalsIgnoreCase(charge.name)) {
+                sameLabel.add(c);
+            }
+        }
+
+        android.widget.EditText input = new android.widget.EditText(activity);
+        input.setText(charge.name);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+
+        LinearLayout wrap = new LinearLayout(activity);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        int p = DS.dp(activity, 20);
+        wrap.setPadding(p, DS.dp(activity, 8), p, 0);
+
+        if (!sameLabel.isEmpty()) {
+            // Multiple charges with same label — clarify which one we're editing
+            TextView warn = new TextView(activity);
+            warn.setText("⚠️  " + sameLabel.size() + " autre(s) charge(s) portent ce libellé.\n"
+                    + "Vous modifiez celle-ci : "
+                    + Fmt.money(charge.amount) + " · le " + charge.dayOfMonth + " du mois.");
+            warn.setTextColor(0xFFF59E0B);
+            warn.setTextSize(DS.TEXT_SM);
+            warn.setLineSpacing(DS.dp(activity, 3), 1f);
+            LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(-1, -2);
+            wlp.bottomMargin = DS.dp(activity, 12);
+            wrap.addView(warn, wlp);
+        }
+
+        wrap.addView(input);
+
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Renommer la charge")
+                .setView(wrap)
+                .setPositiveButton("Enregistrer", (d, w) -> {
+                    String newName = input.getText().toString().trim();
+                    if (newName.isEmpty()) return;
+                    charge.name = newName;
+                    saveAndRefresh(charge, "Libellé mis à jour ✓");
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
     }
 
     private void showEditAmountDialog(SettingsModels.FixedCharge charge) {

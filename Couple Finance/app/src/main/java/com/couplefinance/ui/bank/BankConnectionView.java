@@ -26,7 +26,10 @@ import com.couplefinance.core.ui.DS;
 import com.couplefinance.core.ui.UiFactory;
 import com.couplefinance.data.BankImportPipeline;
 import com.couplefinance.data.CategoryManager;
+import com.couplefinance.data.CreditManager;
 import com.couplefinance.data.CycleManager;
+import com.couplefinance.ui.credits.CreditsModels;
+import com.couplefinance.ui.credits.CreditsParser;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.EnableBankingManager;
 import com.couplefinance.data.JointAccountManager;
@@ -559,7 +562,17 @@ public final class BankConnectionView {
                 List<String> cats = parseCategoryNames(response);
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, cats);
                 BankImportPipeline.detectDuplicates(parsed, existing);
-                showPreview(a, parsed, existing, cats);
+                // Cross-check against managed credits to auto-uncheck matching transactions
+                CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
+                    @Override public void onSuccess(String creditsJson) {
+                        List<CreditsModels.Credit> credits = CreditsParser.parseCredits(creditsJson);
+                        BankImportPipeline.markCreditDuplicates(parsed, credits);
+                        showPreview(a, parsed, existing, cats);
+                    }
+                    @Override public void onError(String e) {
+                        showPreview(a, parsed, existing, cats);
+                    }
+                });
             }
             @Override public void onError(String error) {
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, null);
@@ -1466,18 +1479,17 @@ public final class BankConnectionView {
         try {
             org.json.JSONObject root = new org.json.JSONObject(response);
             org.json.JSONArray docs  = root.optJSONArray("documents");
-            if (docs != null) {
-                for (int i = 0; i < docs.length(); i++) {
-                    org.json.JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
-                    if (fields == null) continue;
-                    org.json.JSONObject no = fields.optJSONObject("name");
-                    if (no == null) continue;
-                    String name = no.optString("stringValue", "").trim();
-                    String clean = name.replace("|expense", "").replace("|income", "").trim();
-                    boolean dup = false;
-                    for (String n : names) { if (n.equalsIgnoreCase(clean)) { dup = true; break; } }
-                    if (!clean.isEmpty() && !dup) names.add(clean);
-                }
+            if (docs==null) return names;
+            for (int i=0;i<docs.length();i++) {
+                org.json.JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
+                if (fields==null) continue;
+                org.json.JSONObject no = fields.optJSONObject("name");
+                if (no==null) continue;
+                String name = no.optString("stringValue","").trim();
+                String clean = name.replace("|expense","").replace("|income","").trim();
+                boolean dup = false;
+                for (String n : names) { if (n.equalsIgnoreCase(clean)) { dup = true; break; } }
+                if (!clean.isEmpty() && !dup) names.add(clean);
             }
         } catch (Exception ignored) {}
         return names;

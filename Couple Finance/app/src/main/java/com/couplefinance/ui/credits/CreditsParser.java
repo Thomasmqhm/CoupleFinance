@@ -120,7 +120,8 @@ public final class CreditsParser {
 			if (ns < 0)
 				continue;
 
-			int s = before.indexOf("\"", ns + marker.length()) + 1;
+			// marker already ends with the opening quote — value starts right after
+			int s = ns + marker.length();
 			int e = before.indexOf("\"", s);
 
 			if (e > s) {
