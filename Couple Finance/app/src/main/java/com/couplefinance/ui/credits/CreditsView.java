@@ -147,16 +147,16 @@ public class CreditsView extends BaseView {
 	}
 
 	private void loadCreditTransactions() {
-		com.couplefinance.data.TransactionsRepository.loadAll(
+		com.couplefinance.ui.transactions.TransactionsRepository.loadAll(
 				activity,
-				new com.couplefinance.data.TransactionsRepository.OnDataLoaded() {
+				new com.couplefinance.ui.transactions.TransactionsRepository.OnDataLoaded() {
 					@Override
-					public void onLoaded(java.util.List<com.couplefinance.data.TransactionsModels.Transaction> txs,
+					public void onLoaded(java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> txs,
 							java.util.List<String> members,
 							java.util.List<String[]> cats) {
-						java.util.List<com.couplefinance.data.TransactionsModels.Transaction> credits = new java.util.ArrayList<>();
+						java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> credits = new java.util.ArrayList<>();
 						if (txs != null) {
-							for (com.couplefinance.data.TransactionsModels.Transaction tx : txs) {
+							for (com.couplefinance.ui.transactions.TransactionsModels.Transaction tx : txs) {
 								if (tx != null && "Crédits".equalsIgnoreCase(
 										tx.category == null ? "" : tx.category.trim())) {
 									credits.add(tx);
@@ -171,7 +171,7 @@ public class CreditsView extends BaseView {
 				});
 	}
 
-	private void renderCreditTransactions(java.util.List<com.couplefinance.data.TransactionsModels.Transaction> txs) {
+	private void renderCreditTransactions(java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> txs) {
 		if (txCreditList == null) return;
 		txCreditList.removeAllViews();
 
@@ -183,7 +183,7 @@ public class CreditsView extends BaseView {
 		}
 
 		java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.FRANCE);
-		for (com.couplefinance.data.TransactionsModels.Transaction tx : txs) {
+		for (com.couplefinance.ui.transactions.TransactionsModels.Transaction tx : txs) {
 			LinearLayout row = UiFactory.horizontal(activity);
 			row.setPadding(dp(DS.PAD_INPUT), dp(DS.GAP_SM), dp(DS.PAD_INPUT), dp(DS.GAP_SM));
 			row.setBackground(UiFactory.card(activity).getBackground());
@@ -210,7 +210,7 @@ public class CreditsView extends BaseView {
 					com.couplefinance.core.ui.Fmt.money(Math.abs(tx.amount)));
 			tvAmount.setTextSize(DS.TEXT_SM);
 			tvAmount.setTypeface(null, Typeface.BOLD);
-			tvAmount.setTextColor(ThemeColors.error());
+			tvAmount.setTextColor(ThemeColors.expense());
 
 			row.addView(tvAmount, new LinearLayout.LayoutParams(-2, -2));
 			txCreditList.addView(row);
