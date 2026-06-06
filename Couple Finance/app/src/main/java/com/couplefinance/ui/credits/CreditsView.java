@@ -213,6 +213,15 @@ public class CreditsView extends BaseView {
 			tvAmount.setTextColor(ThemeColors.expense());
 
 			row.addView(tvAmount, new LinearLayout.LayoutParams(-2, -2));
+
+			// Tap → ouvrir le dialog de création de crédit pré-rempli
+			final com.couplefinance.ui.transactions.TransactionsModels.Transaction finalTx = tx;
+			row.setClickable(true);
+			row.setFocusable(true);
+			PressAnimations.applySoft(row);
+			row.setOnClickListener(v ->
+					CreditsDialogs.showAddDialogFromTransaction(activity, finalTx, () -> load()));
+
 			txCreditList.addView(row);
 		}
 	}
