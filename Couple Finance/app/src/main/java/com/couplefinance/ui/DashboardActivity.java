@@ -537,7 +537,7 @@ public class DashboardActivity extends Activity {
 		});
 	}
 
-	void refreshCurrentView() {
+	public void refreshCurrentView() {
 		// Recharge la vue courante pour refléter la nouvelle transaction
 		if (isPhoneMode) {
 			switchPhoneTab(currentPhoneTab);
