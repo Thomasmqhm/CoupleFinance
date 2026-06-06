@@ -1255,6 +1255,7 @@ public class HomeView {
 				setSyncStatus("ok");
 				cachedTransactions = parseAllTransactions(response);
 				checkPartnerNotifications(cachedTransactions);
+				checkWeeklyRecap(cachedTransactions);
 				loadFinancialSettingsThenProcess();
 				renderCalendar();
 			}
@@ -1333,6 +1334,26 @@ public class HomeView {
 			nh.notifyNewPartnerTransaction(partnerName, partnerLabel, partnerAmount, maxPartnerTs);
 			nh.markTransactionsAsSeen(maxPartnerTs);
 		}
+	}
+
+	private void checkWeeklyRecap(List<String[]> transactions) {
+		try {
+			long weekStart = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000;
+			double weekExp = 0, weekInc = 0;
+			for (String[] tx : transactions) {
+				if (tx.length < 5) continue;
+				long ts = 0;
+				try { ts = Long.parseLong(tx[4]); } catch (Exception ignored) {}
+				if (ts < weekStart) continue;
+				String type = tx.length > 2 ? tx[2] : "";
+				double amount = 0;
+				try { amount = Double.parseDouble(tx[1]); } catch (Exception ignored) {}
+				if ("income".equalsIgnoreCase(type)) weekInc += amount;
+				else weekExp += amount;
+			}
+			com.couplefinance.utils.NotificationHelper.getInstance(activity)
+					.checkAndSendWeeklyRecap(weekExp, weekInc);
+		} catch (Exception ignored) {}
 	}
 
 	private String getOverdraftCacheKey() {
