@@ -413,6 +413,9 @@ public final class BankAutoSyncManager {
         for (OnBalancesRefreshed l : balanceListeners) {
             try { l.onRefreshed(); } catch (Exception ignored) {}
         }
+
+        // Rafraîchir le widget écran d'accueil (même app fermée)
+        try { com.couplefinance.widget.SoldeWidget.requestRefresh(app); } catch (Exception ignored) {}
     }
 
     /**
