@@ -409,14 +409,31 @@ public class BudgetView {
 		np.leftMargin = dp(18);
 		top.addView(name, np);
 
+		LinearLayout amountGroup = new LinearLayout(activity);
+		amountGroup.setOrientation(LinearLayout.VERTICAL);
+		amountGroup.setGravity(Gravity.END);
+
 		TextView amount = new TextView(activity);
 		amount.setText(formatMoney(item.spent) + " / " + formatMoney(item.budget));
 		amount.setTextColor(ThemeColors.text());
 		amount.setTextSize(15);
 		amount.setTypeface(null, Typeface.BOLD);
 		amount.setSingleLine(true);
+		amountGroup.addView(amount, new LinearLayout.LayoutParams(-2, -2));
 
-		top.addView(amount, new LinearLayout.LayoutParams(-2, -2));
+		int trend = item.getTrend();
+		if (trend != 0) {
+			TextView tvTrend = new TextView(activity);
+			tvTrend.setText(trend > 0 ? "↑ hausse" : "↓ baisse");
+			tvTrend.setTextSize(10.5f);
+			tvTrend.setTextColor(trend > 0 ? ThemeColors.danger() : ThemeColors.success());
+			tvTrend.setTypeface(null, Typeface.BOLD);
+			LinearLayout.LayoutParams trendLp = new LinearLayout.LayoutParams(-2, -2);
+			trendLp.topMargin = dp(2);
+			amountGroup.addView(tvTrend, trendLp);
+		}
+
+		top.addView(amountGroup, new LinearLayout.LayoutParams(-2, -2));
 
 		card.addView(top, new LinearLayout.LayoutParams(-1, -2));
 
