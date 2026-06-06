@@ -266,6 +266,40 @@ public class NotificationHelper {
         ActivityLogger.logSavingsGoal(context, goalName);
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Bilan hebdomadaire (lundi matin, max 1 fois par semaine)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * À appeler au démarrage de l'app. Envoie un bilan hebdomadaire si :
+     * - on est lundi
+     * - le dernier bilan date de plus de 6 jours
+     *
+     * @param weekExpenses  Dépenses de la semaine passée (calculées par l'appelant)
+     * @param weekIncome    Revenus de la semaine passée
+     */
+    public void checkAndSendWeeklyRecap(double weekExpenses, double weekIncome) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        if (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) return;
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long lastWeeklyNotif = prefs.getLong("last_weekly_notif_ts", 0);
+        long now = System.currentTimeMillis();
+        if (now - lastWeeklyNotif < 6L * 24 * 60 * 60 * 1000) return;
+
+        prefs.edit().putLong("last_weekly_notif_ts", now).apply();
+
+        String title = "📊 Bilan de la semaine";
+        String body;
+        if (weekExpenses > 0 || weekIncome > 0) {
+            body = String.format(java.util.Locale.FRANCE,
+                    "Dépenses : %.2f € · Revenus : %.2f €", weekExpenses, weekIncome);
+        } else {
+            body = "Aucune transaction cette semaine. Pensez à saisir vos dépenses !";
+        }
+        sendNotification(CHANNEL_TRANSACTIONS, 5001, title, body, false);
+    }
+
     // Vérifie tous les budgets et envoie les alertes nécessaires (appel best-effort)
     public void checkAndNotifyBudgets(java.util.List<com.couplefinance.ui.budget.BudgetModels.CategoryBudget> budgets) {
         if (budgets == null) return;
