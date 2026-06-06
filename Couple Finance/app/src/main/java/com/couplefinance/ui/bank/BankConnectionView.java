@@ -26,7 +26,10 @@ import com.couplefinance.core.ui.DS;
 import com.couplefinance.core.ui.UiFactory;
 import com.couplefinance.data.BankImportPipeline;
 import com.couplefinance.data.CategoryManager;
+import com.couplefinance.data.CreditManager;
 import com.couplefinance.data.CycleManager;
+import com.couplefinance.ui.credits.CreditsModels;
+import com.couplefinance.ui.credits.CreditsParser;
 import com.couplefinance.data.FirestoreManager;
 import com.couplefinance.data.EnableBankingManager;
 import com.couplefinance.data.JointAccountManager;
@@ -559,7 +562,17 @@ public final class BankConnectionView {
                 List<String> cats = parseCategoryNames(response);
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, cats);
                 BankImportPipeline.detectDuplicates(parsed, existing);
-                showPreview(a, parsed, existing, cats);
+                // Cross-check against managed credits to auto-uncheck matching transactions
+                CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
+                    @Override public void onSuccess(String creditsJson) {
+                        List<CreditsModels.Credit> credits = CreditsParser.parseCredits(creditsJson);
+                        BankImportPipeline.markCreditDuplicates(parsed, credits);
+                        showPreview(a, parsed, existing, cats);
+                    }
+                    @Override public void onError(String e) {
+                        showPreview(a, parsed, existing, cats);
+                    }
+                });
             }
             @Override public void onError(String error) {
                 List<ParsedTransaction> parsed = BankImportPipeline.enrich(bankTx, a, null);
