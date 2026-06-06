@@ -542,6 +542,7 @@ public class SettingsView {
 
 		String freq = TelegramScheduler.getDigestFrequency(activity);
 		String freqLabel = TelegramScheduler.OFF.equals(freq) ? "Désactivé"
+				: TelegramScheduler.DAILY.equals(freq) ? "Quotidien"
 				: TelegramScheduler.WEEKLY.equals(freq) ? "Hebdomadaire" : "Mensuel";
 		TextView tvSub = new TextView(activity);
 		tvSub.setText("Envoi : " + freqLabel);
@@ -568,15 +569,15 @@ public class SettingsView {
 
 	private void showTelegramFrequencyDialog() {
 		final String[] selFreq = { TelegramScheduler.getDigestFrequency(activity) };
-		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
-		final String[] labels = { "Désactivé", "Hebdomadaire", "Mensuel" };
+		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.DAILY, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
+		final String[] labels = { "Désactivé", "Quotidien", "Hebdo", "Mensuel" };
 
 		LinearLayout box = new LinearLayout(activity);
 		box.setOrientation(LinearLayout.VERTICAL);
 
-		final TextView[] chips = new TextView[3];
+		final TextView[] chips = new TextView[codes.length];
 		final Runnable restyle = () -> {
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < codes.length; i++) {
 				boolean on = codes[i].equals(selFreq[0]);
 				GradientDrawable bg = new GradientDrawable();
 				bg.setColor(on ? ThemeColors.primary() : ThemeColors.surfaceSoft());
@@ -588,7 +589,7 @@ public class SettingsView {
 
 		LinearLayout freqRow = new LinearLayout(activity);
 		freqRow.setOrientation(LinearLayout.HORIZONTAL);
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < codes.length; i++) {
 			final int idx = i;
 			TextView chip = new TextView(activity);
 			chip.setText(labels[i]);
@@ -596,7 +597,7 @@ public class SettingsView {
 			chip.setTextSize(DS.TEXT_SM);
 			chip.setTypeface(null, Typeface.BOLD);
 			int pv = DS.dp(activity, 12);
-			int ph = DS.dp(activity, 8);
+			int ph = DS.dp(activity, 6);
 			chip.setPadding(ph, pv, ph, pv);
 			chip.setOnClickListener(v -> {
 				selFreq[0] = codes[idx];
@@ -865,11 +866,11 @@ public class SettingsView {
 		box.addView(autoLabel, tgTop(16));
 
 		final String[] selFreq = { TelegramScheduler.getDigestFrequency(activity) };
-		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
-		final String[] labels = { "D\u00e9sactiv\u00e9", "Hebdo", "Mensuel" };
-		final TextView[] chips = new TextView[3];
+		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.DAILY, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
+		final String[] labels = { "Off", "Quotidien", "Hebdo", "Mensuel" };
+		final TextView[] chips = new TextView[codes.length];
 		final Runnable restyle = () -> {
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < codes.length; i++) {
 				boolean on = codes[i].equals(selFreq[0]);
 				GradientDrawable bg = new GradientDrawable();
 				bg.setColor(on ? ThemeColors.primary() : ThemeColors.surfaceSoft());
@@ -880,7 +881,7 @@ public class SettingsView {
 		};
 		LinearLayout freqRow = new LinearLayout(activity);
 		freqRow.setOrientation(LinearLayout.HORIZONTAL);
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < codes.length; i++) {
 			final int idx = i;
 			TextView chip = new TextView(activity);
 			chip.setText(labels[i]);
