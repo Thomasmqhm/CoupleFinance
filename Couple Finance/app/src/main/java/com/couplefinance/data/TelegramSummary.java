@@ -343,10 +343,10 @@ public final class TelegramSummary {
         // Détail depuis SettingsCache
         try {
             SettingsModels.State state = SettingsCache.get();
-            if (state != null && state.fixedCharges != null && !state.fixedCharges.isEmpty()) {
+            if (state != null && state.charges != null && !state.charges.isEmpty()) {
                 int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
                 List<SettingsModels.FixedCharge> upcoming = new ArrayList<>();
-                for (SettingsModels.FixedCharge fc : state.fixedCharges) {
+                for (SettingsModels.FixedCharge fc : state.charges) {
                     if (fc == null) continue;
                     if (fc.dayOfMonth > today) upcoming.add(fc);
                 }
