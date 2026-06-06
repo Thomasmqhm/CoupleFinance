@@ -353,6 +353,10 @@ public final class BankAutoSyncManager {
                         // Stocker les soldes "live" pour affichage (sans toucher le cycle)
                         storeLiveBalances(app, balances);
                         sendSummaryNotification(app, count, spent, income, bal, fresh);
+                        // Alertes intelligentes avec le solde live
+                        try {
+                            SmartNotificationManager.checkAfterSync(app, fresh, bal);
+                        } catch (Exception ignored) {}
                     }
                     @Override public void onError(String error) {
                         sendSummaryNotification(app, count, spent, income, Double.NaN, fresh);
@@ -413,6 +417,9 @@ public final class BankAutoSyncManager {
         for (OnBalancesRefreshed l : balanceListeners) {
             try { l.onRefreshed(); } catch (Exception ignored) {}
         }
+
+        // Rafraîchir le widget écran d'accueil (même app fermée)
+        try { com.couplefinance.widget.SoldeWidget.requestRefresh(app); } catch (Exception ignored) {}
     }
 
     /**
