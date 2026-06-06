@@ -2288,7 +2288,12 @@ public class HomeView {
 			updateHealthScoreWidget(fHealthScore);
 
 			tvExpenses.setText(String.format(Locale.getDefault(), "%,.2f €", exp));
-			tvSavings.setText(String.format(Locale.getDefault(), "%,.2f €", sav));
+			if (inc > 0.01) {
+				int savingsPct = (int) Math.round((sav / inc) * 100.0);
+				tvSavings.setText(String.format(Locale.getDefault(), "%,.2f € (%d%%)", sav, savingsPct));
+			} else {
+				tvSavings.setText(String.format(Locale.getDefault(), "%,.2f €", sav));
+			}
 			tvIncomeDetail.setText(String.format(Locale.getDefault(), "%,.2f €", inc));
 
 			if (tvIncomeHealth != null)
