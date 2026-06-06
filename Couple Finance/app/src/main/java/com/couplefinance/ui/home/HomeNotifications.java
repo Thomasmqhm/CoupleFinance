@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import com.couplefinance.core.theme.ThemeColors;
 import com.couplefinance.core.ui.DS;
+import com.couplefinance.utils.ActivityLogger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -265,6 +266,7 @@ public class HomeNotifications {
 		footer.setOnClickListener(v -> {
 			notifications.clear();
 			updateBadge();
+			ActivityLogger.clearAll(activity);
 			dismiss();
 		});
 
