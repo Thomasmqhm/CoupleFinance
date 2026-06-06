@@ -448,6 +448,7 @@ public final class BankAutoSyncManager {
             if ((owner == null || owner.isEmpty()) && !me.isEmpty()) owner = me;
 
             if (owner != null && !owner.isEmpty() && !me.isEmpty()) {
+                final String ownerFinal = owner;
                 String oLc = owner.trim().toLowerCase(Locale.FRENCH);
                 String oFirst = oLc.split("\\s+")[0];
                 boolean isCurrentUser = oLc.equals(me) || oFirst.equals(meFirst);
@@ -455,8 +456,8 @@ public final class BankAutoSyncManager {
                     try {
                         BalanceManager.getInstance().saveMonthlyStartBalance(value,
                                 new FirestoreManager.Callback() {
-                                    @Override public void onSuccess(String response) { Log.d(TAG, "Solde " + owner + " synchronise : " + value); }
-                                    @Override public void onError(String message) { Log.w(TAG, "Solde " + owner + " : " + message); }
+                                    @Override public void onSuccess(String response) { Log.d(TAG, "Solde " + ownerFinal + " synchronise : " + value); }
+                                    @Override public void onError(String message) { Log.w(TAG, "Solde " + ownerFinal + " : " + message); }
                                 });
                     } catch (Exception ex) { Log.w(TAG, "saveMonthlyStartBalance user", ex); }
                 }
