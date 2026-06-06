@@ -1049,18 +1049,32 @@ public class AbonnementsView {
         });
     }
 
+    /** Exclut les charges dont la catégorie est "Crédits" (géré par l'onglet Crédits). */
+    private List<SettingsModels.FixedCharge> filterOutCreditCharges(List<SettingsModels.FixedCharge> all) {
+        List<SettingsModels.FixedCharge> result = new ArrayList<>();
+        for (SettingsModels.FixedCharge c : all) {
+            if (c == null) continue;
+            String cat = c.category == null ? "" : c.category.trim().toLowerCase(java.util.Locale.FRENCH);
+            if (cat.equals("crédits") || cat.equals("crédit") || cat.equals("credits") || cat.equals("credit")) continue;
+            result.add(c);
+        }
+        return result;
+    }
+
     private void loadData() {
         SettingsModels.State cached = SettingsCache.get();
 
         if (cached.charges != null && !cached.charges.isEmpty()) {
-            charges = new ArrayList<>(cached.charges);
+            charges = filterOutCreditCharges(new ArrayList<>(cached.charges));
             refresh();
         }
 
         new SettingsRepository(activity).load(new SettingsRepository.LoadCallback() {
             public void onLoaded(SettingsModels.State state) {
                 activity.runOnUiThread(() -> {
-                    charges = state.charges != null ? new ArrayList<>(state.charges) : new ArrayList<>();
+                    List<SettingsModels.FixedCharge> raw = state.charges != null
+                            ? new ArrayList<>(state.charges) : new ArrayList<>();
+                    charges = filterOutCreditCharges(raw);
                     refresh();
                 });
             }
@@ -1205,13 +1219,25 @@ private int memberCount() {
             name = UserSession.getInstance().getNameOrFallback();
         } catch (Exception ignored) {}
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
             try {
                 name = AuthManager.getInstance().getDisplayName();
             } catch (Exception ignored) {}
         }
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
+            // Dernière tentative : premier membre du foyer depuis SettingsCache
+            try {
+                SettingsModels.State state = SettingsCache.get();
+                if (state != null && state.members != null) {
+                    for (SettingsModels.Member m : state.members) {
+                        if (m != null && m.name != null && !m.name.trim().isEmpty()
+                                && !"Moi".equals(m.name.trim())) {
+                            return m.name.trim();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
             return "Moi";
         }
 
