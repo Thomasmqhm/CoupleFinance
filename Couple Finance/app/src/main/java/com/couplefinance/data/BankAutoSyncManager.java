@@ -430,7 +430,7 @@ public final class BankAutoSyncManager {
         String meFirst = me.isEmpty() ? "" : me.split("\\s+")[0];
 
         for (java.util.Map.Entry<Integer, Double> e : bestByAccount.entrySet()) {
-            final String owner = EnableBankingManager.getInstance().getOwnerForIndex(e.getKey());
+            String owner = EnableBankingManager.getInstance().getOwnerForIndex(e.getKey());
             final double value = e.getValue();
 
             if ("joint".equals(owner)) {
