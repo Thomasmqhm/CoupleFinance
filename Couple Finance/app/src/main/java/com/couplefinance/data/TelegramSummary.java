@@ -10,6 +10,8 @@ import com.couplefinance.ui.budget.BudgetRepository;
 import com.couplefinance.ui.epargne.EpargneCalculator;
 import com.couplefinance.ui.epargne.EpargneModels;
 import com.couplefinance.ui.epargne.EpargneParser;
+import com.couplefinance.ui.settings.SettingsCache;
+import com.couplefinance.ui.settings.SettingsModels;
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.ui.transactions.TransactionsRepository;
 
@@ -26,9 +28,8 @@ import java.util.Map;
 /**
  * Construit un résumé financier enrichi et l'envoie via Telegram.
  *
- * Chaîne : balances → transactions → prélèvements → budget → épargne → agenda → envoi.
- * Chaque étape est best-effort : si elle échoue, le résumé part quand même avec les
- * blocs déjà disponibles.
+ * Sections modulaires : chaque section est activable/désactivable via TelegramScheduler prefs.
+ * Chaîne : balances → mois → charges → budget → épargne → crédits → agenda → projection → envoi.
  */
 public final class TelegramSummary {
 
@@ -52,100 +53,133 @@ public final class TelegramSummary {
         final Context ctx = activity.getApplicationContext();
         final StringBuilder sb = new StringBuilder();
 
-        sb.append("<b>CoupleFinance — résumé</b>\n");
-        sb.append("<i>").append(esc(dateHeader())).append("</i>\n");
+        // En-tête
+        sb.append("🏠 <b>CoupleFinance</b>\n");
+        sb.append("📅 <i>").append(esc(dateHeader())).append("</i>\n");
+        sb.append(sep());
 
-        appendBalances(ctx, sb);
+        // Soldes
+        if (TelegramScheduler.isShowBalances(ctx)) {
+            appendBalances(ctx, sb);
+        }
 
-        // 1) Transactions → ce mois-ci + top catégories + dernières opérations
+        // 1) Transactions → mois + catégories + récentes
         TransactionsRepository.loadAll(activity, new TransactionsRepository.OnDataLoaded() {
             @Override
             public void onLoaded(List<TransactionsModels.Transaction> transactions,
                                  List<String> members, List<String[]> categories) {
-                appendMonth(sb, transactions);
-                appendTopCategories(sb, transactions);
-                appendRecent(sb, transactions);
-                stepCharges(activity, sb, cb);
+                if (TelegramScheduler.isShowMonth(ctx)) {
+                    appendMonth(ctx, sb, transactions);
+                }
+                if (TelegramScheduler.isShowCategories(ctx)) {
+                    appendTopCategories(sb, transactions);
+                }
+                if (TelegramScheduler.isShowRecent(ctx)) {
+                    appendRecent(sb, transactions);
+                }
+                stepCharges(activity, ctx, sb, transactions, cb);
             }
 
             @Override
             public void onError(String error) {
-                stepCharges(activity, sb, cb);
+                stepCharges(activity, ctx, sb, null, cb);
             }
         });
     }
 
-    // 2) Prélèvements à venir
-    private static void stepCharges(final Activity activity, final StringBuilder sb, final Callback cb) {
+    // 2) Prélèvements à venir (liste détaillée)
+    private static void stepCharges(final Activity activity, final Context ctx,
+                                    final StringBuilder sb,
+                                    final List<TransactionsModels.Transaction> txList,
+                                    final Callback cb) {
+        if (!TelegramScheduler.isShowCharges(ctx)) {
+            stepBudget(activity, ctx, sb, txList, 0, cb);
+            return;
+        }
         try {
             RecurringChargeManager.getInstance().init(activity);
             RecurringChargeManager.getInstance().getUpcomingChargesForCurrentMonth(
                     new RecurringChargeManager.UpcomingChargesCallback() {
                         @Override
                         public void onResult(double total, int count) {
-                            if (count > 0) {
-                                sb.append("\n<b>Prochains prélèvements</b>\n");
-                                sb.append("• ").append(count)
-                                        .append(count > 1 ? " prélèvements à venir : "
-                                                          : " prélèvement à venir : ")
-                                        .append(money(total)).append("\n");
-                            }
-                            stepBudget(activity, sb, cb);
+                            appendCharges(ctx, sb, total, count);
+                            stepBudget(activity, ctx, sb, txList, total, cb);
                         }
-
                         @Override
                         public void onError(String error) {
-                            stepBudget(activity, sb, cb);
+                            stepBudget(activity, ctx, sb, txList, 0, cb);
                         }
                     });
         } catch (Exception e) {
-            stepBudget(activity, sb, cb);
+            stepBudget(activity, ctx, sb, txList, 0, cb);
         }
     }
 
-    // 3) Budget — catégories dépassées ou en alerte
-    private static void stepBudget(final Activity activity, final StringBuilder sb, final Callback cb) {
+    // 3) Budget
+    private static void stepBudget(final Activity activity, final Context ctx,
+                                   final StringBuilder sb,
+                                   final List<TransactionsModels.Transaction> txList,
+                                   final double remainingCharges,
+                                   final Callback cb) {
+        if (!TelegramScheduler.isShowBudget(ctx)) {
+            stepSavings(activity, ctx, sb, txList, remainingCharges, cb);
+            return;
+        }
         try {
             BudgetRepository.loadBudgets(new BudgetRepository.Callback() {
                 @Override
                 public void onResult(List<BudgetModels.CategoryBudget> list) {
                     appendBudget(sb, list);
-                    stepSavings(activity, sb, cb);
+                    stepSavings(activity, ctx, sb, txList, remainingCharges, cb);
                 }
-
                 @Override
                 public void onError(String error) {
-                    stepSavings(activity, sb, cb);
+                    stepSavings(activity, ctx, sb, txList, remainingCharges, cb);
                 }
             });
         } catch (Exception e) {
-            stepSavings(activity, sb, cb);
+            stepSavings(activity, ctx, sb, txList, remainingCharges, cb);
         }
     }
 
-    // 4) Épargne — progression des objectifs actifs
-    private static void stepSavings(final Activity activity, final StringBuilder sb, final Callback cb) {
+    // 4) Épargne
+    private static void stepSavings(final Activity activity, final Context ctx,
+                                    final StringBuilder sb,
+                                    final List<TransactionsModels.Transaction> txList,
+                                    final double remainingCharges,
+                                    final Callback cb) {
+        if (!TelegramScheduler.isShowSavings(ctx)) {
+            stepCredits(activity, ctx, sb, txList, remainingCharges, cb);
+            return;
+        }
         try {
             SavingsManager.getInstance().getSavings(new FirestoreManager.Callback() {
                 @Override
                 public void onSuccess(String json) {
                     List<EpargneModels.SavingsGoal> goals = EpargneParser.parseSavings(json);
                     appendSavings(sb, goals);
-                    stepCredits(activity, sb, cb);
+                    stepCredits(activity, ctx, sb, txList, remainingCharges, cb);
                 }
-
                 @Override
                 public void onError(String error) {
-                    stepCredits(activity, sb, cb);
+                    stepCredits(activity, ctx, sb, txList, remainingCharges, cb);
                 }
             });
         } catch (Exception e) {
-            stepCredits(activity, sb, cb);
+            stepCredits(activity, ctx, sb, txList, remainingCharges, cb);
         }
     }
 
-    // 4bis) Crédits → mensualités et capital restant
-    private static void stepCredits(final Activity activity, final StringBuilder sb, final Callback cb) {
+    // 5) Crédits
+    private static void stepCredits(final Activity activity, final Context ctx,
+                                    final StringBuilder sb,
+                                    final List<TransactionsModels.Transaction> txList,
+                                    final double remainingCharges,
+                                    final Callback cb) {
+        if (!TelegramScheduler.isShowCredits(ctx)) {
+            stepAgenda(activity, ctx, sb, txList, remainingCharges, cb);
+            return;
+        }
         try {
             CreditManager.getInstance().init(activity);
             CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
@@ -153,35 +187,45 @@ public final class TelegramSummary {
                 public void onSuccess(String json) {
                     appendCredits(sb,
                             com.couplefinance.ui.credits.CreditsParser.parseCredits(json));
-                    stepAgenda(activity, sb, cb);
+                    stepAgenda(activity, ctx, sb, txList, remainingCharges, cb);
                 }
-
                 @Override
                 public void onError(String error) {
-                    stepAgenda(activity, sb, cb);
+                    stepAgenda(activity, ctx, sb, txList, remainingCharges, cb);
                 }
             });
         } catch (Exception e) {
-            stepAgenda(activity, sb, cb);
+            stepAgenda(activity, ctx, sb, txList, remainingCharges, cb);
         }
     }
 
-    // 5) Agenda → prochains rendez-vous
-    private static void stepAgenda(final Activity activity, final StringBuilder sb, final Callback cb) {
+    // 6) Agenda
+    private static void stepAgenda(final Activity activity, final Context ctx,
+                                   final StringBuilder sb,
+                                   final List<TransactionsModels.Transaction> txList,
+                                   final double remainingCharges,
+                                   final Callback cb) {
+        if (!TelegramScheduler.isShowAgenda(ctx)) {
+            appendProjection(ctx, sb, txList, remainingCharges);
+            send(sb, cb);
+            return;
+        }
         try {
             AgendaRepository.loadAll(activity, new AgendaRepository.OnDataLoaded() {
                 @Override
                 public void onLoaded(AgendaModels.AgendaData data) {
                     appendAgenda(sb, data);
+                    appendProjection(ctx, sb, txList, remainingCharges);
                     send(sb, cb);
                 }
-
                 @Override
                 public void onError(String message) {
+                    appendProjection(ctx, sb, txList, remainingCharges);
                     send(sb, cb);
                 }
             });
         } catch (Exception e) {
+            appendProjection(ctx, sb, txList, remainingCharges);
             send(sb, cb);
         }
     }
@@ -193,24 +237,56 @@ public final class TelegramSummary {
         });
     }
 
-    // ───────────────────────────── Sections ─────────────────────────────
+    // ─────────────────────────── Sections ───────────────────────────
 
     private static void appendBalances(Context ctx, StringBuilder sb) {
-        try {
-            double joint = BankAutoSyncManager.getLiveBalanceFor(ctx, "Compte joint");
-            if (!Double.isNaN(joint)) {
-                sb.append("\n<b>Compte joint</b>\n");
-                sb.append("• Solde : ").append(money(joint)).append("\n");
+        List<String> selected = TelegramScheduler.getSelectedAccounts(ctx);
+        boolean hasAny = false;
+
+        // Compte joint
+        boolean showJoint = selected.isEmpty() || containsIgnoreCase(selected, "Compte joint");
+        if (showJoint) {
+            double joint = Double.NaN;
+            try { joint = BankAutoSyncManager.getLiveBalanceFor(ctx, "Compte joint"); } catch (Exception ignored) {}
+            if (Double.isNaN(joint)) {
+                try {
+                    JointAccountManager.getInstance().init(ctx);
+                    joint = JointAccountManager.getInstance().getBalanceLocal(ctx);
+                } catch (Exception ignored) {}
             }
-        } catch (Exception ignored) {
+            if (!Double.isNaN(joint)) {
+                if (!hasAny) { sb.append("\n💰 <b>Soldes</b>\n"); hasAny = true; }
+                sb.append("• Compte joint : <b>").append(money(joint)).append("</b>\n");
+            }
         }
+
+        // Membres
+        try {
+            SettingsModels.State state = SettingsCache.get();
+            if (state != null && state.members != null) {
+                for (SettingsModels.Member m : state.members) {
+                    if (m == null || m.name == null || m.name.trim().isEmpty()) continue;
+                    String name = m.name.trim();
+                    if (!selected.isEmpty() && !containsIgnoreCase(selected, name)) continue;
+                    double bal = Double.NaN;
+                    try { bal = BankAutoSyncManager.getLiveBalanceFor(ctx, name); } catch (Exception ignored) {}
+                    if (!Double.isNaN(bal)) {
+                        if (!hasAny) { sb.append("\n💰 <b>Soldes</b>\n"); hasAny = true; }
+                        sb.append("• ").append(esc(name)).append(" : <b>").append(money(bal)).append("</b>\n");
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (hasAny) sb.append(sep());
     }
 
-    private static void appendMonth(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
+    private static void appendMonth(Context ctx, StringBuilder sb,
+                                    List<TransactionsModels.Transaction> tx) {
         if (tx == null) return;
         Calendar now = Calendar.getInstance();
         int month = now.get(Calendar.MONTH);
-        int year = now.get(Calendar.YEAR);
+        int year  = now.get(Calendar.YEAR);
         double income = 0, expense = 0;
         Calendar c = Calendar.getInstance();
         for (TransactionsModels.Transaction t : tx) {
@@ -220,13 +296,18 @@ public final class TelegramSummary {
             if ("income".equals(t.type)) income += Math.abs(t.amount);
             else expense += Math.abs(t.amount);
         }
-        sb.append("\n<b>Ce mois-ci</b>\n");
-        sb.append("• Revenus : +").append(money(income)).append("\n");
-        sb.append("• Dépenses : -").append(money(expense)).append("\n");
-        sb.append("• Solde du mois : ").append(signed(income - expense)).append("\n");
+        String monthName = new SimpleDateFormat("MMMM yyyy", Locale.FRANCE).format(new Date());
+        sb.append("\n📊 <b>Bilan ").append(esc(monthName)).append("</b>\n");
+        sb.append("• Revenus : <b>+").append(money(income)).append("</b>\n");
+        sb.append("• Dépenses : <b>-").append(money(expense)).append("</b>\n");
+        double balance = income - expense;
+        String sign = balance >= 0 ? "+" : "";
+        sb.append("• Solde du mois : <b>").append(sign).append(money(balance)).append("</b>\n");
+        sb.append(sep());
     }
 
-    private static void appendTopCategories(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
+    private static void appendTopCategories(StringBuilder sb,
+                                            List<TransactionsModels.Transaction> tx) {
         if (tx == null || tx.isEmpty()) return;
         Calendar now = Calendar.getInstance();
         int month = now.get(Calendar.MONTH), year = now.get(Calendar.YEAR);
@@ -245,12 +326,43 @@ public final class TelegramSummary {
         List<Map.Entry<String, Double>> entries = new ArrayList<>(byCategory.entrySet());
         Collections.sort(entries, (a, b) -> Double.compare(b.getValue(), a.getValue()));
 
-        sb.append("\n<b>Top dépenses par catégorie</b>\n");
+        sb.append("\n🏷️ <b>Top dépenses par catégorie</b>\n");
         int n = Math.min(5, entries.size());
         for (int i = 0; i < n; i++) {
             Map.Entry<String, Double> e = entries.get(i);
             sb.append("• ").append(esc(e.getKey())).append(" : -").append(money(e.getValue())).append("\n");
         }
+        sb.append(sep());
+    }
+
+    private static void appendCharges(Context ctx, StringBuilder sb, double total, int count) {
+        if (count <= 0) return;
+
+        sb.append("\n📋 <b>Prélèvements à venir</b>\n");
+
+        // Détail depuis SettingsCache
+        try {
+            SettingsModels.State state = SettingsCache.get();
+            if (state != null && state.fixedCharges != null && !state.fixedCharges.isEmpty()) {
+                int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+                List<SettingsModels.FixedCharge> upcoming = new ArrayList<>();
+                for (SettingsModels.FixedCharge fc : state.fixedCharges) {
+                    if (fc == null) continue;
+                    if (fc.dayOfMonth > today) upcoming.add(fc);
+                }
+                Collections.sort(upcoming, (a, b) -> Integer.compare(a.dayOfMonth, b.dayOfMonth));
+                for (SettingsModels.FixedCharge fc : upcoming) {
+                    sb.append("• J").append(fc.dayOfMonth)
+                      .append(" — ").append(esc(fc.name))
+                      .append(" : -").append(money(fc.amount)).append("\n");
+                }
+                sb.append("──\n");
+            }
+        } catch (Exception ignored) {}
+
+        sb.append("• Total : <b>-").append(money(total)).append("</b>")
+          .append(" (").append(count).append(count > 1 ? " charges)" : " charge)").append("\n");
+        sb.append(sep());
     }
 
     private static void appendBudget(StringBuilder sb, List<BudgetModels.CategoryBudget> list) {
@@ -263,24 +375,23 @@ public final class TelegramSummary {
             else if (b.isWarning()) warning.add(b);
         }
 
+        sb.append("\n📉 <b>Budget</b>\n");
         if (exceeded.isEmpty() && warning.isEmpty()) {
-            sb.append("\n<b>Budget</b>\n");
             sb.append("• ✅ Toutes les catégories sont dans les limites\n");
-            return;
+        } else {
+            for (BudgetModels.CategoryBudget b : exceeded) {
+                double over = b.spent - b.budget;
+                sb.append("• 🔴 ").append(esc(b.name))
+                  .append(" : dépassé de ").append(money(over))
+                  .append(" (").append(b.getPercent()).append("%)\n");
+            }
+            for (BudgetModels.CategoryBudget b : warning) {
+                sb.append("• ⚠️ ").append(esc(b.name))
+                  .append(" : ").append(b.getPercent()).append("% utilisé, reste ")
+                  .append(money(b.getRemaining())).append("\n");
+            }
         }
-
-        sb.append("\n<b>Budget</b>\n");
-        for (BudgetModels.CategoryBudget b : exceeded) {
-            double over = b.spent - b.budget;
-            sb.append("• 🔴 ").append(esc(b.name))
-              .append(" : dépassé de ").append(money(over))
-              .append(" (").append(b.getPercent()).append("%)\n");
-        }
-        for (BudgetModels.CategoryBudget b : warning) {
-            sb.append("• ⚠️ ").append(esc(b.name))
-              .append(" : ").append(b.getPercent()).append("% utilisé, reste ")
-              .append(money(b.getRemaining())).append("\n");
-        }
+        sb.append(sep());
     }
 
     private static void appendSavings(StringBuilder sb, List<EpargneModels.SavingsGoal> goals) {
@@ -292,10 +403,9 @@ public final class TelegramSummary {
             if (g.isCompleted()) completed++;
             else active.add(g);
         }
-
         if (active.isEmpty() && completed == 0) return;
 
-        sb.append("\n<b>🌱 Épargne</b>\n");
+        sb.append("\n🌱 <b>Épargne</b>\n");
         if (completed > 0) {
             sb.append("• ✅ ").append(completed)
               .append(completed > 1 ? " objectifs atteints\n" : " objectif atteint\n");
@@ -320,20 +430,20 @@ public final class TelegramSummary {
             }
             sb.append("\n");
         }
+        sb.append(sep());
     }
 
     private static void appendCredits(StringBuilder sb,
             List<com.couplefinance.ui.credits.CreditsModels.Credit> credits) {
         if (credits == null || credits.isEmpty()) return;
 
-        double totalMonthly = com.couplefinance.ui.credits.CreditsCalculator.totalMonthly(credits);
+        double totalMonthly   = com.couplefinance.ui.credits.CreditsCalculator.totalMonthly(credits);
         double totalRemaining = com.couplefinance.ui.credits.CreditsCalculator.totalRemaining(credits);
 
-        sb.append("\n<b>🏦 Crédits</b>\n");
-        sb.append("• Mensualités : ").append(money(totalMonthly)).append("/mois\n");
-        sb.append("• Capital restant dû : ").append(money(totalRemaining)).append("\n");
+        sb.append("\n🏦 <b>Crédits</b>\n");
+        sb.append("• Mensualités totales : <b>").append(money(totalMonthly)).append("/mois</b>\n");
+        sb.append("• Capital restant dû : <b>").append(money(totalRemaining)).append("</b>\n");
 
-        // Détail des crédits actifs (capital restant > 0), triés par mensualité décroissante
         List<com.couplefinance.ui.credits.CreditsModels.Credit> active = new ArrayList<>();
         for (com.couplefinance.ui.credits.CreditsModels.Credit c : credits) {
             if (c != null
@@ -348,9 +458,11 @@ public final class TelegramSummary {
             int months = com.couplefinance.ui.credits.CreditsCalculator.monthsLeft(c);
             sb.append("• ").append(esc(c.name))
               .append(" : ").append(money(c.monthlyPayment)).append("/mois");
-            if (months > 0) sb.append(" — ").append(months).append(months > 1 ? " mois restants" : " mois restant");
+            if (months > 0) sb.append(" — ").append(months)
+                              .append(months > 1 ? " mois restants" : " mois restant");
             sb.append("\n");
         }
+        sb.append(sep());
     }
 
     private static void appendRecent(StringBuilder sb, List<TransactionsModels.Transaction> tx) {
@@ -358,15 +470,16 @@ public final class TelegramSummary {
         List<TransactionsModels.Transaction> sorted = new ArrayList<>(tx);
         Collections.sort(sorted, (a, b) -> Long.compare(b.dateMs, a.dateMs));
         SimpleDateFormat f = new SimpleDateFormat("dd/MM", Locale.FRANCE);
-        sb.append("\n<b>Dernières opérations</b>\n");
+        sb.append("\n🧾 <b>Dernières opérations</b>\n");
         int n = Math.min(5, sorted.size());
         for (int i = 0; i < n; i++) {
             TransactionsModels.Transaction t = sorted.get(i);
             String sign = "income".equals(t.type) ? "+" : "-";
-            sb.append("• ").append(sign).append(money(Math.abs(t.amount)))
-                    .append(" — ").append(esc(t.label))
-                    .append(" (").append(f.format(new Date(t.dateMs))).append(")\n");
+            sb.append("• ").append(f.format(new Date(t.dateMs)))
+              .append(" — ").append(esc(t.label))
+              .append(" : ").append(sign).append(money(Math.abs(t.amount))).append("\n");
         }
+        sb.append(sep());
     }
 
     private static void appendAgenda(StringBuilder sb, AgendaModels.AgendaData data) {
@@ -379,16 +492,56 @@ public final class TelegramSummary {
         if (upcoming.isEmpty()) return;
         Collections.sort(upcoming, (a, b) -> Long.compare(a.dateMs, b.dateMs));
         SimpleDateFormat f = new SimpleDateFormat("dd/MM", Locale.FRANCE);
-        sb.append("\n<b>Prochains rendez-vous</b>\n");
+        sb.append("\n📆 <b>Agenda</b>\n");
         int n = Math.min(5, upcoming.size());
         for (int i = 0; i < n; i++) {
             AgendaModels.AgendaEvent e = upcoming.get(i);
             sb.append("• ").append(f.format(new Date(e.dateMs)))
-                    .append(" — ").append(esc(e.title)).append("\n");
+              .append(" — ").append(esc(e.title)).append("\n");
         }
+        sb.append(sep());
     }
 
-    // ───────────────────────────── Helpers ─────────────────────────────
+    private static void appendProjection(Context ctx, StringBuilder sb,
+                                         List<TransactionsModels.Transaction> tx,
+                                         double remainingCharges) {
+        if (!TelegramScheduler.isShowProjection(ctx)) return;
+
+        // Solde joint actuel
+        double joint = Double.NaN;
+        try { joint = BankAutoSyncManager.getLiveBalanceFor(ctx, "Compte joint"); } catch (Exception ignored) {}
+        if (Double.isNaN(joint)) {
+            try {
+                JointAccountManager.getInstance().init(ctx);
+                joint = JointAccountManager.getInstance().getBalanceLocal(ctx);
+            } catch (Exception ignored) {}
+        }
+
+        if (Double.isNaN(joint) && remainingCharges <= 0) return;
+
+        sb.append("\n🔮 <b>Projection fin de mois</b>\n");
+
+        if (!Double.isNaN(joint)) {
+            sb.append("• Solde actuel : ").append(money(joint)).append("\n");
+        }
+        if (remainingCharges > 0) {
+            sb.append("• Prélèvements restants : -").append(money(remainingCharges)).append("\n");
+        }
+        if (!Double.isNaN(joint) && remainingCharges > 0) {
+            double projected = joint - remainingCharges;
+            String sign = projected >= 0 ? "" : "";
+            sb.append("• Solde projeté : <b>").append(money(projected)).append("</b>");
+            if (projected < 0) sb.append(" ⚠️");
+            sb.append("\n");
+        }
+        sb.append(sep());
+    }
+
+    // ─────────────────────────── Helpers ───────────────────────────
+
+    private static String sep() {
+        return "─────────────────────\n";
+    }
 
     private static String progressBar(int pct) {
         int filled = Math.min(10, (int) Math.round(pct / 10.0));
@@ -402,16 +555,20 @@ public final class TelegramSummary {
         return String.format(Locale.FRANCE, "%,.2f €", v).replace(' ', ' ');
     }
 
-    private static String signed(double v) {
-        return (v >= 0 ? "+" : "-") + money(Math.abs(v));
-    }
-
     private static String dateHeader() {
-        return new SimpleDateFormat("EEEE d MMMM", Locale.FRANCE).format(new Date());
+        return new SimpleDateFormat("EEEE d MMMM yyyy", Locale.FRANCE).format(new Date());
     }
 
     private static String esc(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private static boolean containsIgnoreCase(List<String> list, String value) {
+        if (list == null || value == null) return false;
+        for (String s : list) {
+            if (value.equalsIgnoreCase(s)) return true;
+        }
+        return false;
     }
 }
