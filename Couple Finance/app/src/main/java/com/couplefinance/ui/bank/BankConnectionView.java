@@ -388,13 +388,10 @@ public final class BankConnectionView {
                 List<String> names = new ArrayList<>();
                 if (members != null) for (String m : members)
                     if (m != null && !m.trim().isEmpty()) names.add(m.trim());
-                if (names.isEmpty()) names.add(getCurrentPersonName(a));
                 buildAssignmentDialog(a, existing, names);
             }
             @Override public void onError(String message) {
-                List<String> fallback = new ArrayList<>();
-                fallback.add(getCurrentPersonName(a));
-                buildAssignmentDialog(a, existing, fallback);
+                buildAssignmentDialog(a, existing, new ArrayList<>());
             }
         });
     }
@@ -1440,7 +1437,9 @@ public final class BankConnectionView {
                 if (no==null) continue;
                 String name = no.optString("stringValue","").trim();
                 String clean = name.replace("|expense","").replace("|income","").trim();
-                if (!clean.isEmpty()) names.add(clean);
+                boolean alreadyIn = false;
+                for (String n : names) { if (n.equalsIgnoreCase(clean)) { alreadyIn = true; break; } }
+                if (!clean.isEmpty() && !alreadyIn) names.add(clean);
             }
         } catch (Exception ignored) {}
         return names;
