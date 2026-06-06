@@ -1137,7 +1137,7 @@ private int memberCount() {
 	}
 
 	if (result.isEmpty()) {
-		result.add("Moi");
+		result.add(getDefaultPaidBy());
 	}
 
 	return result;
@@ -1169,10 +1169,12 @@ private int memberCount() {
     }
 
     private String safeName(String value, String fallback) {
-        if (value == null || value.trim().isEmpty()) {
-            return fallback == null || fallback.trim().isEmpty() ? "Moi" : fallback.trim();
+        if (value == null || value.trim().isEmpty() || "Moi".equals(value.trim())) {
+            if (fallback != null && !fallback.trim().isEmpty() && !"Moi".equals(fallback.trim())) {
+                return fallback.trim();
+            }
+            return getDefaultPaidBy();
         }
-
         return value.trim();
     }
 

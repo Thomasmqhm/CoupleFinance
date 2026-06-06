@@ -1437,9 +1437,9 @@ public final class BankConnectionView {
                 if (no==null) continue;
                 String name = no.optString("stringValue","").trim();
                 String clean = name.replace("|expense","").replace("|income","").trim();
-                boolean alreadyIn = false;
-                for (String n : names) { if (n.equalsIgnoreCase(clean)) { alreadyIn = true; break; } }
-                if (!clean.isEmpty() && !alreadyIn) names.add(clean);
+                boolean dup = false;
+                for (String n : names) { if (n.equalsIgnoreCase(clean)) { dup = true; break; } }
+                if (!clean.isEmpty() && !dup) names.add(clean);
             }
         } catch (Exception ignored) {}
         return names;
