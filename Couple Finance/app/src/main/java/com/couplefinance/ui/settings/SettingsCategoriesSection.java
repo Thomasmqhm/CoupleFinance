@@ -350,15 +350,16 @@ public class SettingsCategoriesSection {
         }, () -> deleteCategory(category));
     }
 
-    private static final java.util.Set<String> SYSTEM_CATEGORIES;
-    static {
-        SYSTEM_CATEGORIES = new java.util.HashSet<>(java.util.Arrays.asList(
-                "virements", "virement", "crédits", "crédit", "credits", "credit"));
+    private static boolean isSystemCategory(String name) {
+        if (name == null) return false;
+        String n = name.trim().toLowerCase(java.util.Locale.FRENCH);
+        return n.equals("virements") || n.equals("virement")
+                || n.equals("crédits") || n.equals("crédit")
+                || n.equals("credits") || n.equals("credit");
     }
 
     private void addCategory(SettingsModels.Category category) {
-        if (category != null && category.name != null
-                && SYSTEM_CATEGORIES.contains(category.name.trim().toLowerCase(java.util.Locale.FRENCH))) {
+        if (category != null && category.name != null && isSystemCategory(category.name)) {
             AppToast.error(activity, "\"" + category.name + "\" est une catégorie système réservée.");
             return;
         }
@@ -395,8 +396,7 @@ public class SettingsCategoriesSection {
     }
 
     private void deleteCategory(SettingsModels.Category category) {
-        if (category != null && category.name != null
-                && SYSTEM_CATEGORIES.contains(category.name.trim().toLowerCase(java.util.Locale.FRENCH))) {
+        if (category != null && category.name != null && isSystemCategory(category.name)) {
             AppToast.error(activity, "\"" + category.name + "\" est une catégorie système et ne peut pas être supprimée.");
             return;
         }
