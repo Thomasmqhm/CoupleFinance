@@ -241,6 +241,25 @@ public class AnalyseCalculator {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Dépenses par jour de semaine (0=Lun, 6=Dim)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Retourne un tableau [7] : total dépenses (non-income) par jour de semaine du cycle courant. */
+    public double[] getSpendingByDayOfWeek() {
+        double[] byDay = new double[7];
+        Calendar cal = Calendar.getInstance();
+        for (Tx tx : txs) {
+            if (!isInCycle(tx) || !isUsableExpense(tx)) continue;
+            cal.setTimeInMillis(tx.dateMs);
+            int dow = cal.get(Calendar.DAY_OF_WEEK); // 1=Sun…7=Sat
+            int idx = (dow == Calendar.SUNDAY) ? 6 : dow - 2; // 0=Lun…6=Dim
+            if (idx < 0) idx = 0;
+            byDay[idx] += tx.amount;
+        }
+        return byDay;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
