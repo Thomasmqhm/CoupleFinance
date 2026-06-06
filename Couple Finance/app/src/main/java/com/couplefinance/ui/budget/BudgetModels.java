@@ -7,6 +7,8 @@ public class BudgetModels {
 		public String name;
 		public double spent;
 		public double budget;
+		/** Dépenses du mois précédent pour cette catégorie (0 si inconnu). */
+		public double prevMonthSpent = 0;
 
 		public CategoryBudget(String id, String name, double spent, double budget) {
 			this.id = id;
@@ -30,6 +32,15 @@ public class BudgetModels {
 
 		public boolean isWarning() {
 			return budget > 0 && getPercent() >= 80 && !isExceeded();
+		}
+
+		/** +1 = hausse, -1 = baisse, 0 = stable ou données insuffisantes. */
+		public int getTrend() {
+			if (prevMonthSpent <= 0 || spent <= 0) return 0;
+			double delta = (spent - prevMonthSpent) / prevMonthSpent;
+			if (delta > 0.05)  return  1;
+			if (delta < -0.05) return -1;
+			return 0;
 		}
 	}
 }
