@@ -758,8 +758,8 @@ public final class SettingsDialogs {
 
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
-        int p = DS.dp(16);
-        root.setPadding(p, DS.dp(48), p, p);
+        int p = DS.dp(activity, 16);
+        root.setPadding(p, DS.dp(activity, 48), p, p);
         scroll.addView(root);
 
         // Header row: back button + title
@@ -771,7 +771,7 @@ public final class SettingsDialogs {
         btnBack.setText("←");
         btnBack.setTextSize(22);
         btnBack.setTextColor(ThemeColors.accent());
-        btnBack.setPadding(0, 0, DS.dp(12), 0);
+        btnBack.setPadding(0, 0, DS.dp(activity, 12), 0);
         btnBack.setOnClickListener(v -> dialog.dismiss());
         header.addView(btnBack);
 
@@ -787,7 +787,7 @@ public final class SettingsDialogs {
         // Spacer
         View spacer = new View(activity);
         spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, DS.dp(16)));
+                LinearLayout.LayoutParams.MATCH_PARENT, DS.dp(activity, 16)));
         root.addView(spacer);
 
         // SettingsCategoriesSection content
