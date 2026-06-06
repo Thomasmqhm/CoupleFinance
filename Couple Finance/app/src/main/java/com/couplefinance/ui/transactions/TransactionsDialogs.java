@@ -674,7 +674,7 @@ public final class TransactionsDialogs {
                             } else {
                                 colCat.addView(newSelector);
                             }
-                            colCat.addView(tvNewCatChip);
+                            // tvNewCatChip est déjà enfant de colCat — on remet juste sa visibilité
                             tvNewCatChip.setVisibility(View.VISIBLE);
 
                             AppToast.success(activity, "Catégorie \"" + newName + "\" créée");
