@@ -2764,6 +2764,9 @@ public class HomeView {
 				realBalance, projectedEndBalance, monthMovement, txCount, incomeCount, expenseCount, todayExpenses,
 				todayExpenseCount, activeCategoryCount, biggestExpenseAmount, biggestExpenseLabel,
 				biggestExpenseCategory, incomeSources, commonStartBalance, PREF_ORDER_DYNAMIC, membersInOverdraft);
+
+		// Widget objectifs d'épargne (chargement async, s'ajoute en bas)
+		new HomeWidgets(activity, dashboardPrefs).renderSavingsGoalsCard(dynamicWidgetsContainer);
 	}
 
 	private String formatMoney(double value) {

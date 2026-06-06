@@ -15,13 +15,19 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.couplefinance.core.theme.ThemeColors;
 import com.couplefinance.core.ui.DS;
+import com.couplefinance.core.ui.Fmt;
+import com.couplefinance.ui.epargne.EpargneCalculator;
+import com.couplefinance.ui.epargne.EpargneModels;
+import com.couplefinance.ui.epargne.EpargneRepository;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class HomeWidgets {
@@ -190,6 +196,210 @@ public class HomeWidgets {
                 transactions,
                 rowClick
         );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Widget objectifs d'épargne
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Ajoute une carte pleine largeur "Objectifs d'épargne" au bas du container.
+     * Chargement asynchrone — la carte apparaît une fois les données disponibles.
+     */
+    public void renderSavingsGoalsCard(LinearLayout container) {
+        if (container == null) return;
+
+        // Placeholder animé pendant le chargement
+        final LinearLayout card = buildSavingsCard(null);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.topMargin = DS.dp(activity, DS.CARD_GAP);
+        container.addView(card, lp);
+
+        EpargneRepository.loadAll(activity, new EpargneRepository.OnDataLoaded() {
+            @Override public void onLoaded(EpargneModels.EpargneData data) {
+                activity.runOnUiThread(() -> {
+                    int idx = container.indexOfChild(card);
+                    if (idx < 0) return;
+                    LinearLayout updated = buildSavingsCard(data);
+                    container.removeViewAt(idx);
+                    container.addView(updated, idx, lp);
+                });
+            }
+            @Override public void onError(String message) {
+                // Garde le placeholder vide — pas d'erreur visible
+            }
+        });
+    }
+
+    private LinearLayout buildSavingsCard(EpargneModels.EpargneData data) {
+        LinearLayout card = new LinearLayout(activity);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(DS.dp(activity, DS.CARD_PADDING), DS.dp(activity, DS.CARD_PADDING),
+                DS.dp(activity, DS.CARD_PADDING), DS.dp(activity, DS.CARD_PADDING));
+
+        int accent = 0xFF2D7D55; // vert épargne
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{ ThemeColors.blend(ThemeColors.surfaceFloating(), Color.parseColor("#2D7D55"), 0.05f),
+                           ThemeColors.surfaceFloating() }
+        );
+        bg.setCornerRadius(DS.dp(activity, DS.RADIUS_2XL));
+        bg.setStroke(DS.dp(activity, 1), ThemeColors.withAlpha(accent, 30));
+        card.setBackground(bg);
+        HomeDashboardStyle.applyNativeElevation(card, 4f);
+
+        // En-tête
+        LinearLayout header = new LinearLayout(activity);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView title = new TextView(activity);
+        title.setText("🌱  Objectifs d'épargne");
+        title.setTextSize(DS.TEXT_SUBTITLE);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setTextColor(ThemeColors.textPrimary());
+        title.setLetterSpacing(-0.012f);
+        title.setIncludeFontPadding(false);
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        card.addView(header);
+
+        if (data == null || data.goals == null || data.goals.isEmpty()) {
+            // Placeholder / état vide
+            TextView empty = new TextView(activity);
+            empty.setText(data == null ? "Chargement…" : "Aucun objectif défini. Ajoutez-en dans Épargne.");
+            empty.setTextColor(ThemeColors.textMuted());
+            empty.setTextSize(DS.TEXT_BODY_SMALL);
+            empty.setIncludeFontPadding(false);
+            LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, -2);
+            ep.topMargin = DS.dp(activity, DS.SPACE_8);
+            card.addView(empty, ep);
+            return card;
+        }
+
+        // Résumé global
+        double totalSaved  = EpargneCalculator.totalSaved(data.goals);
+        double totalTarget = EpargneCalculator.totalTarget(data.goals);
+        int    globalPct   = EpargneCalculator.globalPercent(data.goals);
+
+        LinearLayout summaryRow = new LinearLayout(activity);
+        summaryRow.setOrientation(LinearLayout.HORIZONTAL);
+        summaryRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams srp = new LinearLayout.LayoutParams(-1, -2);
+        srp.topMargin = DS.dp(activity, DS.SPACE_12);
+        summaryRow.setLayoutParams(srp);
+
+        TextView tvSaved = new TextView(activity);
+        tvSaved.setText(Fmt.money(totalSaved) + " / " + Fmt.money(totalTarget));
+        tvSaved.setTextSize(DS.TEXT_BODY);
+        tvSaved.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tvSaved.setTextColor(accent);
+        tvSaved.setIncludeFontPadding(false);
+        summaryRow.addView(tvSaved, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView tvPct = new TextView(activity);
+        tvPct.setText(globalPct + "%");
+        tvPct.setTextSize(DS.TEXT_BODY_SMALL);
+        tvPct.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tvPct.setTextColor(ThemeColors.textMuted());
+        tvPct.setIncludeFontPadding(false);
+        summaryRow.addView(tvPct);
+
+        card.addView(summaryRow);
+
+        // Barre de progression globale
+        ProgressBar globalBar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
+        globalBar.setMax(100);
+        globalBar.setProgress(Math.min(100, globalPct));
+        globalBar.setProgressTintList(android.content.res.ColorStateList.valueOf(accent));
+        globalBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                ThemeColors.withAlpha(ThemeColors.border(), 60)));
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, DS.dp(activity, 6));
+        gp.topMargin = DS.dp(activity, DS.SPACE_8);
+        card.addView(globalBar, gp);
+
+        // Liste des objectifs (max 3)
+        int max = Math.min(3, data.goals.size());
+        for (int i = 0; i < max; i++) {
+            EpargneModels.SavingsGoal g = data.goals.get(i);
+            card.addView(buildGoalRow(g, accent), buildGoalRowLp());
+        }
+
+        // Lien si plus
+        if (data.goals.size() > 3) {
+            TextView more = new TextView(activity);
+            more.setText("+ " + (data.goals.size() - 3) + " objectif(s) de plus");
+            more.setTextColor(ThemeColors.primary());
+            more.setTextSize(DS.TEXT_BODY_SMALL);
+            more.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            more.setIncludeFontPadding(false);
+            LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
+            mp.topMargin = DS.dp(activity, DS.SPACE_8);
+            card.addView(more, mp);
+        }
+
+        return card;
+    }
+
+    private View buildGoalRow(EpargneModels.SavingsGoal g, int accent) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView emojiView = new TextView(activity);
+        emojiView.setText(g.emoji != null && !g.emoji.isEmpty() ? g.emoji : "🎯");
+        emojiView.setTextSize(18f);
+        emojiView.setGravity(Gravity.CENTER);
+        emojiView.setIncludeFontPadding(false);
+        row.addView(emojiView, new LinearLayout.LayoutParams(DS.dp(activity, 28), DS.dp(activity, 28)));
+
+        LinearLayout texts = new LinearLayout(activity);
+        texts.setOrientation(LinearLayout.VERTICAL);
+
+        TextView tvName = new TextView(activity);
+        tvName.setText(g.name);
+        tvName.setTextSize(DS.TEXT_BODY_SMALL);
+        tvName.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tvName.setTextColor(ThemeColors.textPrimary());
+        tvName.setSingleLine(true);
+        tvName.setIncludeFontPadding(false);
+        texts.addView(tvName);
+
+        int pct = EpargneCalculator.progressPercent(g);
+        TextView tvPct = new TextView(activity);
+        tvPct.setText(pct + "% · " + Fmt.money(g.current) + " / " + Fmt.money(g.target));
+        tvPct.setTextSize(DS.TEXT_MICRO);
+        tvPct.setTextColor(ThemeColors.textMuted());
+        tvPct.setIncludeFontPadding(false);
+        texts.addView(tvPct);
+
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+        tp.leftMargin = DS.dp(activity, DS.SPACE_10);
+        row.addView(texts, tp);
+
+        String badge = EpargneCalculator.badgeLabel(g);
+        if (badge != null && !badge.isEmpty()) {
+            TextView tvBadge = new TextView(activity);
+            tvBadge.setText(badge);
+            tvBadge.setTextSize(10f);
+            tvBadge.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            int badgeColor = g.isLate() ? ThemeColors.danger() : ThemeColors.primary();
+            tvBadge.setTextColor(badgeColor);
+            tvBadge.setPadding(DS.dp(activity, 8), DS.dp(activity, 3), DS.dp(activity, 8), DS.dp(activity, 3));
+            GradientDrawable bb = new GradientDrawable();
+            bb.setColor(ThemeColors.withAlpha(badgeColor, 18));
+            bb.setCornerRadius(DS.dp(activity, DS.RADIUS_PILL));
+            tvBadge.setBackground(bb);
+            row.addView(tvBadge);
+        }
+
+        return row;
+    }
+
+    private LinearLayout.LayoutParams buildGoalRowLp() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.topMargin = DS.dp(activity, DS.SPACE_12);
+        return lp;
     }
 
     // ─────────────────────────────────────────────────────────────
