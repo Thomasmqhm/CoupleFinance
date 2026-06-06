@@ -575,7 +575,6 @@ public class TransactionsView extends BaseView {
 
 	private void reloadAfterWrite() {
 		load();
-		refreshDashboard();
 	}
 
 	private void applyFilters() {
