@@ -37,6 +37,7 @@ import com.couplefinance.widget.SoldeWidget;
 import com.couplefinance.data.CreditManager;
 import com.couplefinance.ui.credits.CreditsModels;
 import com.couplefinance.ui.credits.CreditsParser;
+import com.couplefinance.utils.ActivityLogger;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -702,6 +703,33 @@ public class HomeView {
 				list.add(toNotificationItem(insight));
 			}
 		}
+
+		// ── Activité récente du foyer (3 derniers événements) ────
+		try {
+			java.util.List<ActivityLogger.Event> recent = ActivityLogger.getRecentEvents(activity);
+			int shown = 0;
+			for (ActivityLogger.Event ev : recent) {
+				if (shown >= 3) break;
+				int color, bgColor, borderColor;
+				if ("budget".equals(ev.type)) {
+					color = Color.parseColor("#B04A3A");
+					bgColor = Color.parseColor("#FFF1EC");
+					borderColor = Color.parseColor("#F4C7B8");
+				} else if ("savings".equals(ev.type)) {
+					color = Color.parseColor("#2D7A55");
+					bgColor = Color.parseColor("#EFFAF3");
+					borderColor = Color.parseColor("#CFEBD8");
+				} else {
+					color = Color.parseColor("#4076A8");
+					bgColor = Color.parseColor("#EEF6FF");
+					borderColor = Color.parseColor("#CFE3F5");
+				}
+				list.add(new HomeNotificationItem(ev.icon,
+						ev.title, ev.subtitle + " · " + ev.relativeTime(),
+						color, bgColor, borderColor));
+				shown++;
+			}
+		} catch (Exception ignored) {}
 
 		if (list.isEmpty()) {
 			list.add(new HomeNotificationItem("✓", "Tout est à jour", "Aucune alerte détectée sur tes données du mois.",
