@@ -40,16 +40,8 @@ public class CategoryManager {
 		return getHouseholdPath() + "/categories";
 	}
 
-	private static final java.util.Set<String> PROTECTED_CATEGORY_NAMES;
-	static {
-		PROTECTED_CATEGORY_NAMES = new java.util.HashSet<>();
-		PROTECTED_CATEGORY_NAMES.add("virements");
-		PROTECTED_CATEGORY_NAMES.add("virement");
-		PROTECTED_CATEGORY_NAMES.add("crédits");
-		PROTECTED_CATEGORY_NAMES.add("credits");
-		PROTECTED_CATEGORY_NAMES.add("crédit");
-		PROTECTED_CATEGORY_NAMES.add("credit");
-	}
+	private static final java.util.Set<String> PROTECTED = new java.util.HashSet<>(java.util.Arrays.asList(
+			"virements", "virement", "crédits", "crédit", "credits", "credit"));
 
 	public void addCategory(String name, String emoji, FirestoreManager.Callback cb) {
 		executor.execute(() -> {
@@ -67,8 +59,8 @@ public class CategoryManager {
 					rawName = rawName.replace("|expense", "").trim();
 				}
 
-				if (PROTECTED_CATEGORY_NAMES.contains(rawName.toLowerCase(java.util.Locale.FRENCH))) {
-					postError(cb, "Cette catégorie est protégée et ne peut pas être créée manuellement.");
+				if (PROTECTED.contains(rawName.toLowerCase(java.util.Locale.FRENCH))) {
+					postError(cb, "Catégorie système réservée.");
 					return;
 				}
 
