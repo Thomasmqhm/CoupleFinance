@@ -30,6 +30,7 @@ public class UserSession {
     }
 
     public String getNameOrFallback() {
+        // Ne jamais retourner un nom qui ressemble à une adresse mail ou un identifiant
         String name = getName();
         if (!name.isEmpty()) return name;
 
