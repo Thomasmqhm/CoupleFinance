@@ -1150,13 +1150,25 @@ private int memberCount() {
             name = UserSession.getInstance().getNameOrFallback();
         } catch (Exception ignored) {}
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
             try {
                 name = AuthManager.getInstance().getDisplayName();
             } catch (Exception ignored) {}
         }
 
-        if (name == null || name.trim().isEmpty() || name.contains("@")) {
+        if (name == null || name.trim().isEmpty() || name.contains("@") || "Moi".equals(name.trim())) {
+            // Dernière tentative : premier membre du foyer depuis SettingsCache
+            try {
+                SettingsModels.State state = SettingsCache.get();
+                if (state != null && state.members != null) {
+                    for (SettingsModels.Member m : state.members) {
+                        if (m != null && m.name != null && !m.name.trim().isEmpty()
+                                && !"Moi".equals(m.name.trim())) {
+                            return m.name.trim();
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
             return "Moi";
         }
 
