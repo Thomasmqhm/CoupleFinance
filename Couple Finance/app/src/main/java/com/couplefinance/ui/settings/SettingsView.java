@@ -517,6 +517,12 @@ public class SettingsView {
 				"Compte joint bas, prélèvements non couverts",
 				v -> showTelegramAlertsDialog()));
 
+		card.addView(divider());
+
+		card.addView(row("💡", "Alertes intelligentes",
+				"Grosse dépense, solde bas — seuils personnalisables",
+				v -> showSmartAlertsDialog()));
+
 		LinearLayout card2 = sectionCard("NOTIFICATIONS LOCALES");
 
 		card2.addView(row("🔔", "Rappels et alertes",
@@ -541,9 +547,9 @@ public class SettingsView {
 		texts.addView(tvTitle);
 
 		String freq = TelegramScheduler.getDigestFrequency(activity);
-		String freqLabel = TelegramScheduler.OFF.equals(freq) ? "Désactivé"
-				: TelegramScheduler.DAILY.equals(freq) ? "Quotidien"
-				: TelegramScheduler.WEEKLY.equals(freq) ? "Hebdomadaire" : "Mensuel";
+		String freqLabel = TelegramScheduler.OFF.equals(freq)    ? "Désactivé"
+				: TelegramScheduler.DAILY.equals(freq)   ? "Quotidien"
+				: TelegramScheduler.WEEKLY.equals(freq)  ? "Hebdomadaire" : "Mensuel";
 		TextView tvSub = new TextView(activity);
 		tvSub.setText("Envoi : " + freqLabel);
 		tvSub.setTextColor(ThemeColors.subtext());
@@ -677,6 +683,65 @@ public class SettingsView {
 						catch (Exception ignored) {}
 					}
 					TelegramScheduler.setCoverageAlert(activity, cbCoverage.isChecked());
+					AppToast.success(activity, "Alertes enregistrées");
+					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
+				}).show();
+	}
+
+	private void showSmartAlertsDialog() {
+		LinearLayout box = new LinearLayout(activity);
+		box.setOrientation(LinearLayout.VERTICAL);
+
+		TextView label1 = new TextView(activity);
+		label1.setText("Alerte grosse dépense (seuil en €) :");
+		label1.setTextColor(ThemeColors.text());
+		label1.setTextSize(14f);
+		label1.setTypeface(null, Typeface.BOLD);
+		box.addView(label1);
+
+		final android.widget.EditText etExpense = new android.widget.EditText(activity);
+		etExpense.setHint("Ex : 150");
+		double curExp = com.couplefinance.data.SmartNotificationManager.getExpenseThreshold(activity);
+		etExpense.setText(curExp == Math.floor(curExp) ? String.valueOf((long) curExp) : String.valueOf(curExp));
+		etExpense.setTextColor(ThemeColors.text());
+		etExpense.setHintTextColor(ThemeColors.muted());
+		etExpense.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+		LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, -2);
+		ep.topMargin = DS.dp(activity, 6);
+		ep.bottomMargin = DS.dp(activity, 18);
+		box.addView(etExpense, ep);
+
+		TextView label2 = new TextView(activity);
+		label2.setText("Alerte solde bas (seuil en €) :");
+		label2.setTextColor(ThemeColors.text());
+		label2.setTextSize(14f);
+		label2.setTypeface(null, Typeface.BOLD);
+		box.addView(label2);
+
+		final android.widget.EditText etBalance = new android.widget.EditText(activity);
+		etBalance.setHint("Ex : 200");
+		double curBal = com.couplefinance.data.SmartNotificationManager.getBalanceThreshold(activity);
+		etBalance.setText(curBal == Math.floor(curBal) ? String.valueOf((long) curBal) : String.valueOf(curBal));
+		etBalance.setTextColor(ThemeColors.text());
+		etBalance.setHintTextColor(ThemeColors.muted());
+		etBalance.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+		LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2);
+		bp.topMargin = DS.dp(activity, 6);
+		box.addView(etBalance, bp);
+
+		final AlertDialog[] h = {null};
+		h[0] = new AppDialog.Builder(activity)
+				.icon("💡").title("Alertes intelligentes").subtitle("Seuils de déclenchement des notifications push")
+				.content(box)
+				.primaryBtn("ENREGISTRER", () -> {
+					String expStr = etExpense.getText().toString().trim().replace(',', '.');
+					String balStr = etBalance.getText().toString().trim().replace(',', '.');
+					try {
+						if (!expStr.isEmpty()) com.couplefinance.data.SmartNotificationManager.setExpenseThreshold(activity, Double.parseDouble(expStr));
+					} catch (Exception ignored) {}
+					try {
+						if (!balStr.isEmpty()) com.couplefinance.data.SmartNotificationManager.setBalanceThreshold(activity, Double.parseDouble(balStr));
+					} catch (Exception ignored) {}
 					AppToast.success(activity, "Alertes enregistrées");
 					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
 				}).show();

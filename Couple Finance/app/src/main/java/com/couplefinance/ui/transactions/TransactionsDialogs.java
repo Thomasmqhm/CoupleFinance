@@ -280,6 +280,13 @@ public final class TransactionsDialogs {
                                     ActivityLogger.logTransaction(
                                             activity, person, label, amount,
                                             "income".equals(type));
+                                    // Alerte intelligente pour grosse dépense manuelle
+                                    if (!"income".equals(type)) {
+                                        try {
+                                            com.couplefinance.data.SmartNotificationManager
+                                                    .checkSingleExpense(activity, amount, label, category);
+                                        } catch (Exception ignored) {}
+                                    }
                                     AppToast.success(activity, "Transaction ajoutée");
                                     if (callback != null) callback.reload();
                                 }
