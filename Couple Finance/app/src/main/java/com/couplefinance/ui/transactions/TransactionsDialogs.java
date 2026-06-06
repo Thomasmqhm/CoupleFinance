@@ -29,6 +29,8 @@ import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.ui.settings.SettingsModels;
 import com.couplefinance.utils.ActivityLogger;
 
+import android.text.Editable;
+import android.text.TextWatcher;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -162,6 +164,48 @@ public final class TransactionsDialogs {
             } else {
                 recurringRow.setVisibility(android.view.View.GONE);
                 createRecurring[0] = false;
+            }
+        });
+
+        // ── Auto-remplissage catégorie sur saisie du libellé ─────
+        etLabel.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            public void afterTextChanged(Editable s) {
+                String input = s.toString().trim();
+                if (input.length() < 3) {
+                    tvAutoFill.setVisibility(View.GONE);
+                    return;
+                }
+                TransactionSuggestion sug = TransactionAutoFill.suggest(
+                        input,
+                        new ArrayList<>(),
+                        new ArrayList<>(categories != null ? categories : new ArrayList<>()),
+                        new ArrayList<>(persons));
+                if (sug.found) {
+                    StringBuilder hint = new StringBuilder("💡 Suggestion : ");
+                    if (sug.category != null && !sug.category.isEmpty())
+                        hint.append("Catégorie → ").append(sug.category);
+                    if (sug.amount > 0)
+                        hint.append("  ·  ").append(String.format(Locale.FRANCE, "%.2f €", sug.amount));
+                    tvAutoFill.setText(hint.toString());
+                    tvAutoFill.setVisibility(View.VISIBLE);
+                    tvAutoFill.setOnClickListener(v -> {
+                        if (sug.category != null && !sug.category.isEmpty()) {
+                            int idx = findIndex(catNames, sug.category);
+                            if (idx >= 0) {
+                                catIdx[0] = idx;
+                                acvCatHolder[0].setText(sug.category, false);
+                            }
+                        }
+                        if (sug.amount > 0 && etAmount.getText().toString().trim().isEmpty()) {
+                            etAmount.setText(Fmt.moneyInput(sug.amount));
+                        }
+                        tvAutoFill.setVisibility(View.GONE);
+                    });
+                } else {
+                    tvAutoFill.setVisibility(View.GONE);
+                }
             }
         });
 
