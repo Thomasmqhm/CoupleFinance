@@ -24,12 +24,26 @@ import java.util.Locale;
 public final class TelegramScheduler {
 
     private static final String PREFS = "telegram_prefs";
-    private static final String K_FREQ = "digest_freq";          // off | weekly | monthly
-    private static final String K_DIGEST_LAST = "digest_last";    // clé de période déjà envoyée
-    private static final String K_LOWJOINT = "alert_lowjoint";    // seuil (vide = désactivé)
-    private static final String K_LOWJOINT_LAST = "alert_lowjoint_last"; // jour du dernier envoi
-    private static final String K_COVERAGE = "alert_coverage";           // bool : joint < prélèvements
-    private static final String K_COVERAGE_LAST = "alert_coverage_last"; // jour du dernier envoi
+    private static final String K_FREQ = "digest_freq";
+    private static final String K_DIGEST_LAST = "digest_last";
+    private static final String K_LOWJOINT = "alert_lowjoint";
+    private static final String K_LOWJOINT_LAST = "alert_lowjoint_last";
+    private static final String K_COVERAGE = "alert_coverage";
+    private static final String K_COVERAGE_LAST = "alert_coverage_last";
+
+    // Sections du résumé (toutes activées par défaut)
+    private static final String K_SHOW_BALANCES    = "show_balances";
+    private static final String K_SHOW_MONTH       = "show_month";
+    private static final String K_SHOW_CHARGES     = "show_charges";
+    private static final String K_SHOW_CREDITS     = "show_credits";
+    private static final String K_SHOW_SAVINGS     = "show_savings";
+    private static final String K_SHOW_BUDGET      = "show_budget";
+    private static final String K_SHOW_AGENDA      = "show_agenda";
+    private static final String K_SHOW_PROJECTION  = "show_projection";
+    private static final String K_SHOW_RECENT      = "show_recent";
+    private static final String K_SHOW_CATEGORIES  = "show_categories";
+    // Comptes sélectionnés pour les soldes (vide = tous)
+    private static final String K_SELECTED_ACCOUNTS = "selected_accounts";
 
     public static final String OFF = "off";
     public static final String DAILY = "daily";
@@ -43,6 +57,52 @@ public final class TelegramScheduler {
     }
 
     // ─── Réglages (utilisés par l'écran Paramètres) ───
+
+    // Sections affichées dans le digest
+    public static boolean isShowBalances(Context ctx)   { return ctx == null || prefs(ctx).getBoolean(K_SHOW_BALANCES,   true); }
+    public static boolean isShowMonth(Context ctx)      { return ctx == null || prefs(ctx).getBoolean(K_SHOW_MONTH,      true); }
+    public static boolean isShowCharges(Context ctx)    { return ctx == null || prefs(ctx).getBoolean(K_SHOW_CHARGES,    true); }
+    public static boolean isShowCredits(Context ctx)    { return ctx == null || prefs(ctx).getBoolean(K_SHOW_CREDITS,    true); }
+    public static boolean isShowSavings(Context ctx)    { return ctx == null || prefs(ctx).getBoolean(K_SHOW_SAVINGS,    true); }
+    public static boolean isShowBudget(Context ctx)     { return ctx == null || prefs(ctx).getBoolean(K_SHOW_BUDGET,     true); }
+    public static boolean isShowAgenda(Context ctx)     { return ctx == null || prefs(ctx).getBoolean(K_SHOW_AGENDA,     true); }
+    public static boolean isShowProjection(Context ctx) { return ctx == null || prefs(ctx).getBoolean(K_SHOW_PROJECTION, true); }
+    public static boolean isShowRecent(Context ctx)     { return ctx == null || prefs(ctx).getBoolean(K_SHOW_RECENT,     true); }
+    public static boolean isShowCategories(Context ctx) { return ctx == null || prefs(ctx).getBoolean(K_SHOW_CATEGORIES, true); }
+
+    public static void setShowBalances(Context ctx, boolean v)   { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_BALANCES,   v).apply(); }
+    public static void setShowMonth(Context ctx, boolean v)      { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_MONTH,      v).apply(); }
+    public static void setShowCharges(Context ctx, boolean v)    { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_CHARGES,    v).apply(); }
+    public static void setShowCredits(Context ctx, boolean v)    { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_CREDITS,    v).apply(); }
+    public static void setShowSavings(Context ctx, boolean v)    { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_SAVINGS,    v).apply(); }
+    public static void setShowBudget(Context ctx, boolean v)     { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_BUDGET,     v).apply(); }
+    public static void setShowAgenda(Context ctx, boolean v)     { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_AGENDA,     v).apply(); }
+    public static void setShowProjection(Context ctx, boolean v) { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_PROJECTION, v).apply(); }
+    public static void setShowRecent(Context ctx, boolean v)     { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_RECENT,     v).apply(); }
+    public static void setShowCategories(Context ctx, boolean v) { if (ctx != null) prefs(ctx).edit().putBoolean(K_SHOW_CATEGORIES, v).apply(); }
+
+    /** Comptes affichés dans les soldes. Liste vide = tous. */
+    public static java.util.List<String> getSelectedAccounts(Context ctx) {
+        java.util.List<String> list = new java.util.ArrayList<>();
+        if (ctx == null) return list;
+        String raw = prefs(ctx).getString(K_SELECTED_ACCOUNTS, "");
+        if (raw == null || raw.trim().isEmpty()) return list;
+        for (String s : raw.split(",")) {
+            String t = s.trim();
+            if (!t.isEmpty()) list.add(t);
+        }
+        return list;
+    }
+
+    public static void setSelectedAccounts(Context ctx, java.util.List<String> accounts) {
+        if (ctx == null) return;
+        if (accounts == null || accounts.isEmpty()) {
+            prefs(ctx).edit().remove(K_SELECTED_ACCOUNTS).apply();
+        } else {
+            prefs(ctx).edit().putString(K_SELECTED_ACCOUNTS,
+                    android.text.TextUtils.join(",", accounts)).apply();
+        }
+    }
 
     public static void setDigestFrequency(Context ctx, String freq) {
         if (ctx == null || freq == null) return;
