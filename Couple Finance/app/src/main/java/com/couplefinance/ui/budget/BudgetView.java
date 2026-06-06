@@ -514,6 +514,42 @@ public class BudgetView {
 					remaining >= 0 ? ThemeColors.success() : ThemeColors.danger()
 			));
 		}
+
+		// ── Projection fin de mois ──────────────────────────────────────────
+		Calendar now    = Calendar.getInstance();
+		int day    = now.get(Calendar.DAY_OF_MONTH);
+		int maxDay = now.getActualMaximum(Calendar.DAY_OF_MONTH);
+		if (day > 0 && totalSpent > 0) {
+			double projected   = totalSpent * ((double) maxDay / day);
+			int    daysLeft    = maxDay - day;
+			String daysStr     = daysLeft + " jour" + (daysLeft > 1 ? "s" : "") + " restant" + (daysLeft > 1 ? "s" : "");
+
+			String projTitle, projBody;
+			int    projColor;
+
+			if (totalBudget > 0) {
+				double overrun = projected - totalBudget;
+				if (overrun > 0) {
+					int pct = (int) Math.round((overrun / totalBudget) * 100.0);
+					projTitle = "Dépassement probable";
+					projBody  = "À ce rythme : " + formatMoney(projected)
+							+ " (+"+pct+"%). " + daysStr + ".";
+					projColor = ThemeColors.danger();
+				} else {
+					projTitle = "Projection rassurante";
+					projBody  = "Fin de mois estimée : " + formatMoney(projected)
+							+ " / " + formatMoney(totalBudget) + ". " + daysStr + ".";
+					projColor = ThemeColors.success();
+				}
+			} else {
+				projTitle = "Projection fin de mois";
+				projBody  = "À ce rythme : " + formatMoney(projected)
+						+ " de dépenses d’ici fin de mois. " + daysStr + ".";
+				projColor = ThemeColors.primary();
+			}
+
+			insightsList.addView(insightCard("↗", projTitle, projBody, projColor));
+		}
 	}
 
 	private View insightCard(String iconText, String title, String body, int color) {
