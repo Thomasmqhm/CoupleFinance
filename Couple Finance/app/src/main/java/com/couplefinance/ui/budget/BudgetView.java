@@ -308,6 +308,11 @@ public class BudgetView {
 			@Override
 			public void onResult(List<BudgetModels.CategoryBudget> list) {
 				activity.runOnUiThread(() -> render(list));
+				// Alertes push budget (best-effort, hors UI thread)
+				try {
+					com.couplefinance.utils.NotificationHelper.getInstance(activity)
+							.checkAndNotifyBudgets(list);
+				} catch (Exception ignored) {}
 			}
 
 			@Override
