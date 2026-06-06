@@ -251,6 +251,7 @@ public class AnalyseView {
         buildCategoryBreakdown(calc);
         buildForecast(calc);
         buildTopMerchants(calc);
+        buildDayOfWeekHeatmap(calc);
         buildInsights(txs);
 
         if (btnShare != null) btnShare.setVisibility(View.VISIBLE);
@@ -733,6 +734,102 @@ public class AnalyseView {
     // ─────────────────────────────────────────────────────────────────────────
     // Insights automatiques
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Heatmap dépenses par jour de semaine
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void buildDayOfWeekHeatmap(AnalyseCalculator calc) {
+        double[] byDay = calc.getSpendingByDayOfWeek();
+        double max = 0;
+        for (double v : byDay) if (v > max) max = v;
+        if (max < 0.01) return;
+
+        LinearLayout card = makeCard();
+        card.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
+        titleLp.bottomMargin = DS.dp(activity, 14);
+        card.addView(sectionTitle("📅 Dépenses par jour de semaine"), titleLp);
+
+        String[] labels = {"Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"};
+
+        LinearLayout barsRow = new LinearLayout(activity);
+        barsRow.setOrientation(LinearLayout.HORIZONTAL);
+        barsRow.setGravity(Gravity.BOTTOM);
+
+        int barMaxH = DS.dp(activity, 72);
+        int barW    = DS.dp(activity, 28);
+        int barGap  = DS.dp(activity, 6);
+
+        for (int i = 0; i < 7; i++) {
+            LinearLayout col = new LinearLayout(activity);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+
+            LinearLayout.LayoutParams colLp = new LinearLayout.LayoutParams(-2, -2);
+            if (i > 0) colLp.leftMargin = barGap;
+
+            double ratio = max > 0 ? byDay[i] / max : 0;
+            int barH = Math.max(DS.dp(activity, 4), (int)(barMaxH * ratio));
+
+            FrameLayout barContainer = new FrameLayout(activity);
+            LinearLayout.LayoutParams bcLp = new LinearLayout.LayoutParams(barW, barMaxH);
+            barContainer.setLayoutParams(bcLp);
+
+            View bar = new View(activity);
+            GradientDrawable barBg = new GradientDrawable();
+            int alpha = (int)(60 + 195 * ratio);
+            barBg.setColor(ThemeColors.withAlpha(ThemeColors.primary(), alpha));
+            barBg.setCornerRadius(DS.dp(activity, 6));
+            bar.setBackground(barBg);
+
+            FrameLayout.LayoutParams barLp = new FrameLayout.LayoutParams(barW, barH, Gravity.BOTTOM);
+            barContainer.addView(bar, barLp);
+            col.addView(barContainer, bcLp);
+
+            // Montant au-dessus
+            if (byDay[i] > 0.01) {
+                TextView tvAmt = new TextView(activity);
+                tvAmt.setText(String.format(Locale.FRANCE, "%.0f", byDay[i]));
+                tvAmt.setTextSize(8.5f);
+                tvAmt.setTextColor(ThemeColors.subtext());
+                tvAmt.setGravity(Gravity.CENTER);
+                tvAmt.setPadding(0, DS.dp(activity, 2), 0, DS.dp(activity, 2));
+                col.addView(tvAmt, new LinearLayout.LayoutParams(barW, -2));
+            }
+
+            // Jour de semaine
+            TextView tvDay = new TextView(activity);
+            tvDay.setText(labels[i]);
+            tvDay.setTextSize(10f);
+            tvDay.setTypeface(Typeface.DEFAULT_BOLD);
+            tvDay.setTextColor(ratio >= 0.8 ? ThemeColors.primary() : ThemeColors.subtext());
+            tvDay.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams dayLp = new LinearLayout.LayoutParams(barW, -2);
+            dayLp.topMargin = DS.dp(activity, 4);
+            col.addView(tvDay, dayLp);
+
+            barsRow.addView(col, colLp);
+        }
+
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
+        rowLp.topMargin = DS.dp(activity, 4);
+        card.addView(barsRow, rowLp);
+
+        // Légende : jour le plus actif
+        int peakIdx = 0;
+        for (int i = 1; i < 7; i++) if (byDay[i] > byDay[peakIdx]) peakIdx = i;
+        TextView tvLegend = new TextView(activity);
+        tvLegend.setText("📌 Pic de dépenses : " + labels[peakIdx] +
+                " · " + String.format(Locale.FRANCE, "%.2f €", byDay[peakIdx]));
+        tvLegend.setTextSize(11.5f);
+        tvLegend.setTextColor(ThemeColors.subtext());
+        LinearLayout.LayoutParams legLp = new LinearLayout.LayoutParams(-1, -2);
+        legLp.topMargin = DS.dp(activity, 12);
+        card.addView(tvLegend, legLp);
+
+        addCard(card);
+    }
 
     private void buildInsights(List<String[]> txs) {
         List<FinancialInsightManager.Insight> insights = FinancialInsightManager.analyze(txs);
