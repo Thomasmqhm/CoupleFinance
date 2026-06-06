@@ -11,6 +11,7 @@ import android.os.Build;
 
 import com.couplefinance.R;
 import com.couplefinance.ui.DashboardActivity;
+import com.couplefinance.utils.ActivityLogger;
 
 /**
  * NotificationHelper — Notifications locales 100% Android natif.
@@ -247,6 +248,7 @@ public class NotificationHelper {
                 "Dépassement de %.2f € (%.0f%% utilisé)", over, budget > 0 ? spent / budget * 100 : 100);
         int id = 3000 + (categoryName != null ? categoryName.hashCode() & 0xFFF : 0);
         sendNotification(CHANNEL_BUDGET, id, title, body, false);
+        ActivityLogger.logBudgetExceeded(context, categoryName, spent, budget);
     }
 
     public void notifyBudgetWarning(String categoryName, int percent) {
@@ -261,6 +263,7 @@ public class NotificationHelper {
         String body = (goalName != null ? goalName : "Votre objectif") + " est entièrement financé.";
         int id = 4000 + (goalName != null ? goalName.hashCode() & 0xFFF : 0);
         sendNotification(CHANNEL_SAVINGS, id, title, body, false);
+        ActivityLogger.logSavingsGoal(context, goalName);
     }
 
     // Vérifie tous les budgets et envoie les alertes nécessaires (appel best-effort)
