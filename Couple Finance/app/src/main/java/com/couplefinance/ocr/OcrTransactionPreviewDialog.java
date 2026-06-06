@@ -663,6 +663,10 @@ public final class OcrTransactionPreviewDialog {
 			List<ParsedTransaction> transactions) {
 		ArrayList<String> names = new ArrayList<>();
 
+		// Les catégories système doivent toujours être présentes
+		names.add("Virements");
+		names.add("Crédits");
+
 		if (categoryNames != null) {
 			for (String cat : categoryNames) {
 				if (cat != null && !cat.trim().isEmpty()) {
