@@ -98,8 +98,13 @@ public class EnableBankingManager {
         public String balanceUrl;
         public AccountBalance() {}
         public double signedAmount() {
-            if (amount < 0) return amount;
-            return "DBIT".equals(indicator) ? -Math.abs(amount) : Math.abs(amount);
+            // Le montant renvoyé par Enable Banking porte déjà son propre signe
+            // (ex. "-177.28" pour un découvert). On ne se fie PLUS au champ
+            // credit_debit_indicator car certaines banques (CMB) l'envoient de
+            // façon incohérente entre deux requêtes (DBIT/CRDT alternés sur le
+            // même solde XPCD), ce qui inversait le signe du solde de façon
+            // aléatoire d'une synchro à l'autre.
+            return amount;
         }
     }
 
