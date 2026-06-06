@@ -350,6 +350,12 @@ public class SettingsCategoriesSection {
         }, () -> deleteCategory(category));
     }
 
+    private static final java.util.Set<String> SYSTEM_CATEGORIES;
+    static {
+        SYSTEM_CATEGORIES = new java.util.HashSet<>(java.util.Arrays.asList(
+                "virements", "virement", "crédits", "crédit", "credits", "credit"));
+    }
+
     private void addCategory(SettingsModels.Category category) {
         if (category != null && category.name != null
                 && SYSTEM_CATEGORIES.contains(category.name.trim().toLowerCase(java.util.Locale.FRENCH))) {

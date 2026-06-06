@@ -98,7 +98,13 @@ public final class VirementDialogs {
 		}
 
 		if (values.isEmpty()) {
-			values.add("Moi");
+			String me = "";
+			try { me = com.couplefinance.UserSession.getInstance().getNameOrFallback(); } catch (Exception ignored) {}
+			if (me == null || me.trim().isEmpty() || me.contains("@")) {
+				try { me = com.couplefinance.AuthManager.getInstance().getDisplayName(); } catch (Exception ignored) {}
+			}
+			if (me == null || me.trim().isEmpty() || me.contains("@")) me = "Moi";
+			values.add(me.trim());
 			internals.add(true);
 		}
 
