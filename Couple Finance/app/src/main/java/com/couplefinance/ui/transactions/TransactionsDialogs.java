@@ -340,6 +340,45 @@ public final class TransactionsDialogs {
             content.addView(buildJointInfo(activity));
         }
 
+        // ── Bouton Dupliquer ──────────────────────────────────────
+        TextView btnDuplicate = new TextView(activity);
+        btnDuplicate.setText("⊕ Dupliquer avec la date du jour");
+        btnDuplicate.setTextColor(com.couplefinance.core.theme.ThemeColors.primary());
+        btnDuplicate.setTextSize(DS.TEXT_SM);
+        btnDuplicate.setGravity(android.view.Gravity.CENTER);
+        btnDuplicate.setPadding(0, DS.dp(activity, 12), 0, DS.dp(activity, 4));
+        btnDuplicate.setTypeface(null, Typeface.BOLD);
+        btnDuplicate.setOnClickListener(v -> {
+            String dupLabel  = tx.description();
+            double dupAmount = tx.amount;
+            String dupType   = tx.type;
+            String dupCat    = tx.category;
+            String dupPerson = tx.person;
+            if (isDuplicate(dupLabel, dupAmount)) {
+                AppToast.error(activity, "Doublon détecté — transaction similaire récente");
+                return;
+            }
+            markSubmitted(dupLabel, dupAmount);
+            String compte = (jointEnabled && dupPerson.equalsIgnoreCase(jointName)) ? "joint" : "";
+            TransactionsRepository.addTransaction(
+                    dupLabel, dupAmount, dupType, dupCat,
+                    System.currentTimeMillis(), dupPerson, tx.shared, false, compte,
+                    activity,
+                    new TransactionsRepository.OnWriteComplete() {
+                        public void onSuccess() {
+                            ActivityLogger.logTransaction(activity, dupPerson, dupLabel, dupAmount, tx.isIncome());
+                            AppToast.success(activity, "Transaction dupliquée pour aujourd'hui");
+                            if (callback != null) callback.reload();
+                        }
+                        public void onError(String e) {
+                            AppToast.error(activity, "Erreur : " + e);
+                        }
+                    });
+        });
+        LinearLayout.LayoutParams dupLp = new LinearLayout.LayoutParams(-1, -2);
+        dupLp.topMargin = DS.dp(activity, 8);
+        content.addView(btnDuplicate, dupLp);
+
         // ── Bouton Enregistrer ────────────────────────────────────
         new AppDialog.Builder(activity)
                 .icon("✎")
