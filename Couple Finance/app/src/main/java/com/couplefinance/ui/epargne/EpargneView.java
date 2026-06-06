@@ -549,6 +549,23 @@ public class EpargneView extends BaseView {
 
 		card.addView(progressBar(pct, accent));
 
+		// Message motivationnel selon la progression
+		if (!goal.isCompleted() && pct >= 75) {
+			String motivMsg;
+			if (pct >= 95)      motivMsg = "🎯 Presque là ! Plus que quelques euros !";
+			else if (pct >= 90) motivMsg = "🔥 Incroyable ! Presque terminé !";
+			else if (pct >= 80) motivMsg = "💪 Super avance ! La ligne d'arrivée approche !";
+			else                motivMsg = "✨ Plus que 25% à aller, continuez !";
+			TextView tvMotiv = new TextView(activity);
+			tvMotiv.setText(motivMsg);
+			tvMotiv.setTextSize(11.5f);
+			tvMotiv.setTextColor(accent);
+			tvMotiv.setTypeface(null, Typeface.BOLD);
+			LinearLayout.LayoutParams motivLp = new LinearLayout.LayoutParams(-1, -2);
+			motivLp.topMargin = dp(6);
+			card.addView(tvMotiv, motivLp);
+		}
+
 		double monthly = EpargneCalculator.smartMonthly(goal);
 		if (monthly > 0 && !goal.isCompleted()) {
 			TextView tvMonthly = new TextView(activity);
