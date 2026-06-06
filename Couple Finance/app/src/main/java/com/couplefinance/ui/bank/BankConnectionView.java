@@ -1026,8 +1026,17 @@ public final class BankConnectionView {
                 .title("Nouvelle catégorie").subtitle("Sera enregistrée et disponible partout")
                 .content(box)
                 .primaryBtn("CRÉER", () -> {
-                    String name = etName.getText().toString().trim();
+                    String rawInput = etName.getText().toString();
+                    String name = rawInput.trim();
                     if (name.isEmpty()) { AppToast.error(a, "Nom requis"); return; }
+                    if (!rawInput.equals(name)) { AppToast.error(a, "Pas d'espace en début ou en fin de nom"); return; }
+                    String nLow = name.toLowerCase(java.util.Locale.FRENCH);
+                    if (nLow.equals("virements") || nLow.equals("virement")
+                            || nLow.equals("crédits") || nLow.equals("crédit")
+                            || nLow.equals("credits") || nLow.equals("credit")) {
+                        AppToast.error(a, "\"" + name + "\" est une catégorie système réservée");
+                        return;
+                    }
                     String emoji = etEmoji.getText().toString().trim();
                     if (emoji.isEmpty()) emoji = "🏷️";
                     dismiss(h);
