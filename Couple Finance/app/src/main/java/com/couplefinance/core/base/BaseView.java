@@ -99,7 +99,8 @@ public abstract class BaseView {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         int pH = dp(DS.PAD_PAGE);
-        root.setPadding(pH, dp(24), pH, dp(42));
+        // Réserve la hauteur de la barre de nav pour ne rien masquer en bas.
+        root.setPadding(pH, dp(24), pH, dp(DS.NAV_CLEARANCE));
         scrollRoot.addView(root, new ScrollView.LayoutParams(-1, -2));
         return root;
     }

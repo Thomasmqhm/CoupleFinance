@@ -81,11 +81,11 @@ public class VirementView extends BaseView {
 		scroll.setClipToPadding(false);
 		scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 		scroll.setBackgroundColor(Color.parseColor("#F8F3EF"));
-		scroll.setPadding(0, 0, 0, dp(96));
+		scroll.setPadding(0, 0, 0, 0);
 
 		root = new LinearLayout(activity);
 		root.setOrientation(LinearLayout.VERTICAL);
-		root.setPadding(dp(20), dp(14), dp(20), dp(112));
+		root.setPadding(dp(20), dp(14), dp(20), dp(DS.NAV_CLEARANCE));
 
 		scroll.addView(root, new ScrollView.LayoutParams(-1, -2));
 

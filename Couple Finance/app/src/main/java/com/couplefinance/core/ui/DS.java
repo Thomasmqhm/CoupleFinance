@@ -42,6 +42,11 @@ public final class DS {
 	public static final int PAD_INPUT = 16;
 	public static final int PAD_DIALOG = 24;
 
+	// Hauteur de la barre de navigation (72dp) + marge de respiration.
+	// Toute page défilante réserve cet espace en bas pour ne rien masquer.
+	public static final int NAV_BAR_HEIGHT = 72;
+	public static final int NAV_CLEARANCE = 92;
+
 	// PADDINGS legacy complémentaires
 	public static final int PAD = 16;
 	public static final int PAD_SM = 12;

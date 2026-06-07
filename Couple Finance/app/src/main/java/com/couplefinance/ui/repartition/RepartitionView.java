@@ -49,7 +49,7 @@ public class RepartitionView extends BaseView {
 
 		LinearLayout root = new LinearLayout(activity);
 		root.setOrientation(LinearLayout.VERTICAL);
-		root.setPadding(dp(18), dp(18), dp(18), dp(125));
+		root.setPadding(dp(18), dp(18), dp(18), dp(com.couplefinance.core.ui.DS.NAV_CLEARANCE));
 		root.setBackgroundColor(ThemeColors.background());
 
 		scroll.addView(root, new ScrollView.LayoutParams(-1, -2));

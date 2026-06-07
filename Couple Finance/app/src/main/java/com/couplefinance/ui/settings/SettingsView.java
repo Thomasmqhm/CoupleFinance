@@ -71,7 +71,7 @@ public class SettingsView {
 		root = new LinearLayout(activity);
 		root.setOrientation(LinearLayout.VERTICAL);
 		root.setGravity(Gravity.CENTER_HORIZONTAL);
-		root.setPadding(DS.dp(activity, 18), DS.dp(activity, 26), DS.dp(activity, 18), DS.dp(activity, 110));
+		root.setPadding(DS.dp(activity, 18), DS.dp(activity, 26), DS.dp(activity, 18), DS.dp(activity, DS.NAV_CLEARANCE));
 
 		scroll.addView(root, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT,
 				ScrollView.LayoutParams.WRAP_CONTENT));

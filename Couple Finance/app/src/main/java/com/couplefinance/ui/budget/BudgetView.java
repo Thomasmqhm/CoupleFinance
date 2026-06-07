@@ -55,11 +55,11 @@ public class BudgetView {
 		scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 		scroll.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 		scroll.setBackgroundColor(Color.parseColor("#F5F7FB"));
-		scroll.setPadding(0, 0, 0, dp(110));
+		scroll.setPadding(0, 0, 0, 0);
 
 		root = new LinearLayout(activity);
 		root.setOrientation(LinearLayout.VERTICAL);
-		root.setPadding(dp(20), dp(16), dp(20), dp(120));
+		root.setPadding(dp(20), dp(16), dp(20), dp(DS.NAV_CLEARANCE));
 
 		scroll.addView(root, new ScrollView.LayoutParams(-1, -2));
 

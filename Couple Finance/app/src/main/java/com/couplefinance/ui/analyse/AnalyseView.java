@@ -86,7 +86,7 @@ public class AnalyseView {
 
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setPadding(0, 0, 0, DS.dp(activity, 100));
+        rootLayout.setPadding(0, 0, 0, DS.dp(activity, DS.NAV_CLEARANCE));
         scroll.addView(rootLayout, new FrameLayout.LayoutParams(-1, -2));
 
         buildHeader();

@@ -50,14 +50,21 @@ public class AgendaView extends BaseView {
         LinearLayout root = UiFactory.vertical(activity);
         root.setBackgroundColor(DS.BG);
         root.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
-        root.setPadding(dp(DS.PAD_CARD), dp(DS.PAD_CARD), dp(DS.PAD_CARD), dp(12));
+        root.setPadding(dp(DS.PAD_CARD), dp(DS.PAD_CARD), dp(DS.PAD_CARD), dp(DS.NAV_CLEARANCE));
 
         buildHeader(root);
         buildFilterChips(root);
         buildColumns(root);
 
+        // Contenu défilant, sinon les cartes du bas passent sous la barre de nav.
+        android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(DS.BG);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(root, new android.widget.ScrollView.LayoutParams(-1, -2));
+
         load();
-        return root;
+        return scroll;
     }
 
     private void buildHeader(LinearLayout root) {

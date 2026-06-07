@@ -67,7 +67,7 @@ public class AbonnementsView {
                 DS.dp(activity, DS.PAD_PAGE),
                 DS.dp(activity, 20),
                 DS.dp(activity, DS.PAD_PAGE),
-                DS.dp(activity, 120)
+                DS.dp(activity, DS.NAV_CLEARANCE)
         );
 
         scroll.addView(content);
