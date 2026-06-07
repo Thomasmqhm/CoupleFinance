@@ -120,28 +120,27 @@ public class HomeNotifications {
 		bellAnchor.addView(
 				bell,
 				new FrameLayout.LayoutParams(
-						DS.dp(activity, 38),
-						DS.dp(activity, 38),
+						DS.dp(activity, 30),
+						DS.dp(activity, 30),
 						Gravity.CENTER
 				)
 		);
 
 		badgeView = new TextView(activity);
 		badgeView.setTextColor(Color.WHITE);
-		badgeView.setTextSize(10f);
+		badgeView.setTextSize(9f);
 		badgeView.setTypeface(Typeface.DEFAULT_BOLD);
 		badgeView.setGravity(Gravity.CENTER);
 		badgeView.setIncludeFontPadding(false);
 		badgeView.setBackground(badgeBg());
-		badgeView.setElevation(DS.dp(activity, 12));
 
 		FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(
-				DS.dp(activity, 20),
-				DS.dp(activity, 20),
+				DS.dp(activity, 16),
+				DS.dp(activity, 16),
 				Gravity.RIGHT | Gravity.TOP
 		);
-		badgeLp.topMargin = DS.dp(activity, 1);
-		badgeLp.rightMargin = DS.dp(activity, 1);
+		badgeLp.topMargin = DS.dp(activity, 4);
+		badgeLp.rightMargin = DS.dp(activity, 4);
 		bellAnchor.addView(badgeView, badgeLp);
 	}
 
@@ -377,10 +376,8 @@ public class HomeNotifications {
 	}
 
 	private View createHeaderIconView(boolean bell) {
-		HeaderIconView icon = new HeaderIconView(activity, bell);
-		icon.setBackground(circle(ThemeColors.card()));
-		icon.setElevation(DS.dp(activity, 6));
-		return icon;
+		// Icône plate : pas de fond ni d'élévation pour éviter une ombre disgracieuse.
+		return new HeaderIconView(activity, bell);
 	}
 
 	private class HeaderIconView extends View {
