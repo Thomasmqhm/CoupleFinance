@@ -239,6 +239,9 @@ public class DashboardActivity extends Activity {
 	private void switchPhoneTab(int index) {
 		currentPhoneTab = index;
 		selectPhoneTab(index);
+		// Le menu reste accessible mais se referme quand on navigue.
+		if (sidebar != null && sidebar.getVisibility() == View.VISIBLE)
+			closeSidebar();
 		switch (index) {
 		case 0:
 			showHome();
@@ -319,8 +322,9 @@ public class DashboardActivity extends Activity {
 		if (sidebar == null)
 			return;
 		sidebar.setVisibility(View.VISIBLE);
+		// Menu glissant depuis la gauche (même côté que le bouton ☰).
 		float startX = sidebar.getWidth() > 0 ? sidebar.getWidth() : 700f;
-		sidebar.setTranslationX(startX);
+		sidebar.setTranslationX(-startX);
 		ObjectAnimator anim = ObjectAnimator.ofFloat(sidebar, "translationX", 0f);
 		anim.setDuration(260);
 		anim.setInterpolator(new DecelerateInterpolator());
@@ -336,7 +340,7 @@ public class DashboardActivity extends Activity {
 		if (sidebar == null || !isPhoneMode)
 			return;
 		float endX = sidebar.getWidth() > 0 ? sidebar.getWidth() : 700f;
-		ObjectAnimator anim = ObjectAnimator.ofFloat(sidebar, "translationX", endX);
+		ObjectAnimator anim = ObjectAnimator.ofFloat(sidebar, "translationX", -endX);
 		anim.setDuration(200);
 		anim.setInterpolator(new DecelerateInterpolator());
 		anim.addListener(new AnimatorListenerAdapter() {
