@@ -35,6 +35,11 @@ public final class CreditsDialogs {
 	}
 
 	public static void showAddDialog(Activity activity, OnActionDone callback) {
+		showAddDialog(activity, callback, null, 0);
+	}
+
+	public static void showAddDialog(Activity activity, OnActionDone callback,
+			String prefillName, double prefillMonthly) {
 		ScrollView scroll = new ScrollView(activity);
 		scroll.setFillViewport(false);
 		scroll.setVerticalScrollBarEnabled(true);
@@ -46,6 +51,7 @@ public final class CreditsDialogs {
 
 		LinearLayout colNom = AppDialog.fieldColumn(activity, "NOM DU CRÉDIT");
 		EditText etName = UiFactory.input(activity, "Ex : Crédit immobilier");
+		if (prefillName != null && !prefillName.isEmpty()) etName.setText(prefillName);
 		colNom.addView(etName);
 		content.addView(colNom);
 
@@ -83,6 +89,7 @@ public final class CreditsDialogs {
 
 		LinearLayout colMonthly = AppDialog.fieldColumn(activity, "MENSUALITÉ €");
 		EditText etMonthly = UiFactory.inputNumeric(activity, "Auto");
+		if (prefillMonthly > 0) etMonthly.setText(String.format(java.util.Locale.FRANCE, "%.2f", prefillMonthly));
 		colMonthly.addView(etMonthly);
 		row3.addView(colMonthly, r3p2);
 
@@ -327,6 +334,18 @@ public final class CreditsDialogs {
 				.build();
 
 		dialogRef[0].show();
+	}
+
+	/**
+	 * Ouvre le dialog d'ajout de crédit pré-rempli à partir d'une transaction importée.
+	 * Pré-remplit le nom (label de la transaction) et la mensualité (montant).
+	 */
+	public static void showAddDialogFromTransaction(Activity activity,
+			com.couplefinance.ui.transactions.TransactionsModels.Transaction tx,
+			Runnable onDone) {
+		showAddDialog(activity, new OnActionDone() {
+			@Override public void reload() { if (onDone != null) onDone.run(); }
+		}, tx.label, Math.abs(tx.amount));
 	}
 
 	public static void showDeleteDialog(Activity activity, CreditsModels.Credit credit, OnActionDone callback) {

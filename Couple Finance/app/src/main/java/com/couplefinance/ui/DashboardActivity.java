@@ -131,6 +131,7 @@ public class DashboardActivity extends Activity {
 			CreditManager.getInstance().checkAndApplyCredits(null);
 			NotificationHelper.getInstance(this).notifyPendingFixedCharges(3);
 			TelegramScheduler.checkAndSend(this);
+			com.couplefinance.data.CategoryManager.getInstance().seedSystemCategories();
 			if (BankAutoSyncManager.isEnabled(this)) BankAutoSyncManager.scheduleDaily(this);
 		} catch (Exception ignored) {
 		}

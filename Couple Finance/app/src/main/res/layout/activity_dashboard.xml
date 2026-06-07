@@ -325,6 +325,23 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- FAB ajout rapide — visible depuis toutes les pages -->
+    <TextView
+        android:id="@+id/fabQuickAdd"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="90dp"
+        android:gravity="center"
+        android:text="+"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:elevation="12dp"
+        android:clickable="true"
+        android:focusable="true" />
+
     <View
         android:id="@+id/sidebarScrim"
         android:layout_width="match_parent"
