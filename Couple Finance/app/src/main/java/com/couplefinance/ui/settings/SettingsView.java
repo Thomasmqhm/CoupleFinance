@@ -633,7 +633,7 @@ public class SettingsView {
 		final String[] secLabels = {
 				"Soldes des comptes", "Bilan du mois", "Top catégories",
 				"Dernières opérations", "Prochains prélèvements", "Budgets",
-				"Épargne", "Crédits", "Agenda"
+				"Épargne", "Crédits", "Agenda", "Projection fin de mois"
 		};
 		final boolean[] secInit = {
 				TelegramScheduler.isShowBalances(activity),
@@ -644,7 +644,8 @@ public class SettingsView {
 				TelegramScheduler.isShowBudget(activity),
 				TelegramScheduler.isShowSavings(activity),
 				TelegramScheduler.isShowCredits(activity),
-				TelegramScheduler.isShowAgenda(activity)
+				TelegramScheduler.isShowAgenda(activity),
+				TelegramScheduler.isShowProjection(activity)
 		};
 		for (int i = 0; i < secLabels.length; i++) {
 			final int idx = i;
@@ -691,6 +692,7 @@ public class SettingsView {
 			case 6: TelegramScheduler.setShowSavings(activity, on);    break;
 			case 7: TelegramScheduler.setShowCredits(activity, on);    break;
 			case 8: TelegramScheduler.setShowAgenda(activity, on);     break;
+			case 9: TelegramScheduler.setShowProjection(activity, on); break;
 		}
 	}
 
