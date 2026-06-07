@@ -167,21 +167,17 @@ public final class HomeDashboardStyle {
      * Gradient riche avec profondeur inspiré Apple Wallet
      */
     public static GradientDrawable heroGradient(Context context) {
-        int start  = ThemeColors.heroGradientStart();
-        int middle = ThemeColors.heroGradientMiddle();
-        int end    = ThemeColors.heroGradientEnd();
-
+        // N26 épuré : bloc de marque propre, dégradé diagonal 2 tons primary → primaryDark,
+        // sans liseré blanc dur. Met le grand solde en valeur sans bruit visuel.
         GradientDrawable d = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
+                GradientDrawable.Orientation.TL_BR,
                 new int[]{
-                        ThemeColors.blend(start, Color.WHITE, 0.06f),
-                        middle,
-                        ThemeColors.blend(end, Color.BLACK, 0.10f)
+                        ThemeColors.primary(),
+                        ThemeColors.primaryDark()
                 }
         );
         d.setGradientType(GradientDrawable.LINEAR_GRADIENT);
         d.setCornerRadius(DS.dp(context, DS.RADIUS_2XL));
-        d.setStroke(DS.dp(context, 1), ThemeColors.withAlpha(Color.WHITE, 100));
         return d;
     }
 
@@ -326,9 +322,9 @@ public final class HomeDashboardStyle {
         if (tv == null) return;
         tv.setTextColor(Color.WHITE);
         tv.setAlpha(1f);
-        tv.setTextSize(DS.TEXT_DISPLAY);
+        tv.setTextSize(46f);
         tv.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        tv.setLetterSpacing(-0.035f);
+        tv.setLetterSpacing(-0.04f);
         tv.setIncludeFontPadding(false);
     }
 
