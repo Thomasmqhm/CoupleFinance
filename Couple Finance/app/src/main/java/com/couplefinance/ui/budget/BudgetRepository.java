@@ -39,7 +39,8 @@ public class BudgetRepository {
 				TransactionManager.getInstance().getTransactions(new FirestoreManager.Callback() {
 					@Override
 					public void onSuccess(String txResponse) {
-						Map<String, Double> spentMap = parseTransactions(txResponse);
+						Map<String, Double> spentMap     = parseTransactions(txResponse);
+						Map<String, Double> prevSpentMap = parsePrevMonthTransactions(txResponse);
 
 						ArrayList<BudgetModels.CategoryBudget> result = new ArrayList<>();
 						LinkedHashSet<String> categories = new LinkedHashSet<>();
@@ -49,10 +50,13 @@ public class BudgetRepository {
 
 						for (String category : categories) {
 							if (category == null || category.trim().isEmpty()) continue;
-							double spent  = spentMap.containsKey(category)  ? spentMap.get(category)  : 0;
-							double budget = budgetMap.containsKey(category) ? budgetMap.get(category) : 0;
-							result.add(new BudgetModels.CategoryBudget(
-									makeId(category), category, spent, budget));
+							double spent  = spentMap.containsKey(category)     ? spentMap.get(category)     : 0;
+							double budget = budgetMap.containsKey(category)    ? budgetMap.get(category)    : 0;
+							double prev   = prevSpentMap.containsKey(category) ? prevSpentMap.get(category) : 0;
+							BudgetModels.CategoryBudget cb = new BudgetModels.CategoryBudget(
+									makeId(category), category, spent, budget);
+							cb.prevMonthSpent = prev;
+							result.add(cb);
 						}
 
 						Collections.sort(result, (a, b) -> Double.compare(b.spent, a.spent));
@@ -189,6 +193,48 @@ public class BudgetRepository {
 
 				double old = map.containsKey(category) ? map.get(category) : 0;
 				map.put(category, old + amount);
+			}
+		} catch (Exception ignored) {}
+		return map;
+	}
+
+	/** Dépenses du mois civil précédent par catégorie (pour calcul de tendance). */
+	private static Map<String, Double> parsePrevMonthTransactions(String response) {
+		Map<String, Double> map = new LinkedHashMap<>();
+		try {
+			java.util.Calendar cal = java.util.Calendar.getInstance();
+			cal.set(java.util.Calendar.DAY_OF_MONTH, 1);
+			cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+			cal.set(java.util.Calendar.MINUTE, 0);
+			cal.set(java.util.Calendar.SECOND, 0);
+			cal.set(java.util.Calendar.MILLISECOND, 0);
+			long thisMonthStart = cal.getTimeInMillis();
+			cal.add(java.util.Calendar.MONTH, -1);
+			long prevMonthStart = cal.getTimeInMillis();
+
+			JSONObject root = new JSONObject(response);
+			JSONArray  docs = root.optJSONArray("documents");
+			if (docs == null) return map;
+
+			for (int i = 0; i < docs.length(); i++) {
+				JSONObject fields = docs.getJSONObject(i).optJSONObject("fields");
+				if (fields == null) continue;
+
+				String type = firstString(fields, "type", "transactionType").toLowerCase(Locale.FRANCE);
+				if (type.contains("income") || type.contains("revenu") || type.contains("recette")) continue;
+
+				long dateMs = 0;
+				try { dateMs = Long.parseLong(firstString(fields, "date", "displayDate", "createdAtText", "dateText", "day", "createdAt")); } catch (Exception ignored) {}
+				if (dateMs < prevMonthStart || dateMs >= thisMonthStart) continue;
+
+				String category = firstString(fields, "category", "categorie", "categoryName", "cat", "expenseCategory");
+				if (category.isEmpty()) category = "Sans catégorie";
+				category = cleanCategoryName(category);
+
+				double amount = Math.abs(firstDouble(fields, "amount", "montant", "value", "prix", "total"));
+				if (amount <= 0) continue;
+
+				map.put(category, (map.containsKey(category) ? map.get(category) : 0) + amount);
 			}
 		} catch (Exception ignored) {}
 		return map;
