@@ -179,6 +179,16 @@
             android:background="@android:color/transparent"
             android:layout_marginBottom="2dp"/>
 
+        <Button android:id="@+id/btnAnalyse"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="Analyse"
+            android:drawableStart="@drawable/ic_analyse"
+            android:drawablePadding="10dp"
+            android:textColor="#6D5E55" android:textSize="12sp"
+            android:gravity="start|center_vertical" android:paddingStart="12dp"
+            android:background="@android:color/transparent"
+            android:layout_marginBottom="2dp"/>
+
         <!-- Spacer -->
         <View android:layout_width="match_parent" android:layout_height="0dp"
             android:layout_weight="1"/>
