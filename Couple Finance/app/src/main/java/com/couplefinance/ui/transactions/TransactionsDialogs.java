@@ -27,6 +27,7 @@ import com.couplefinance.data.RecurringChargeManager;
 import com.couplefinance.ui.credits.CreditsDialogs;
 import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.ui.settings.SettingsModels;
+import com.couplefinance.utils.ActivityLogger;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -39,6 +40,21 @@ import java.util.Locale;
 public final class TransactionsDialogs {
 
     private TransactionsDialogs() {}
+
+    /** Clé "label:amount" → timestamp de la dernière soumission. Détection de doublons. */
+    private static final java.util.HashMap<String, Long> recentSubmissions = new java.util.HashMap<>();
+    private static final long DUPLICATE_WINDOW_MS = 60_000; // 60 secondes
+
+    private static boolean isDuplicate(String label, double amount) {
+        String key = label.toLowerCase(Locale.FRANCE) + ":" + Math.round(amount * 100);
+        Long last = recentSubmissions.get(key);
+        return last != null && (System.currentTimeMillis() - last) < DUPLICATE_WINDOW_MS;
+    }
+
+    private static void markSubmitted(String label, double amount) {
+        String key = label.toLowerCase(Locale.FRANCE) + ":" + Math.round(amount * 100);
+        recentSubmissions.put(key, System.currentTimeMillis());
+    }
 
     public interface OnActionDone {
         void reload();
@@ -195,6 +211,12 @@ public final class TransactionsDialogs {
                             && person.equalsIgnoreCase(jointName);
                     String compte = isJointSelected ? "joint" : "";
 
+                    if (isDuplicate(label, amount)) {
+                        AppToast.error(activity, "Transaction similaire déjà ajoutée (moins d'1 min)");
+                        return;
+                    }
+                    markSubmitted(label, amount);
+
                     TransactionsRepository.addTransaction(
                             label, amount, type, category,
                             dateMs[0], person, shared[0], false, compte,
@@ -211,6 +233,9 @@ public final class TransactionsDialogs {
                                                 activity, label, amount, category,
                                                 dateMs[0], finalPerson);
                                     }
+                                    ActivityLogger.logTransaction(
+                                            activity, person, label, amount,
+                                            "income".equals(type));
                                     AppToast.success(activity, "Transaction ajoutée");
                                     if (callback != null) callback.reload();
                                 }
