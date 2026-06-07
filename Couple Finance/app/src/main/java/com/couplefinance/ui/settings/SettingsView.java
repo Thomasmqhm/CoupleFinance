@@ -618,6 +618,46 @@ public class SettingsView {
 		restyle.run();
 		box.addView(freqRow);
 
+		// ── Contenu du résumé : sections à inclure ──
+		TextView secTitle = new TextView(activity);
+		secTitle.setText("CONTENU DU RÉSUMÉ");
+		secTitle.setTextColor(ThemeColors.subtext());
+		secTitle.setTextSize(11f);
+		secTitle.setTypeface(null, Typeface.BOLD);
+		secTitle.setLetterSpacing(0.08f);
+		LinearLayout.LayoutParams secLp = new LinearLayout.LayoutParams(-1, -2);
+		secLp.topMargin = DS.dp(activity, 18);
+		secLp.bottomMargin = DS.dp(activity, 6);
+		box.addView(secTitle, secLp);
+
+		final String[] secLabels = {
+				"Soldes des comptes", "Bilan du mois", "Top catégories",
+				"Dernières opérations", "Prochains prélèvements", "Budgets",
+				"Épargne", "Crédits", "Agenda"
+		};
+		final boolean[] secInit = {
+				TelegramScheduler.isShowBalances(activity),
+				TelegramScheduler.isShowMonth(activity),
+				TelegramScheduler.isShowCategories(activity),
+				TelegramScheduler.isShowRecent(activity),
+				TelegramScheduler.isShowCharges(activity),
+				TelegramScheduler.isShowBudget(activity),
+				TelegramScheduler.isShowSavings(activity),
+				TelegramScheduler.isShowCredits(activity),
+				TelegramScheduler.isShowAgenda(activity)
+		};
+		for (int i = 0; i < secLabels.length; i++) {
+			final int idx = i;
+			android.widget.CheckBox cb = new android.widget.CheckBox(activity);
+			cb.setText(secLabels[i]);
+			cb.setTextColor(ThemeColors.text());
+			cb.setTextSize(14.5f);
+			cb.setChecked(secInit[i]);
+			cb.setPadding(DS.dp(activity, 6), DS.dp(activity, 6), 0, DS.dp(activity, 6));
+			cb.setOnCheckedChangeListener((v, on) -> applyTelegramSection(idx, on));
+			box.addView(cb, new LinearLayout.LayoutParams(-1, -2));
+		}
+
 		TextView desc = new TextView(activity);
 		desc.setText("Le résumé est envoyé la première fois que l'app est ouverte dans la nouvelle période.");
 		desc.setTextColor(ThemeColors.subtext());
@@ -626,14 +666,32 @@ public class SettingsView {
 		descLp.topMargin = DS.dp(activity, 14);
 		box.addView(desc, descLp);
 
+		ScrollView boxScroll = new ScrollView(activity);
+		boxScroll.setVerticalScrollBarEnabled(false);
+		boxScroll.addView(box, new ScrollView.LayoutParams(-1, -2));
+
 		final AlertDialog[] h = {null};
 		h[0] = new AppDialog.Builder(activity)
-				.icon("📅").title("Fréquence du digest").subtitle("Résumé Telegram automatique")
-				.content(box)
+				.icon("📅").title("Résumé automatique").subtitle("Fréquence et contenu du digest")
+				.content(boxScroll)
 				.primaryBtn("FERMER", () -> {
 					refresh();
 					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
 				}).show();
+	}
+
+	private void applyTelegramSection(int idx, boolean on) {
+		switch (idx) {
+			case 0: TelegramScheduler.setShowBalances(activity, on);   break;
+			case 1: TelegramScheduler.setShowMonth(activity, on);      break;
+			case 2: TelegramScheduler.setShowCategories(activity, on); break;
+			case 3: TelegramScheduler.setShowRecent(activity, on);     break;
+			case 4: TelegramScheduler.setShowCharges(activity, on);    break;
+			case 5: TelegramScheduler.setShowBudget(activity, on);     break;
+			case 6: TelegramScheduler.setShowSavings(activity, on);    break;
+			case 7: TelegramScheduler.setShowCredits(activity, on);    break;
+			case 8: TelegramScheduler.setShowAgenda(activity, on);     break;
+		}
 	}
 
 	private void showTelegramAlertsDialog() {

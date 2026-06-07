@@ -55,16 +55,16 @@ public final class TelegramSummary {
         sb.append("<b>CoupleFinance — résumé</b>\n");
         sb.append("<i>").append(esc(dateHeader())).append("</i>\n");
 
-        appendBalances(ctx, sb);
+        if (TelegramScheduler.isShowBalances(ctx)) appendBalances(ctx, sb);
 
         // 1) Transactions → ce mois-ci + top catégories + dernières opérations
         TransactionsRepository.loadAll(activity, new TransactionsRepository.OnDataLoaded() {
             @Override
             public void onLoaded(List<TransactionsModels.Transaction> transactions,
                                  List<String> members, List<String[]> categories) {
-                appendMonth(sb, transactions);
-                appendTopCategories(sb, transactions);
-                appendRecent(sb, transactions);
+                if (TelegramScheduler.isShowMonth(ctx))      appendMonth(sb, transactions);
+                if (TelegramScheduler.isShowCategories(ctx)) appendTopCategories(sb, transactions);
+                if (TelegramScheduler.isShowRecent(ctx))     appendRecent(sb, transactions);
                 stepCharges(activity, sb, cb);
             }
 
@@ -83,7 +83,7 @@ public final class TelegramSummary {
                     new RecurringChargeManager.UpcomingChargesCallback() {
                         @Override
                         public void onResult(double total, int count) {
-                            if (count > 0) {
+                            if (count > 0 && TelegramScheduler.isShowCharges(activity)) {
                                 sb.append("\n<b>Prochains prélèvements</b>\n");
                                 sb.append("• ").append(count)
                                         .append(count > 1 ? " prélèvements à venir : "
@@ -109,7 +109,7 @@ public final class TelegramSummary {
             BudgetRepository.loadBudgets(new BudgetRepository.Callback() {
                 @Override
                 public void onResult(List<BudgetModels.CategoryBudget> list) {
-                    appendBudget(sb, list);
+                    if (TelegramScheduler.isShowBudget(activity)) appendBudget(sb, list);
                     stepSavings(activity, sb, cb);
                 }
 
@@ -130,7 +130,7 @@ public final class TelegramSummary {
                 @Override
                 public void onSuccess(String json) {
                     List<EpargneModels.SavingsGoal> goals = EpargneParser.parseSavings(json);
-                    appendSavings(sb, goals);
+                    if (TelegramScheduler.isShowSavings(activity)) appendSavings(sb, goals);
                     stepCredits(activity, sb, cb);
                 }
 
@@ -151,8 +151,9 @@ public final class TelegramSummary {
             CreditManager.getInstance().getCredits(new FirestoreManager.Callback() {
                 @Override
                 public void onSuccess(String json) {
-                    appendCredits(sb,
-                            com.couplefinance.ui.credits.CreditsParser.parseCredits(json));
+                    if (TelegramScheduler.isShowCredits(activity))
+                        appendCredits(sb,
+                                com.couplefinance.ui.credits.CreditsParser.parseCredits(json));
                     stepAgenda(activity, sb, cb);
                 }
 
@@ -172,7 +173,7 @@ public final class TelegramSummary {
             AgendaRepository.loadAll(activity, new AgendaRepository.OnDataLoaded() {
                 @Override
                 public void onLoaded(AgendaModels.AgendaData data) {
-                    appendAgenda(sb, data);
+                    if (TelegramScheduler.isShowAgenda(activity)) appendAgenda(sb, data);
                     send(sb, cb);
                 }
 
