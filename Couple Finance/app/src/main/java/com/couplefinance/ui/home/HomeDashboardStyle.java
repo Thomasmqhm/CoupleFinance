@@ -277,15 +277,11 @@ public final class HomeDashboardStyle {
      * Card transaction — fond card pour lignes de transactions
      */
     public static GradientDrawable transactionCard(Context context, int mainColor, boolean isIncome) {
-        GradientDrawable d = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{
-                        ThemeColors.blend(ThemeColors.surfaceFloating(), Color.WHITE, 0.18f),
-                        ThemeColors.surfaceFloating()
-                }
-        );
-        d.setCornerRadius(DS.dp(context, DS.RADIUS_XL));
-        d.setStroke(DS.dp(context, 1), ThemeColors.withAlpha(mainColor, 22));
+        // N26 épuré : ligne plate, fond surface uni, hairline douce, sans teinte colorée par ligne.
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(ThemeColors.surfaceFloating());
+        d.setCornerRadius(DS.dp(context, DS.RADIUS_LG));
+        d.setStroke(DS.dp(context, 1), ThemeColors.borderSoft());
         return d;
     }
 
