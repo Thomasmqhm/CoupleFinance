@@ -501,10 +501,10 @@ public class SettingsView {
 	}
 
 	private void buildNotificationsSection() {
-		LinearLayout card = sectionCard("TELEGRAM");
+		LinearLayout card = sectionCard("ALERTES TELEGRAM");
 
-		card.addView(row("✈️", "Configurer & personnaliser",
-				"Bot, comptes, sections, fréquence, alertes",
+		card.addView(row("✈️", "Configurer Telegram",
+				"Token du bot, chat_id de votre partenaire",
 				v -> showTelegramDialog()));
 
 		card.addView(divider());
@@ -513,21 +513,9 @@ public class SettingsView {
 
 		card.addView(divider());
 
-		card.addView(row("💡", "Alertes intelligentes",
-				"Grosse dépense, solde bas — seuils personnalisables",
-				v -> showSmartAlertsDialog()));
-
-		card.addView(divider());
-
-		card.addView(row("💡", "Alertes intelligentes",
-				"Grosse dépense, solde bas — seuils personnalisables",
-				v -> showSmartAlertsDialog()));
-
-		card.addView(divider());
-
-		card.addView(row("💡", "Alertes intelligentes",
-				"Grosse dépense, solde bas — seuils personnalisables",
-				v -> showSmartAlertsDialog()));
+		card.addView(row("⚠️", "Alertes seuils",
+				"Compte joint bas, prélèvements non couverts",
+				v -> showTelegramAlertsDialog()));
 
 		card.addView(divider());
 
@@ -872,151 +860,75 @@ public class SettingsView {
 
 		LinearLayout box = new LinearLayout(activity);
 		box.setOrientation(LinearLayout.VERTICAL);
-		box.setPadding(0, DS.dp(activity, 4), 0, DS.dp(activity, 8));
-
-		// ── Section 1 : Configuration du bot ──
-		box.addView(tgSectionLabel("⚙️ Configuration du bot"));
 
 		TextView info = new TextView(activity);
-		info.setText("1. Crée un bot via @BotFather et colle son token.\n"
-				+ "2. Écris /start au bot depuis le compte destinataire.\n"
-				+ "3. Touche « Récupérer le chat_id ».");
+		info.setText("1. Cr\u00e9e un bot via @BotFather et colle son token.\n"
+				+ "2. Ta partenaire \u00e9crit au bot (ex. /start).\n"
+				+ "3. Touche \u00ab R\u00e9cup\u00e9rer le chat_id \u00bb.");
 		info.setTextColor(ThemeColors.subtext());
 		info.setTextSize(DS.TEXT_SM);
-		box.addView(info, tgTop(4));
+		box.addView(info);
 
 		final EditText etToken = new EditText(activity);
-		etToken.setHint("Token du bot (ex: 123456:ABC…)");
+		etToken.setHint("Token du bot");
 		etToken.setText(TelegramManager.getInstance().getBotToken());
 		etToken.setTextColor(ThemeColors.text());
 		etToken.setHintTextColor(ThemeColors.muted());
-		box.addView(etToken, tgTop(10));
+		box.addView(etToken, tgTop(12));
 
 		final EditText etChat = new EditText(activity);
-		etChat.setHint("chat_id du destinataire");
+		etChat.setHint("chat_id de la partenaire");
 		etChat.setText(TelegramManager.getInstance().getChatId());
 		etChat.setTextColor(ThemeColors.text());
 		etChat.setHintTextColor(ThemeColors.muted());
 		etChat.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
 				| android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
-		box.addView(etChat, tgTop(8));
+		box.addView(etChat, tgTop(10));
 
-		LinearLayout botBtns = new LinearLayout(activity);
-		botBtns.setOrientation(LinearLayout.HORIZONTAL);
-		TextView btnFetch = tgButton("Récupérer le chat_id");
+		TextView btnFetch = tgButton("R\u00e9cup\u00e9rer le chat_id");
 		btnFetch.setOnClickListener(v -> {
-			TelegramManager.getInstance().setBotToken(etToken.getText().toString().trim());
-			AppToast.info(activity, "Recherche du chat…");
+			TelegramManager.getInstance().setBotToken(etToken.getText().toString());
+			AppToast.info(activity, "Recherche du chat\u2026");
 			TelegramManager.getInstance().fetchLatestChatId(new TelegramManager.Callback() {
 				@Override public void onSuccess(String r) {
 					etChat.setText(TelegramManager.getInstance().getChatId());
-					AppToast.success(activity, "Trouvé : " + r);
+					AppToast.success(activity, "Trouv\u00e9 : " + r);
 				}
 				@Override public void onError(String e) { AppToast.error(activity, e); }
 			});
 		});
-		TextView btnTest = tgButton("Test");
+		box.addView(btnFetch, tgTop(12));
+
+		TextView btnTest = tgButton("Envoyer un test");
 		btnTest.setOnClickListener(v -> {
-			TelegramManager.getInstance().setBotToken(etToken.getText().toString().trim());
-			TelegramManager.getInstance().setChatId(etChat.getText().toString().trim());
+			TelegramManager.getInstance().setBotToken(etToken.getText().toString());
+			TelegramManager.getInstance().setChatId(etChat.getText().toString());
 			TelegramManager.getInstance().sendTest(new TelegramManager.Callback() {
-				@Override public void onSuccess(String r) { AppToast.success(activity, "Message envoyé ✓"); }
+				@Override public void onSuccess(String r) { AppToast.success(activity, "Message envoy\u00e9 \u2713"); }
 				@Override public void onError(String e) { AppToast.error(activity, e); }
 			});
 		});
-		LinearLayout.LayoutParams fetchLp = new LinearLayout.LayoutParams(0, -2, 2f);
-		LinearLayout.LayoutParams testLp  = new LinearLayout.LayoutParams(0, -2, 1f);
-		testLp.leftMargin = DS.dp(activity, 8);
-		botBtns.addView(btnFetch, fetchLp);
-		botBtns.addView(btnTest,  testLp);
-		box.addView(botBtns, tgTop(10));
+		box.addView(btnTest, tgTop(8));
 
-		// ── Section 2 : Comptes affichés ──
-		box.addView(tgSectionLabel("👥 Comptes à afficher"), tgTop(20));
+		TextView btnSummary = tgButton("Envoyer le r\u00e9sum\u00e9");
+		btnSummary.setOnClickListener(v -> {
+			TelegramManager.getInstance().setBotToken(etToken.getText().toString());
+			TelegramManager.getInstance().setChatId(etChat.getText().toString());
+			AppToast.info(activity, "Pr\u00e9paration du r\u00e9sum\u00e9\u2026");
+			TelegramSummary.buildAndSend(activity, new TelegramSummary.Callback() {
+				@Override public void onSuccess() { AppToast.success(activity, "R\u00e9sum\u00e9 envoy\u00e9 \u2713"); }
+				@Override public void onError(String e) { AppToast.error(activity, e); }
+			});
+		});
+		box.addView(btnSummary, tgTop(8));
 
-		LinearLayout accountsBox = new LinearLayout(activity);
-		accountsBox.setOrientation(LinearLayout.VERTICAL);
-		List<String> selectedAccounts = TelegramScheduler.getSelectedAccounts(activity);
-
-		android.widget.CheckBox cbJoint = tgCheckBox("Compte joint",
-				selectedAccounts.isEmpty() || containsIgnoreCase(selectedAccounts, "Compte joint"));
-		accountsBox.addView(cbJoint, tgTop(6));
-
-		List<android.widget.CheckBox> memberCbs = new ArrayList<>();
-		List<String> memberNames = new ArrayList<>();
-		try {
-			SettingsModels.State state = SettingsCache.get();
-			if (state != null && state.members != null) {
-				for (SettingsModels.Member m : state.members) {
-					if (m == null || m.name == null || m.name.trim().isEmpty()) continue;
-					String name = m.name.trim();
-					android.widget.CheckBox cb = tgCheckBox(name,
-							selectedAccounts.isEmpty() || containsIgnoreCase(selectedAccounts, name));
-					memberNames.add(name);
-					memberCbs.add(cb);
-					accountsBox.addView(cb, tgTop(4));
-				}
-			}
-		} catch (Exception ignored) {}
-		box.addView(accountsBox, tgTop(4));
-
-		// ── Section 3 : Sections du résumé ──
-		box.addView(tgSectionLabel("📋 Sections du résumé"), tgTop(20));
-
-		TextView sectInfo = new TextView(activity);
-		sectInfo.setText("Choisissez ce que vous voulez voir dans le digest Telegram.");
-		sectInfo.setTextColor(ThemeColors.subtext());
-		sectInfo.setTextSize(DS.TEXT_SM - 1);
-		box.addView(sectInfo, tgTop(4));
-
-		String[][] sectDefs = {
-			{"💰 Soldes",          "balances"},
-			{"📊 Bilan mensuel",    "month"},
-			{"📋 Prélèvements", "charges"},
-			{"🏦 Crédits",    "credits"},
-			{"🌱 Épargne",    "savings"},
-			{"📉 Budget",           "budget"},
-			{"📆 Agenda",           "agenda"},
-			{"🔮 Projection",       "projection"},
-			{"🧾 Opérations",  "recent"},
-			{"🏷️ Catégories", "categories"}
-		};
-		boolean[] sectDefaults = {
-			TelegramScheduler.isShowBalances(activity),
-			TelegramScheduler.isShowMonth(activity),
-			TelegramScheduler.isShowCharges(activity),
-			TelegramScheduler.isShowCredits(activity),
-			TelegramScheduler.isShowSavings(activity),
-			TelegramScheduler.isShowBudget(activity),
-			TelegramScheduler.isShowAgenda(activity),
-			TelegramScheduler.isShowProjection(activity),
-			TelegramScheduler.isShowRecent(activity),
-			TelegramScheduler.isShowCategories(activity)
-		};
-		android.widget.CheckBox[] sectCbs = new android.widget.CheckBox[sectDefs.length];
-		LinearLayout sectGrid = new LinearLayout(activity);
-		sectGrid.setOrientation(LinearLayout.VERTICAL);
-		for (int i = 0; i < sectDefs.length; i += 2) {
-			LinearLayout rowG = new LinearLayout(activity);
-			rowG.setOrientation(LinearLayout.HORIZONTAL);
-			android.widget.CheckBox cb1 = tgCheckBox(sectDefs[i][0], sectDefaults[i]);
-			sectCbs[i] = cb1;
-			rowG.addView(cb1, new LinearLayout.LayoutParams(0, -2, 1f));
-			if (i + 1 < sectDefs.length) {
-				android.widget.CheckBox cb2 = tgCheckBox(sectDefs[i + 1][0], sectDefaults[i + 1]);
-				sectCbs[i + 1] = cb2;
-				LinearLayout.LayoutParams c2lp = new LinearLayout.LayoutParams(0, -2, 1f);
-				c2lp.leftMargin = DS.dp(activity, 8);
-				rowG.addView(cb2, c2lp);
-			}
-			LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
-			rowLp.topMargin = DS.dp(activity, 4);
-			sectGrid.addView(rowG, rowLp);
-		}
-		box.addView(sectGrid, tgTop(8));
-
-		// ── Section 4 : Fréquence d'envoi ──
-		box.addView(tgSectionLabel("⏰ Fréquence d'envoi automatique"), tgTop(20));
+		// ── Envoi automatique ──
+		TextView autoLabel = new TextView(activity);
+		autoLabel.setText("Envoi automatique");
+		autoLabel.setTextColor(ThemeColors.text());
+		autoLabel.setTypeface(null, Typeface.BOLD);
+		autoLabel.setTextSize(DS.TEXT_SM);
+		box.addView(autoLabel, tgTop(16));
 
 		final String[] selFreq = { TelegramScheduler.getDigestFrequency(activity) };
 		final String[] codes = { TelegramScheduler.OFF, TelegramScheduler.DAILY, TelegramScheduler.WEEKLY, TelegramScheduler.MONTHLY };
@@ -1028,8 +940,8 @@ public class SettingsView {
 				GradientDrawable bg = new GradientDrawable();
 				bg.setColor(on ? ThemeColors.primary() : ThemeColors.surfaceSoft());
 				bg.setCornerRadius(DS.dp(activity, 10));
-				freqChips[i].setBackground(bg);
-				freqChips[i].setTextColor(on ? ThemeColors.white() : ThemeColors.subtext());
+				chips[i].setBackground(bg);
+				chips[i].setTextColor(on ? ThemeColors.white() : ThemeColors.subtext());
 			}
 		};
 		LinearLayout freqRow = new LinearLayout(activity);
@@ -1037,120 +949,62 @@ public class SettingsView {
 		for (int i = 0; i < codes.length; i++) {
 			final int idx = i;
 			TextView chip = new TextView(activity);
-			chip.setText(freqLabels[i]);
-			chip.setGravity(Gravity.CENTER);
+			chip.setText(labels[i]);
+			chip.setGravity(android.view.Gravity.CENTER);
 			chip.setTextSize(DS.TEXT_SM);
-			chip.setTypeface(null, Typeface.BOLD);
-			int pv = DS.dp(activity, 10);
-			chip.setPadding(DS.dp(activity, 4), pv, DS.dp(activity, 4), pv);
-			chip.setOnClickListener(v -> { selFreq[0] = freqCodes[idx]; restyleFreq.run(); });
-			freqChips[i] = chip;
+			int pv = DS.dp(activity, 9);
+			chip.setPadding(0, pv, 0, pv);
+			chip.setOnClickListener(v -> {
+				selFreq[0] = codes[idx];
+				TelegramScheduler.setDigestFrequency(activity, selFreq[0]);
+				restyle.run();
+			});
+			chips[i] = chip;
 			LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, -2, 1f);
-			if (i > 0) clp.leftMargin = DS.dp(activity, 6);
+			if (i > 0) clp.leftMargin = DS.dp(activity, 8);
 			freqRow.addView(chip, clp);
 		}
-		restyleFreq.run();
+		restyle.run();
 		box.addView(freqRow, tgTop(8));
 
-		// ── Section 5 : Alertes ──
-		box.addView(tgSectionLabel("🔔 Alertes automatiques"), tgTop(20));
-
 		final EditText etThreshold = new EditText(activity);
-		etThreshold.setHint("Alerte si le joint passe sous (€)");
+		etThreshold.setHint("Alerte si le joint passe sous (\u20ac)");
 		double curTh = TelegramScheduler.getLowJointThreshold(activity);
 		if (!Double.isNaN(curTh)) {
-			etThreshold.setText(curTh == Math.floor(curTh)
-					? String.valueOf((long) curTh) : String.valueOf(curTh));
+			if (curTh == Math.floor(curTh)) etThreshold.setText(String.valueOf((long) curTh));
+			else etThreshold.setText(String.valueOf(curTh));
 		}
 		etThreshold.setTextColor(ThemeColors.text());
 		etThreshold.setHintTextColor(ThemeColors.muted());
 		etThreshold.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
 				| android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-		box.addView(etThreshold, tgTop(8));
+		box.addView(etThreshold, tgTop(12));
 
 		final android.widget.CheckBox cbCoverage = new android.widget.CheckBox(activity);
-		cbCoverage.setText("Alerter si le joint ne couvre pas les prélèvements");
+		cbCoverage.setText("Alerter si le joint ne couvre pas les pr\u00e9l\u00e8vements");
 		cbCoverage.setTextColor(ThemeColors.subtext());
 		cbCoverage.setTextSize(DS.TEXT_SM);
 		cbCoverage.setChecked(TelegramScheduler.isCoverageAlert(activity));
-		box.addView(cbCoverage, tgTop(8));
-
-		// ── Bouton envoi immédiat ──
-		TextView btnSummary = tgButton("📤  Envoyer le résumé maintenant");
-		btnSummary.setOnClickListener(v -> {
-			AppToast.info(activity, "Préparation du résumé…");
-			TelegramSummary.buildAndSend(activity, new TelegramSummary.Callback() {
-				@Override public void onSuccess() { AppToast.success(activity, "Résumé envoyé ✓"); }
-				@Override public void onError(String e) { AppToast.error(activity, e); }
-			});
-		});
-		box.addView(btnSummary, tgTop(20));
+		box.addView(cbCoverage, tgTop(10));
 
 		ScrollView sc = new ScrollView(activity);
 		sc.addView(box);
 
 		final AlertDialog[] h = {null};
 		h[0] = new AppDialog.Builder(activity)
-				.icon("✈️").title("Notifications Telegram").subtitle("100% personnalisable")
+				.icon("\u2708").title("Notifications Telegram").subtitle("Pr\u00e9venir ta partenaire (iOS)")
 				.content(sc)
 				.primaryBtn("ENREGISTRER", () -> {
-					TelegramManager.getInstance().setBotToken(etToken.getText().toString().trim());
-					TelegramManager.getInstance().setChatId(etChat.getText().toString().trim());
-					List<String> chosen = new ArrayList<>();
-					if (cbJoint.isChecked()) chosen.add("Compte joint");
-					for (int i = 0; i < memberCbs.size(); i++) {
-						if (memberCbs.get(i).isChecked()) chosen.add(memberNames.get(i));
-					}
-					int totalAccounts = 1 + memberNames.size();
-					TelegramScheduler.setSelectedAccounts(activity,
-							chosen.size() == totalAccounts ? new ArrayList<>() : chosen);
-					TelegramScheduler.setShowBalances(activity,   sectCbs[0] != null && sectCbs[0].isChecked());
-					TelegramScheduler.setShowMonth(activity,      sectCbs[1] != null && sectCbs[1].isChecked());
-					TelegramScheduler.setShowCharges(activity,    sectCbs[2] != null && sectCbs[2].isChecked());
-					TelegramScheduler.setShowCredits(activity,    sectCbs[3] != null && sectCbs[3].isChecked());
-					TelegramScheduler.setShowSavings(activity,    sectCbs[4] != null && sectCbs[4].isChecked());
-					TelegramScheduler.setShowBudget(activity,     sectCbs[5] != null && sectCbs[5].isChecked());
-					TelegramScheduler.setShowAgenda(activity,     sectCbs[6] != null && sectCbs[6].isChecked());
-					TelegramScheduler.setShowProjection(activity, sectCbs[7] != null && sectCbs[7].isChecked());
-					TelegramScheduler.setShowRecent(activity,     sectCbs[8] != null && sectCbs[8].isChecked());
-					TelegramScheduler.setShowCategories(activity, sectCbs[9] != null && sectCbs[9].isChecked());
-					TelegramScheduler.setDigestFrequency(activity, selFreq[0]);
+					TelegramManager.getInstance().setBotToken(etToken.getText().toString());
+					TelegramManager.getInstance().setChatId(etChat.getText().toString());
 					String th = etThreshold.getText().toString().trim().replace(',', '.');
 					if (th.isEmpty()) TelegramScheduler.setLowJointThreshold(activity, Double.NaN);
 					else { try { TelegramScheduler.setLowJointThreshold(activity, Double.parseDouble(th)); } catch (Exception ignored) {} }
 					TelegramScheduler.setCoverageAlert(activity, cbCoverage.isChecked());
-					AppToast.success(activity, "Telegram configuré ✓");
-					refresh();
+					AppToast.success(activity, "Telegram configur\u00e9");
 					try { if (h[0] != null) h[0].dismiss(); } catch (Exception ignored) {}
 				}).show();
 	}
-
-	private TextView tgSectionLabel(String text) {
-		TextView tv = new TextView(activity);
-		tv.setText(text);
-		tv.setTextColor(ThemeColors.text());
-		tv.setTypeface(null, Typeface.BOLD);
-		tv.setTextSize(14f);
-		return tv;
-	}
-
-	private android.widget.CheckBox tgCheckBox(String label, boolean checked) {
-		android.widget.CheckBox cb = new android.widget.CheckBox(activity);
-		cb.setText(label);
-		cb.setChecked(checked);
-		cb.setTextColor(ThemeColors.subtext());
-		cb.setTextSize(DS.TEXT_SM);
-		return cb;
-	}
-
-	private boolean containsIgnoreCase(List<String> list, String value) {
-		if (list == null || value == null) return false;
-		for (String s : list) {
-			if (value.equalsIgnoreCase(s)) return true;
-		}
-		return false;
-	}
-
 
 	private void showSyncTimeDialog() {
 		final NumberPicker hourPicker = new NumberPicker(activity);
