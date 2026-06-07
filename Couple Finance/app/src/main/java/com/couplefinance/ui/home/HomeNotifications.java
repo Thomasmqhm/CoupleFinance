@@ -43,16 +43,37 @@ public class HomeNotifications {
 	}
 
 	public void install(LinearLayout dashboardContent) {
-		if (dashboardContent == null || dashboardContent.getChildCount() == 0 || bellAnchor != null) return;
+		if (bellAnchor != null) return;
 
-		// Sur tablette, le layout deux colonnes fournit un conteneur dédié
-		// (notifActionsAnchor) en haut de la colonne droite. On y place la
-		// barre d'icônes. Sinon (téléphone), on garde le placement historique
-		// dans la colonne droite du header.
+		// Construit la cloche (sans roue dentée : les widgets se configurent
+		// désormais uniquement dans les Paramètres).
+		buildBellAnchor();
+
+		// Priorité : barre supérieure (téléphone) où la cloche se place juste
+		// à côté du statut Firebase.
+		View topbarAnchor = activity.findViewById(com.couplefinance.R.id.topbarNotifAnchor);
+		if (topbarAnchor instanceof FrameLayout && topbarAnchor.getVisibility() == View.VISIBLE) {
+			// L'ancre vit dans l'Activity et survit aux recréations du fragment :
+			// on la vide d'abord pour éviter d'empiler plusieurs cloches.
+			((FrameLayout) topbarAnchor).removeAllViews();
+			((FrameLayout) topbarAnchor).addView(
+					bellAnchor,
+					new FrameLayout.LayoutParams(
+							DS.dp(activity, 44),
+							DS.dp(activity, 44),
+							Gravity.CENTER
+					)
+			);
+			updateBadge();
+			return;
+		}
+
+		// Repli (tablette) : on conserve le placement historique dans la
+		// colonne droite du header / notifActionsAnchor.
+		if (dashboardContent == null || dashboardContent.getChildCount() == 0) return;
+
 		LinearLayout target = null;
-
-		View anchor = dashboardContent.findViewById(
-				com.couplefinance.R.id.notifActionsAnchor);
+		View anchor = dashboardContent.findViewById(com.couplefinance.R.id.notifActionsAnchor);
 		if (anchor instanceof LinearLayout) {
 			target = (LinearLayout) anchor;
 		} else {
@@ -65,36 +86,29 @@ public class HomeNotifications {
 			target = (LinearLayout) headerRow.getChildAt(1);
 		}
 
-		LinearLayout rightColumn = target;
-
 		LinearLayout actions = new LinearLayout(activity);
 		actions.setOrientation(LinearLayout.HORIZONTAL);
 		actions.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
 
 		LinearLayout.LayoutParams actionsLp = new LinearLayout.LayoutParams(
 				ViewGroup.LayoutParams.WRAP_CONTENT,
-				DS.dp(activity, 42)
+				DS.dp(activity, 44)
 		);
 		actionsLp.setMargins(0, 0, 0, DS.dp(activity, 10));
 
-		View widgetSettings = createHeaderIconView(false);
-		widgetSettings.setClickable(true);
-		widgetSettings.setFocusable(true);
-		widgetSettings.setOnClickListener(v -> {
-			if (onWidgetsClick != null) onWidgetsClick.run();
-		});
-		widgetSettings.setOnLongClickListener(v -> {
-			if (onOrganizeLongClick != null) onOrganizeLongClick.run();
-			return true;
-		});
-
-		LinearLayout.LayoutParams settingsLp = new LinearLayout.LayoutParams(
-				DS.dp(activity, 38),
-				DS.dp(activity, 38)
+		actions.addView(
+				bellAnchor,
+				new LinearLayout.LayoutParams(
+						DS.dp(activity, 44),
+						DS.dp(activity, 44)
+				)
 		);
-		settingsLp.setMargins(0, 0, DS.dp(activity, 8), 0);
-		actions.addView(widgetSettings, settingsLp);
 
+		updateBadge();
+		target.addView(actions, 0, actionsLp);
+	}
+
+	private void buildBellAnchor() {
 		bellAnchor = new FrameLayout(activity);
 		bellAnchor.setClipChildren(false);
 		bellAnchor.setClipToPadding(false);
@@ -114,33 +128,21 @@ public class HomeNotifications {
 
 		badgeView = new TextView(activity);
 		badgeView.setTextColor(Color.WHITE);
-		badgeView.setTextSize(9f);
+		badgeView.setTextSize(10f);
 		badgeView.setTypeface(Typeface.DEFAULT_BOLD);
 		badgeView.setGravity(Gravity.CENTER);
 		badgeView.setIncludeFontPadding(false);
-		badgeView.setBackground(circle(ThemeColors.primary()));
-		badgeView.setElevation(DS.dp(activity, 10));
+		badgeView.setBackground(badgeBg());
+		badgeView.setElevation(DS.dp(activity, 12));
 
 		FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(
-				DS.dp(activity, 17),
-				DS.dp(activity, 17),
+				DS.dp(activity, 20),
+				DS.dp(activity, 20),
 				Gravity.RIGHT | Gravity.TOP
 		);
-		badgeLp.topMargin = -DS.dp(activity, 1);
-		badgeLp.rightMargin = -DS.dp(activity, 1);
+		badgeLp.topMargin = DS.dp(activity, 1);
+		badgeLp.rightMargin = DS.dp(activity, 1);
 		bellAnchor.addView(badgeView, badgeLp);
-
-		updateBadge();
-
-		actions.addView(
-				bellAnchor,
-				new LinearLayout.LayoutParams(
-						DS.dp(activity, 42),
-						DS.dp(activity, 42)
-				)
-		);
-
-		rightColumn.addView(actions, 0, actionsLp);
 	}
 
 	public void setNotifications(List<HomeNotificationItem> items) {
@@ -463,6 +465,15 @@ public class HomeNotifications {
 		GradientDrawable d = new GradientDrawable();
 		d.setShape(GradientDrawable.OVAL);
 		d.setColor(color);
+		return d;
+	}
+
+	private GradientDrawable badgeBg() {
+		// Pastille rouge vif cerclée de blanc pour un contraste fort sur la barre.
+		GradientDrawable d = new GradientDrawable();
+		d.setShape(GradientDrawable.OVAL);
+		d.setColor(Color.parseColor("#E5484D"));
+		d.setStroke(DS.dp(activity, 2), Color.WHITE);
 		return d;
 	}
 
