@@ -213,6 +213,11 @@ public class CreditsView extends BaseView {
 			tvAmount.setTextColor(ThemeColors.expense());
 
 			row.addView(tvAmount, new LinearLayout.LayoutParams(-2, -2));
+
+			com.couplefinance.core.ui.animations.PressAnimations.applySoft(row);
+			final com.couplefinance.ui.transactions.TransactionsModels.Transaction finalTx = tx;
+			row.setOnClickListener(v -> CreditsDialogs.showAddDialogFromTransaction(activity, finalTx, this::load));
+
 			txCreditList.addView(row);
 		}
 	}

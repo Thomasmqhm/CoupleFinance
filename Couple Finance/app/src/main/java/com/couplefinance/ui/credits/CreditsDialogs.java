@@ -38,7 +38,11 @@ public final class CreditsDialogs {
 		showAddDialog(activity, callback, null, 0);
 	}
 
-	public static void showAddDialog(Activity activity, OnActionDone callback,
+	public static void showAddDialog(Activity activity, String prefillName, double prefillMonthly, OnActionDone callback) {
+		showAddDialog(activity, callback, prefillName, prefillMonthly);
+	}
+
+	private static void showAddDialog(Activity activity, OnActionDone callback,
 			String prefillName, double prefillMonthly) {
 		ScrollView scroll = new ScrollView(activity);
 		scroll.setFillViewport(false);
@@ -336,10 +340,6 @@ public final class CreditsDialogs {
 		dialogRef[0].show();
 	}
 
-	/**
-	 * Ouvre le dialog d'ajout de crédit pré-rempli à partir d'une transaction importée.
-	 * Pré-remplit le nom (label de la transaction) et la mensualité (montant).
-	 */
 	public static void showAddDialogFromTransaction(Activity activity,
 			com.couplefinance.ui.transactions.TransactionsModels.Transaction tx,
 			Runnable onDone) {
