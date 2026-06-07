@@ -35,6 +35,7 @@ public class CreditsView extends BaseView {
 	private LinearLayout alertBar;
 	private LinearLayout creditList;
 	private LinearLayout insightsList;
+	private LinearLayout txCreditList;
 
 	public CreditsView(Activity activity) {
 		super(activity);
@@ -104,6 +105,17 @@ public class CreditsView extends BaseView {
 		creditList = UiFactory.vertical(activity);
 		left.addView(creditList, lpFull());
 
+		// Section transactions importées catégorisées "Crédits"
+		TextView txSecTitle = UiFactory.sectionTitle(ctx(), "Opérations crédit importées");
+		txSecTitle.setTextColor(ThemeColors.text());
+		LinearLayout.LayoutParams txtp = lpFull();
+		txtp.topMargin = dp(DS.GAP_LG);
+		txtp.bottomMargin = dp(DS.GAP_SM);
+		left.addView(txSecTitle, txtp);
+
+		txCreditList = UiFactory.vertical(activity);
+		left.addView(txCreditList, lpFull());
+
 		LinearLayout right = UiFactory.vertical(activity);
 		main.addView(right, new LinearLayout.LayoutParams(0, -2, 0.95f));
 
@@ -131,6 +143,78 @@ public class CreditsView extends BaseView {
 				render(new CreditsModels.CreditsData(new java.util.ArrayList<>(), 0, 0));
 			}
 		});
+		loadCreditTransactions();
+	}
+
+	private void loadCreditTransactions() {
+		com.couplefinance.data.TransactionsRepository.loadAll(
+				activity,
+				new com.couplefinance.data.TransactionsRepository.OnDataLoaded() {
+					@Override
+					public void onLoaded(java.util.List<com.couplefinance.data.TransactionsModels.Transaction> txs,
+							java.util.List<String> members,
+							java.util.List<String[]> cats) {
+						java.util.List<com.couplefinance.data.TransactionsModels.Transaction> credits = new java.util.ArrayList<>();
+						if (txs != null) {
+							for (com.couplefinance.data.TransactionsModels.Transaction tx : txs) {
+								if (tx != null && "Crédits".equalsIgnoreCase(
+										tx.category == null ? "" : tx.category.trim())) {
+									credits.add(tx);
+								}
+							}
+						}
+						activity.runOnUiThread(() -> renderCreditTransactions(credits));
+					}
+
+					@Override
+					public void onError(String message) {}
+				});
+	}
+
+	private void renderCreditTransactions(java.util.List<com.couplefinance.data.TransactionsModels.Transaction> txs) {
+		if (txCreditList == null) return;
+		txCreditList.removeAllViews();
+
+		if (txs == null || txs.isEmpty()) {
+			TextView empty = UiFactory.bodyMuted(activity, "Aucune transaction de crédit importée.");
+			empty.setTextSize(DS.TEXT_SM);
+			txCreditList.addView(empty);
+			return;
+		}
+
+		java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.FRANCE);
+		for (com.couplefinance.data.TransactionsModels.Transaction tx : txs) {
+			LinearLayout row = UiFactory.horizontal(activity);
+			row.setPadding(dp(DS.PAD_INPUT), dp(DS.GAP_SM), dp(DS.PAD_INPUT), dp(DS.GAP_SM));
+			row.setBackground(UiFactory.card(activity).getBackground());
+			LinearLayout.LayoutParams rp = lpFull();
+			rp.bottomMargin = dp(DS.GAP_SM);
+			row.setLayoutParams(rp);
+
+			LinearLayout textCol = UiFactory.vertical(activity);
+			TextView tvLabel = UiFactory.body(activity, tx.label == null ? "–" : tx.label);
+			tvLabel.setTextSize(DS.TEXT_SM);
+			tvLabel.setTypeface(null, Typeface.BOLD);
+			tvLabel.setTextColor(ThemeColors.text());
+
+			String dateTxt = tx.dateMs > 0 ? sdf.format(new java.util.Date(tx.dateMs)) : "–";
+			String personTxt = tx.person != null && !tx.person.isEmpty() ? " · " + tx.person : "";
+			TextView tvSub = UiFactory.bodyMuted(activity, dateTxt + personTxt);
+			tvSub.setTextSize(DS.TEXT_XS);
+
+			textCol.addView(tvLabel);
+			textCol.addView(tvSub);
+			row.addView(textCol, new LinearLayout.LayoutParams(0, -2, 1f));
+
+			TextView tvAmount = UiFactory.body(activity,
+					com.couplefinance.core.ui.Fmt.money(Math.abs(tx.amount)));
+			tvAmount.setTextSize(DS.TEXT_SM);
+			tvAmount.setTypeface(null, Typeface.BOLD);
+			tvAmount.setTextColor(ThemeColors.error());
+
+			row.addView(tvAmount, new LinearLayout.LayoutParams(-2, -2));
+			txCreditList.addView(row);
+		}
 	}
 
 	private void render(CreditsModels.CreditsData data) {
