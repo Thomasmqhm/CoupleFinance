@@ -32,6 +32,7 @@ public final class TelegramScheduler {
     private static final String K_COVERAGE_LAST = "alert_coverage_last"; // jour du dernier envoi
 
     public static final String OFF = "off";
+    public static final String DAILY = "daily";
     public static final String WEEKLY = "weekly";
     public static final String MONTHLY = "monthly";
 
@@ -265,6 +266,9 @@ public final class TelegramScheduler {
     private static String periodKey(String freq) {
         Calendar c = Calendar.getInstance(Locale.FRANCE);
         int year = c.get(Calendar.YEAR);
+        if (DAILY.equals(freq)) {
+            return year + "-D" + c.get(Calendar.DAY_OF_YEAR);
+        }
         if (WEEKLY.equals(freq)) {
             return year + "-W" + c.get(Calendar.WEEK_OF_YEAR);
         }
