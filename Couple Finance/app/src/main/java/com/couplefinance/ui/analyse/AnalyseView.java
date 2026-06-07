@@ -245,6 +245,7 @@ public class AnalyseView {
         lastCalc = calc;
 
         buildScoreCard(calc);
+        buildMonthComparison(calc);
         buildCycleSummary(calc);
         buildEvolutionChart(calc);
         buildCategoryBreakdown(calc);
@@ -253,6 +254,82 @@ public class AnalyseView {
         buildInsights(txs);
 
         if (btnShare != null) btnShare.setVisibility(View.VISIBLE);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparaison mois précédent
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void buildMonthComparison(AnalyseCalculator calc) {
+        List<AnalyseCalculator.MonthData> months = calc.getLast6Months();
+        if (months == null || months.size() < 2) return;
+
+        AnalyseCalculator.MonthData current  = months.get(months.size() - 1);
+        AnalyseCalculator.MonthData previous = months.get(months.size() - 2);
+        if (current.expenses == 0 && current.income == 0) return;
+
+        LinearLayout card = makeCard();
+        card.setOrientation(LinearLayout.VERTICAL);
+
+        TextView title = new TextView(activity);
+        title.setText("📊 vs mois précédent");
+        title.setTextSize(DS.TEXT_MD);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextColor(ThemeColors.text());
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, -2);
+        tlp.bottomMargin = DS.dp(activity, 12);
+        card.addView(title, tlp);
+
+        card.addView(compRow("Dépenses",   previous.expenses, current.expenses, true));
+        card.addView(compRow("Revenus",    previous.income,   current.income,   false));
+        double prevNet = previous.income - previous.expenses;
+        double currNet = current.income  - current.expenses;
+        card.addView(compRow("Solde net",  prevNet,           currNet,          false));
+
+        contentContainer.addView(card);
+    }
+
+    private LinearLayout compRow(String label, double prev, double curr, boolean lowerIsBetter) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1, -2);
+        rlp.bottomMargin = DS.dp(activity, 8);
+        row.setLayoutParams(rlp);
+
+        TextView tvLabel = new TextView(activity);
+        tvLabel.setText(label);
+        tvLabel.setTextSize(DS.TEXT_SM);
+        tvLabel.setTextColor(ThemeColors.subtext());
+        row.addView(tvLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        TextView tvPrev = new TextView(activity);
+        tvPrev.setText(Fmt.money(Math.abs(prev)));
+        tvPrev.setTextSize(DS.TEXT_SM);
+        tvPrev.setTextColor(ThemeColors.subtext());
+        row.addView(tvPrev);
+
+        TextView tvArrow = new TextView(activity);
+        tvArrow.setText("  →  ");
+        tvArrow.setTextSize(DS.TEXT_SM);
+        tvArrow.setTextColor(ThemeColors.subtext());
+        row.addView(tvArrow);
+
+        TextView tvCurr = new TextView(activity);
+        tvCurr.setText(Fmt.money(Math.abs(curr)));
+        tvCurr.setTextSize(DS.TEXT_SM);
+        tvCurr.setTypeface(Typeface.DEFAULT_BOLD);
+
+        double diff = curr - prev;
+        boolean improved = lowerIsBetter ? diff < -0.5 : diff > 0.5;
+        boolean worsened = lowerIsBetter ? diff > 0.5  : diff < -0.5;
+        String arrow = improved ? " ↘" : (worsened ? " ↗" : "");
+        String diffStr = diff == 0 ? "" : (diff > 0 ? " (+" : " (") + Fmt.money(Math.abs(diff)) + ")";
+        tvCurr.setText(Fmt.money(Math.abs(curr)) + arrow + diffStr);
+        tvCurr.setTextColor(improved ? ThemeColors.success() : (worsened ? ThemeColors.danger() : ThemeColors.text()));
+        row.addView(tvCurr);
+
+        return row;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
