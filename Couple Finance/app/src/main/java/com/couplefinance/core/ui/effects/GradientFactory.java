@@ -94,11 +94,12 @@ public final class GradientFactory {
 	}
 
 	public static GradientDrawable card(Context ctx) {
-		return bordered(ctx, ThemeColors.card(), ThemeColors.border(), DS.R_MD);
+		// N26 épuré : coins plus arrondis, bordure très douce (hairline)
+		return bordered(ctx, ThemeColors.card(), ThemeColors.borderSoft(), DS.R_LG);
 	}
 
 	public static GradientDrawable cardSoft(Context ctx) {
-		return bordered(ctx, ThemeColors.cardElevated(), ThemeColors.divider(), DS.R_MD);
+		return bordered(ctx, ThemeColors.cardElevated(), ThemeColors.borderSoft(), DS.R_LG);
 	}
 
 	public static GradientDrawable glass(Context ctx, int radiusDp) {
