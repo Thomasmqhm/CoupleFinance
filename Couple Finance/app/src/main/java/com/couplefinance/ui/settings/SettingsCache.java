@@ -53,8 +53,6 @@ public class SettingsCache {
         s.categories.add(new SettingsModels.Category("Vacances", "expense", true));
         s.categories.add(new SettingsModels.Category("Abonnements", "expense", true));
         s.categories.add(new SettingsModels.Category("Restaurants", "expense", true));
-        s.categories.add(new SettingsModels.Category("Éducation", "expense", true));
-
         s.charges.add(new SettingsModels.FixedCharge("🏠", "Loyer", "Logement", 1200));
         s.charges.add(new SettingsModels.FixedCharge("⚡", "Électricité / Gaz", "Logement", 85));
         s.charges.add(new SettingsModels.FixedCharge("📶", "Internet", "Logement", 35));
