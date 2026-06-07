@@ -95,6 +95,13 @@ public class TransactionsView extends BaseView {
 		listTransactions.setCacheColorHint(0x00000000);
 		listTransactions.setSelector(android.R.color.transparent);
 		listTransactions.setOverScrollMode(View.OVER_SCROLL_NEVER);
+		// Réserve la hauteur de la barre de nav pour que le dernier élément ne soit pas masqué.
+		listTransactions.setClipToPadding(false);
+		listTransactions.setPadding(
+				listTransactions.getPaddingLeft(),
+				listTransactions.getPaddingTop(),
+				listTransactions.getPaddingRight(),
+				dp(DS.NAV_CLEARANCE));
 
 		listTransactions.setOnItemClickListener((parent, v, pos, id) -> TransactionsDialogs.showEditDialog(activity,
 				filtered.get(pos), allTransactions, members, categories, this::reloadAfterWrite));
