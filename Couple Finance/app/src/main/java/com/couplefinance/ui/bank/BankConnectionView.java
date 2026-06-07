@@ -27,6 +27,8 @@ import com.couplefinance.core.ui.UiFactory;
 import com.couplefinance.data.BankImportPipeline;
 import com.couplefinance.data.CategoryManager;
 import com.couplefinance.data.CreditManager;
+import com.couplefinance.ui.credits.CreditsModels;
+import com.couplefinance.ui.credits.CreditsParser;
 import com.couplefinance.data.CycleManager;
 import com.couplefinance.ui.credits.CreditsModels;
 import com.couplefinance.ui.credits.CreditsParser;

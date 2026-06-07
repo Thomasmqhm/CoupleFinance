@@ -197,17 +197,15 @@ public class DashboardActivity extends Activity {
 		tabTransactions = findViewById(R.id.tabTransactions);
 		tabBudget = findViewById(R.id.tabBudget);
 		tabEpargne = findViewById(R.id.tabEpargne);
-		tabMore = findViewById(R.id.tabMore);
+		// tabMore retiré : le menu « Plus » s'ouvre via le hamburger de la topbar (N26)
 		tabLabelHome = findViewById(R.id.tabLabelHome);
 		tabLabelTransactions = findViewById(R.id.tabLabelTransactions);
 		tabLabelBudget = findViewById(R.id.tabLabelBudget);
 		tabLabelEpargne = findViewById(R.id.tabLabelEpargne);
-		tabLabelMore = findViewById(R.id.tabLabelMore);
 		tabIconHome = findViewById(R.id.tabIconHome);
 		tabIconTransactions = findViewById(R.id.tabIconTransactions);
 		tabIconBudget = findViewById(R.id.tabIconBudget);
 		tabIconEpargne = findViewById(R.id.tabIconEpargne);
-		tabIconMore = findViewById(R.id.tabIconMore);
 	}
 
 	private void detectMode() {
@@ -258,39 +256,29 @@ public class DashboardActivity extends Activity {
 	}
 
 	private void selectPhoneTab(int index) {
-		LinearLayout[] tabs = { tabHome, tabTransactions, tabBudget, tabEpargne, tabMore };
-		TextView[] labels = { tabLabelHome, tabLabelTransactions, tabLabelBudget, tabLabelEpargne, tabLabelMore };
-		TextView[] icons = { tabIconHome, tabIconTransactions, tabIconBudget, tabIconEpargne, tabIconMore };
+		// Style N26 épuré : onglets verticaux (icône + petit label), toujours visibles.
+		// Actif = couleur primaire + gras ; inactif = gris atténué. Pas de pastille.
+		LinearLayout[] tabs = { tabHome, tabTransactions, tabBudget, tabEpargne };
+		TextView[] labels = { tabLabelHome, tabLabelTransactions, tabLabelBudget, tabLabelEpargne };
+		TextView[] icons = { tabIconHome, tabIconTransactions, tabIconBudget, tabIconEpargne };
 
-		int active = Color.WHITE;
-		int inactive = Color.parseColor("#8A7A70");
-		int activeBg = ThemeColors.primary();
+		int active = ThemeColors.primary();
+		int inactive = ThemeColors.withAlpha(ThemeColors.text(), 115);
 
 		for (int i = 0; i < tabs.length; i++) {
 			if (tabs[i] == null)
 				continue;
 			boolean sel = (i == index);
+			int c = sel ? active : inactive;
 
-			if (sel) {
-				GradientDrawable bg = new GradientDrawable();
-				bg.setColor(activeBg);
-				bg.setCornerRadius(DS.dp(this, 22));
-				tabs[i].setBackground(bg);
-				if (labels[i] != null) {
-					labels[i].setVisibility(View.VISIBLE);
-					labels[i].setTextColor(active);
-					labels[i].setTypeface(null, Typeface.BOLD);
-				}
-				if (icons[i] != null)
-					icons[i].setTextColor(active);
-			} else {
-				tabs[i].setBackground(null);
-				if (labels[i] != null) {
-					labels[i].setVisibility(View.GONE);
-				}
-				if (icons[i] != null)
-					icons[i].setTextColor(inactive);
+			tabs[i].setBackground(null);
+			if (labels[i] != null) {
+				labels[i].setVisibility(View.VISIBLE);
+				labels[i].setTextColor(c);
+				labels[i].setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
 			}
+			if (icons[i] != null)
+				icons[i].setTextColor(c);
 		}
 	}
 
@@ -366,6 +354,13 @@ public class DashboardActivity extends Activity {
 	private void applyThemeToBottomNav() {
 		if (bottomNav == null)
 			return;
+		// Barre N26 : fond surface, coins supérieurs arrondis, fine bordure haute.
+		GradientDrawable barBg = new GradientDrawable();
+		barBg.setColor(ThemeColors.surface());
+		float r = DS.dp(this, 26);
+		barBg.setCornerRadii(new float[] { r, r, r, r, 0, 0, 0, 0 });
+		barBg.setStroke(DS.dp(this, 1), ThemeColors.borderSoft());
+		bottomNav.setBackground(barBg);
 		View topbar = findViewById(R.id.topbar);
 		if (topbar != null)
 			topbar.setBackgroundColor(ThemeColors.background());

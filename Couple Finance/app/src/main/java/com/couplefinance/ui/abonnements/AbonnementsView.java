@@ -833,7 +833,8 @@ public class AbonnementsView {
         input.setText(charge.name);
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS);
 
         LinearLayout wrap = new LinearLayout(activity);
         wrap.setOrientation(LinearLayout.VERTICAL);
@@ -841,7 +842,7 @@ public class AbonnementsView {
         wrap.setPadding(p, DS.dp(activity, 8), p, 0);
 
         if (!sameLabel.isEmpty()) {
-            // Multiple charges with same label — clarify which one we're editing
+            // Several charges share this label — show amount + day to disambiguate
             TextView warn = new TextView(activity);
             warn.setText("⚠️  " + sameLabel.size() + " autre(s) charge(s) portent ce libellé.\n"
                     + "Vous modifiez celle-ci : "
@@ -856,7 +857,7 @@ public class AbonnementsView {
 
         wrap.addView(input);
 
-        new android.app.AlertDialog.Builder(activity)
+        new AlertDialog.Builder(activity)
                 .setTitle("Renommer la charge")
                 .setView(wrap)
                 .setPositiveButton("Enregistrer", (d, w) -> {
