@@ -83,6 +83,8 @@ public class SettingsChargeWriter {
         String body = "{\"fields\":{"
                 + "\"name\":{\"stringValue\":\"" + escape(charge.name) + "\"},"
                 + "\"amount\":{\"doubleValue\":" + charge.amount + "},"
+                + "\"amountMin\":{\"doubleValue\":" + charge.amountMin + "},"
+                + "\"amountMax\":{\"doubleValue\":" + charge.amountMax + "},"
                 + "\"dayOfMonth\":{\"integerValue\":\"" + charge.dayOfMonth + "\"},"
                 + "\"category\":{\"stringValue\":\"" + escape(charge.category) + "\"},"
                 + "\"icon\":{\"stringValue\":\"" + escape(charge.icon) + "\"},"
@@ -96,6 +98,8 @@ public class SettingsChargeWriter {
         String mask =
                 "updateMask.fieldPaths=name"
                         + "&updateMask.fieldPaths=amount"
+                        + "&updateMask.fieldPaths=amountMin"
+                        + "&updateMask.fieldPaths=amountMax"
                         + "&updateMask.fieldPaths=dayOfMonth"
                         + "&updateMask.fieldPaths=category"
                         + "&updateMask.fieldPaths=icon"

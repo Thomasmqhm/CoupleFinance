@@ -281,7 +281,7 @@ public class RecurringChargeManager {
                     if (dueDay > today
                             && !currentMonth.equals(charge.lastAppliedMonth)
                             && !recurringTransactionExistsSync(recurringKey)) {
-                        total += Math.abs(charge.amount);
+                        total += Math.abs(charge.projectionAmount());
                         count++;
                     }
                 }
@@ -328,7 +328,7 @@ public class RecurringChargeManager {
                                 ? getCurrentPersonName()
                                 : charge.payer.trim();
 
-                        double amount = Math.abs(charge.amount);
+                        double amount = Math.abs(charge.projectionAmount());
                         amountByMember.put(payer, amountByMember.containsKey(payer)
                                 ? amountByMember.get(payer) + amount : amount);
                         countByMember.put(payer, countByMember.containsKey(payer)
@@ -391,6 +391,8 @@ public class RecurringChargeManager {
             String docId         = extractDocId(doc);
             String name          = extractString(doc, "name");
             double amount        = extractDouble(doc, "amount");
+            double amountMin     = extractDouble(doc, "amountMin");
+            double amountMax     = extractDouble(doc, "amountMax");
             String category      = extractString(doc, "category");
             String paidBy        = extractString(doc, "paidBy");
             String lastApplied   = extractString(doc, "lastAppliedMonth");
@@ -400,9 +402,12 @@ public class RecurringChargeManager {
                                  : !paidBy.trim().isEmpty() ? paidBy.trim()
                                  : "";
             if (!name.isEmpty()) {
-                list.add(new FixedCharge(docId, name,
+                FixedCharge fc = new FixedCharge(docId, name,
                         category.isEmpty() ? "Charges fixes" : category,
-                        amount, lastApplied, dayOfMonth, resolvedPayer));
+                        amount, lastApplied, dayOfMonth, resolvedPayer);
+                fc.amountMin = amountMin;
+                fc.amountMax = amountMax;
+                list.add(fc);
             }
         }
         return list;
@@ -745,9 +750,16 @@ public class RecurringChargeManager {
         String name;
         String category;
         double amount;
+        double amountMin;
+        double amountMax;
         String lastAppliedMonth;
         int    dayOfMonth;
         String payer;
+
+        /** Montant retenu pour la projection = amountMax si fourchette définie, sinon amount. */
+        double projectionAmount() {
+            return (amountMax > 0 && amountMax > amountMin) ? amountMax : amount;
+        }
 
         FixedCharge(String docId, String name, String category, double amount,
                     String lastAppliedMonth, int dayOfMonth, String payer) {
