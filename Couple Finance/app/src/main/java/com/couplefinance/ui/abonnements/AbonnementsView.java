@@ -955,7 +955,7 @@ public class AbonnementsView {
                         double typical = typicalStr.isEmpty() ? (min + max) / 2.0
                                 : Double.parseDouble(typicalStr);
                         if (min <= 0 || max <= 0 || max <= min) {
-                            AppToast.show(activity, "Le maximum doit être supérieur au minimum.");
+                            AppToast.error(activity, "Le maximum doit être supérieur au minimum.");
                             return;
                         }
                         charge.amountMin = min;
@@ -963,7 +963,7 @@ public class AbonnementsView {
                         charge.amount    = typical;
                         saveAndRefresh(charge, "Fourchette enregistrée");
                     } catch (NumberFormatException e) {
-                        AppToast.show(activity, "Montant invalide.");
+                        AppToast.error(activity, "Montant invalide.");
                     }
                 })
                 .setNegativeButton("Annuler", null)
