@@ -30,8 +30,15 @@ public class ThemeManager {
     }
 
     public void initialize(Context context) {
-        String themeId = ThemeStorage.loadThemeId(context);
-        currentTheme = getThemeById(context, themeId);
+        // Dark mode override: if DarkModeManager says dark, use dark theme
+        if (DarkModeManager.isDark(context)) {
+            currentTheme = ThemePresets.dark();
+        } else {
+            String themeId = ThemeStorage.loadThemeId(context);
+            // Never load "dark" theme in light mode (safety: reset to terracotta)
+            if ("dark".equals(themeId)) themeId = "terracotta";
+            currentTheme = getThemeById(context, themeId);
+        }
     }
 
     public void reload(Context context) {
@@ -49,6 +56,12 @@ public class ThemeManager {
 
     public String getCurrentThemeId() {
         return getTheme().id;
+    }
+
+    /** Applique un thème sans le persister dans ThemeStorage. */
+    public void applyThemeDirect(String themeId) {
+        currentTheme = getThemeById(null, themeId);
+        notifyThemeChanged();
     }
 
     public void applyTheme(Context context, String themeId) {

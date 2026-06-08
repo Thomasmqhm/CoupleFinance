@@ -1458,10 +1458,8 @@ public class SettingsView {
 		title.setTypeface(null, Typeface.BOLD);
 		row.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
 
-		SharedPreferences prefs = activity.getSharedPreferences(PREF_THEME, Activity.MODE_PRIVATE);
-
 		Switch sw = new Switch(activity);
-		sw.setChecked(prefs.getBoolean(KEY_DARK, false));
+		sw.setChecked(com.couplefinance.core.theme.DarkModeManager.isDark(activity));
 		sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
 			SettingsDialogs.toggleDarkMode(activity, isChecked);
 		});

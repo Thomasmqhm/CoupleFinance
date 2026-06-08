@@ -1,21 +1,17 @@
 package com.couplefinance.data;
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
-
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
-
-import com.couplefinance.workers.TelegramDigestWorker;
-import com.couplefinance.workers.TelegramPollingWorker;
+import android.os.Build;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Envoi Telegram automatique, déclenché à l'ouverture de l'app (pas de serveur).
@@ -149,61 +145,65 @@ public final class TelegramScheduler {
         return ctx != null && prefs(ctx).getBoolean(K_COVERAGE, false);
     }
 
-    // ─── WorkManager : survie Doze + Samsung aggressive kill ───────
+    // ─── AlarmManager : digest quotidien ───────────────────────
 
-    private static final String WM_TAG_TELEGRAM = "cf_telegram_daily";
+    private static final String ACTION_DIGEST  = "com.couplefinance.TELEGRAM_DIGEST";
+    private static final int    RC_DIGEST      = 5000;
 
-    /**
-     * Enqueue a daily WorkManager job for Telegram alerts/digest.
-     * Call once from DashboardActivity.onCreate (idempotent via KEEP policy).
-     */
+    /** Programme une alarme quotidienne (~8h) pour le digest/alertes Telegram. */
     public static void schedulePeriodicWork(Context ctx) {
         if (ctx == null) return;
-        try {
-            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
-                    TelegramDigestWorker.class, 24, TimeUnit.HOURS)
-                    .addTag(WM_TAG_TELEGRAM)
-                    .build();
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                    WM_TAG_TELEGRAM,
-                    ExistingPeriodicWorkPolicy.KEEP,
-                    req);
-        } catch (Exception ignored) {}
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+
+        Calendar trigger = Calendar.getInstance();
+        trigger.set(Calendar.HOUR_OF_DAY, 8);
+        trigger.set(Calendar.MINUTE, 0);
+        trigger.set(Calendar.SECOND, 0);
+        trigger.set(Calendar.MILLISECOND, 0);
+        if (!trigger.after(Calendar.getInstance())) trigger.add(Calendar.DAY_OF_YEAR, 1);
+
+        Intent intent = new Intent(ctx, TelegramDigestReceiver.class);
+        intent.setAction(ACTION_DIGEST);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, RC_DIGEST, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (am.canScheduleExactAlarms()) {
+                try {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi);
+                } catch (SecurityException e) {
+                    am.setWindow(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), 30 * 60 * 1000L, pi);
+                }
+            } else {
+                am.setWindow(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), 30 * 60 * 1000L, pi);
+            }
+        } else {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi);
+        }
     }
 
-    /** Cancel the WorkManager periodic job (e.g. on sign-out). */
     public static void cancelPeriodicWork(Context ctx) {
         if (ctx == null) return;
-        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_TELEGRAM); }
-        catch (Exception ignored) {}
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        Intent intent = new Intent(ctx, TelegramDigestReceiver.class);
+        intent.setAction(ACTION_DIGEST);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, RC_DIGEST, intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        if (pi != null) { am.cancel(pi); pi.cancel(); }
     }
 
-    // ─── Polling bidirectionnel (getUpdates) ────────────────────
+    // ─── AlarmManager : polling bidirectionnel (getUpdates) ────
 
-    private static final String WM_TAG_POLLING = "cf_telegram_polling";
-
-    /**
-     * Enqueue a 15-minute periodic polling job to receive incoming commands.
-     * KEEP policy: idempotent, safe to call on every app open.
-     */
     public static void schedulePollingWork(Context ctx) {
         if (ctx == null) return;
-        try {
-            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
-                    TelegramPollingWorker.class, 15, TimeUnit.MINUTES)
-                    .addTag(WM_TAG_POLLING)
-                    .build();
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                    WM_TAG_POLLING,
-                    ExistingPeriodicWorkPolicy.KEEP,
-                    req);
-        } catch (Exception ignored) {}
+        TelegramPollingReceiver.schedule(ctx);
     }
 
     public static void cancelPollingWork(Context ctx) {
         if (ctx == null) return;
-        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_POLLING); }
-        catch (Exception ignored) {}
+        TelegramPollingReceiver.cancel(ctx);
     }
 
     // ─── Point d'entrée : à appeler à l'ouverture (DashboardActivity.onCreate) ───

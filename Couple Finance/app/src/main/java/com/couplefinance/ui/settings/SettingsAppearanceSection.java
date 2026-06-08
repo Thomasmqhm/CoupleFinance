@@ -6,7 +6,6 @@ import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 
 import com.couplefinance.core.theme.ThemeColors;
@@ -17,8 +16,6 @@ import com.couplefinance.core.ui.DS;
  */
 public class SettingsAppearanceSection {
 
-    private static final String PREF_THEME = "couplefinance_theme";
-    private static final String KEY_DARK = "dark_mode";
     private static final String PREF_SETTINGS = "couplefinance_settings";
 
     private final Activity activity;
@@ -54,50 +51,9 @@ public class SettingsAppearanceSection {
     }
 
     private View darkModeRow() {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(
-                SettingsStyles.dp(activity, 18),
-                SettingsStyles.dp(activity, 15),
-                SettingsStyles.dp(activity, 18),
-                SettingsStyles.dp(activity, 15)
-        );
-
-        TextView icon = icon("🌙");
-        row.addView(icon);
-
-        LinearLayout texts = new LinearLayout(activity);
-        texts.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(activity);
-        title.setText("Thème sombre");
-        title.setTextColor(ThemeColors.text());
-        title.setTextSize(DS.TEXT_BODY);
-        title.setTypeface(null, Typeface.BOLD);
-        texts.addView(title);
-
-        TextView sub = new TextView(activity);
-        sub.setText("Appliquer le thème sombre à toute l'application");
-        sub.setTextColor(ThemeColors.subtext());
-        sub.setTextSize(DS.TEXT_SM);
-        LinearLayout.LayoutParams subLp = SettingsStyles.matchWrap();
-        subLp.topMargin = SettingsStyles.dp(activity, 3);
-        texts.addView(sub, subLp);
-
-        row.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        SharedPreferences prefs = activity.getSharedPreferences(PREF_THEME, Activity.MODE_PRIVATE);
-        boolean checked = prefs.getBoolean(KEY_DARK, false);
-
-        Switch sw = new Switch(activity);
-        sw.setChecked(checked);
-        sw.setOnCheckedChangeListener((buttonView, isChecked) -> SettingsDialogs.toggleDarkMode(activity, isChecked));
-        row.addView(sw);
-
-        row.setOnClickListener(v -> sw.setChecked(!sw.isChecked()));
-
-        return row;
+        String currentLabel = com.couplefinance.core.theme.DarkModeManager.getOptionLabel(activity);
+        return row("🌙", "Apparence", currentLabel,
+                () -> SettingsDialogs.showDarkModeOptions(activity, this::refresh));
     }
 
     private View row(String iconText, String titleText, String subtitle, Runnable action) {

@@ -116,6 +116,26 @@
             </intent-filter>
         </receiver>
 
+        <!-- ── Digest Telegram quotidien (AlarmManager) ──────────── -->
+        <receiver
+            android:name=".data.TelegramDigestReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.couplefinance.TELEGRAM_DIGEST" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Polling Telegram bidirectionnel (AlarmManager 15 min) ── -->
+        <receiver
+            android:name=".data.TelegramPollingReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.couplefinance.TELEGRAM_POLL" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <!-- ── Actions boutons notification grosse dépense ─────── -->
         <receiver
             android:name=".data.TelegramActionReceiver"
