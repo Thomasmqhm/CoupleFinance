@@ -469,7 +469,7 @@ public class AbonnementsView {
         double groupTotal = 0;
 
         for (SettingsModels.FixedCharge c : items) {
-            groupTotal += c.amount;
+            groupTotal += c.amountForProjection();
         }
 
         TextView tvTotal = new TextView(activity);
@@ -596,15 +596,29 @@ public class AbonnementsView {
         rightCol.setGravity(Gravity.END);
 
         TextView tvAmount = new TextView(activity);
-        tvAmount.setText(Fmt.money(charge.amount));
+        if (charge.isVariable()) {
+            tvAmount.setText(Fmt.money(charge.amountMin) + " – " + Fmt.money(charge.amountMax));
+        } else {
+            tvAmount.setText(Fmt.money(charge.amount));
+        }
         tvAmount.setTextColor(ThemeColors.text());
-        tvAmount.setTextSize(DS.TEXT_STAT);
+        tvAmount.setTextSize(charge.isVariable() ? DS.TEXT_SM : DS.TEXT_STAT);
         tvAmount.setTypeface(null, Typeface.BOLD);
         tvAmount.setGravity(Gravity.END);
         rightCol.addView(tvAmount);
 
+        if (charge.isVariable()) {
+            TextView tvTypical = new TextView(activity);
+            tvTypical.setText("≈ " + Fmt.money(charge.amount) + " typique");
+            tvTypical.setTextColor(ThemeColors.subtext());
+            tvTypical.setTextSize(DS.TEXT_XS);
+            tvTypical.setGravity(Gravity.END);
+            rightCol.addView(tvTypical);
+        }
+
         TextView tvPer = new TextView(activity);
-        tvPer.setText(Fmt.money(charge.amount / Math.max(1, memberCount())) + "/pers.");
+        double displayAmt = charge.isVariable() ? charge.amountMax : charge.amount;
+        tvPer.setText(Fmt.money(displayAmt / Math.max(1, memberCount())) + "/pers.");
         tvPer.setTextColor(ThemeColors.primary());
         tvPer.setTextSize(DS.TEXT_XS);
         tvPer.setTypeface(null, Typeface.BOLD);
@@ -871,17 +885,89 @@ public class AbonnementsView {
     }
 
     private void showEditAmountDialog(SettingsModels.FixedCharge charge) {
-        SettingsDialog.showAmountDialog(
-                activity,
-                "€",
-                "Modifier le montant",
-                "Nouveau montant de " + charge.name + ".",
-                charge.amount,
-                value -> {
-                    charge.amount = value;
-                    saveAndRefresh(charge, "Montant mis à jour");
-                }
-        );
+        String[] options = {"Montant fixe", "Fourchette (min / max)"};
+        int current = charge.isVariable() ? 1 : 0;
+        new AlertDialog.Builder(activity)
+                .setTitle("Type de montant — " + charge.name)
+                .setSingleChoiceItems(options, current, null)
+                .setPositiveButton("Suivant", (d, w) -> {
+                    int sel = ((AlertDialog) d).getListView().getCheckedItemPosition();
+                    if (sel == 1) {
+                        showRangeAmountDialog(charge);
+                    } else {
+                        SettingsDialog.showAmountDialog(
+                                activity, "€",
+                                "Modifier le montant",
+                                "Nouveau montant de " + charge.name + ".",
+                                charge.amount,
+                                value -> {
+                                    charge.amount    = value;
+                                    charge.amountMin = 0;
+                                    charge.amountMax = 0;
+                                    saveAndRefresh(charge, "Montant mis à jour");
+                                });
+                    }
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
+    private void showRangeAmountDialog(SettingsModels.FixedCharge charge) {
+        LinearLayout layout = new LinearLayout(activity);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int pad = DS.dp(activity, 20);
+        layout.setPadding(pad, pad / 2, pad, 0);
+
+        android.widget.EditText etMin = new android.widget.EditText(activity);
+        etMin.setHint("Montant minimum (ex. 170)");
+        etMin.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        if (charge.amountMin > 0) etMin.setText(String.valueOf(charge.amountMin));
+        layout.addView(etMin);
+
+        android.widget.EditText etTypical = new android.widget.EditText(activity);
+        etTypical.setHint("Montant typique (ex. 190)");
+        etTypical.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        etTypical.setText(String.valueOf(charge.amount > 0 ? charge.amount : ""));
+        layout.addView(etTypical);
+
+        android.widget.EditText etMax = new android.widget.EditText(activity);
+        etMax.setHint("Montant maximum (ex. 220)");
+        etMax.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        if (charge.amountMax > 0) etMax.setText(String.valueOf(charge.amountMax));
+        layout.addView(etMax);
+
+        TextView hint = new TextView(activity);
+        hint.setText("Le maximum est utilisé pour la projection budgétaire (pire cas).");
+        hint.setTextColor(ThemeColors.subtext());
+        hint.setTextSize(DS.TEXT_XS);
+        LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(-1, -2);
+        hLp.topMargin = DS.dp(activity, 8);
+        layout.addView(hint, hLp);
+
+        new AlertDialog.Builder(activity)
+                .setTitle("Fourchette — " + charge.name)
+                .setView(layout)
+                .setPositiveButton("Enregistrer", (d, w) -> {
+                    try {
+                        double min = Double.parseDouble(etMin.getText().toString().replace(",", ".").trim());
+                        double max = Double.parseDouble(etMax.getText().toString().replace(",", ".").trim());
+                        String typicalStr = etTypical.getText().toString().replace(",", ".").trim();
+                        double typical = typicalStr.isEmpty() ? (min + max) / 2.0
+                                : Double.parseDouble(typicalStr);
+                        if (min <= 0 || max <= 0 || max <= min) {
+                            AppToast.show(activity, "Le maximum doit être supérieur au minimum.");
+                            return;
+                        }
+                        charge.amountMin = min;
+                        charge.amountMax = max;
+                        charge.amount    = typical;
+                        saveAndRefresh(charge, "Fourchette enregistrée");
+                    } catch (NumberFormatException e) {
+                        AppToast.show(activity, "Montant invalide.");
+                    }
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
     }
 
     private void showEditPaidByDialog(SettingsModels.FixedCharge charge) {
@@ -1108,13 +1194,9 @@ public class AbonnementsView {
 
     private double totalCharges() {
         double t = 0;
-
         for (SettingsModels.FixedCharge c : charges) {
-            if (c != null) {
-                t += c.amount;
-            }
+            if (c != null) t += c.amountForProjection();
         }
-
         return t;
     }
 

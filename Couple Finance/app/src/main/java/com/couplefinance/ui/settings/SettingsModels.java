@@ -91,15 +91,24 @@ public class SettingsModels {
         public int dayOfMonth;
         public String lastAppliedMonth;
 
-        // NOUVEAU : personne qui paie réellement la charge fixe.
-        // Utilisé pour générer la transaction auto : "Thomas · EDF"
+        // Personne qui paie réellement la charge fixe.
         public String paidBy;
+
+        // Fourchette de montant variable (0 = non défini = montant fixe).
+        // Quand amountMax > 0, la charge est "variable" :
+        //   - amount  = montant typique (affiché par défaut)
+        //   - amountMin = plancher (ex. EDF en été)
+        //   - amountMax = plafond (ex. EDF en hiver) — utilisé pour la projection
+        public double amountMin;
+        public double amountMax;
 
         public FixedCharge() {
             this.icon = "💳";
             this.name = "";
             this.category = "Général";
             this.amount = 0;
+            this.amountMin = 0;
+            this.amountMax = 0;
             this.frequency = "Mensuel";
             this.ratioA = 50;
             this.ratioB = 50;
@@ -113,12 +122,24 @@ public class SettingsModels {
             this.name = name;
             this.category = category;
             this.amount = amount;
+            this.amountMin = 0;
+            this.amountMax = 0;
             this.frequency = "Mensuel";
             this.ratioA = 50;
             this.ratioB = 50;
             this.dayOfMonth = 1;
             this.lastAppliedMonth = "";
             this.paidBy = "";
+        }
+
+        /** Vrai si une fourchette min/max est configurée. */
+        public boolean isVariable() {
+            return amountMax > 0 && amountMin >= 0 && amountMax > amountMin;
+        }
+
+        /** Montant pour la projection budgétaire = pire cas. */
+        public double amountForProjection() {
+            return isVariable() ? amountMax : amount;
         }
 
         public double perPerson() {

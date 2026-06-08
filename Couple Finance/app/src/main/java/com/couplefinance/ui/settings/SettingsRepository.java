@@ -286,6 +286,11 @@ public class SettingsRepository {
 								c.icon = firstNonEmpty(str(fields, "icon"), c.icon);
 								c.frequency = firstNonEmpty(str(fields, "frequency"), c.frequency);
 								c.lastAppliedMonth = str(fields, "lastAppliedMonth");
+								c.amountMin = number(fields, "amountMin");
+								c.amountMax = number(fields, "amountMax");
+								c.paidBy = str(fields, "paidBy");
+								c.ratioA = intVal(fields, "ratioA", 50);
+								c.ratioB = intVal(fields, "ratioB", 50);
 
 								state.charges.add(c);
 							}
