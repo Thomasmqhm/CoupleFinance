@@ -427,11 +427,16 @@ public final class OcrTransactionPreviewDialog {
 
 		MerchantRuleManager.getInstance().saveLabelRule(sourceKey, newLabel);
 
+		double sourceAmount = transactions.get(sourceIndex).amount;
+
 		for (int i = 0; i < transactions.size(); i++) {
 			ParsedTransaction tx = transactions.get(i);
 			String key = MerchantRuleManager.getInstance().resolveMerchantKey(tx);
 
-			if (sourceKey.equals(key)) {
+			// Propager le libellé uniquement aux transactions du même marchand ET du même montant.
+			// Ex: SURAVENIR 58€ et SURAVENIR 30€ sont des polices distinctes → libellés séparés.
+			boolean sameAmount = Math.abs(tx.amount - sourceAmount) < 0.02;
+			if (sourceKey.equals(key) && sameAmount) {
 				tx.label = newLabel;
 				if (labelInputs[i] != null && i != sourceIndex) {
 					labelInputs[i].setText(newLabel);

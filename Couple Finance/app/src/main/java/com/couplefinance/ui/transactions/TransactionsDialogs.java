@@ -1016,7 +1016,11 @@ public final class TransactionsDialogs {
             String tKey = mgr.resolveMerchantKey(t.description());
             if (!key.equals(tKey)) continue;
 
-            String updLabel = labelChanged    ? newLabel    : t.description();
+            // Pour le libellé : propager uniquement aux transactions du même montant
+            // (ex: SURAVENIR -58€ et SURAVENIR -30€ sont des polices différentes).
+            // Pour la catégorie : propager à tous les mêmes marchands.
+            boolean sameAmount = Math.abs(t.amount - edited.amount) < 0.02;
+            String updLabel = (labelChanged && sameAmount) ? newLabel : t.description();
             String updCat   = categoryChanged ? newCategory : t.category;
 
             TransactionsRepository.updateTransaction(
