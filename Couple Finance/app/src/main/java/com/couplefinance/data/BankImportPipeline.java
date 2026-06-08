@@ -73,14 +73,17 @@ public final class BankImportPipeline {
 
         ParsedTransaction pt = convert(bt);
         // Appliquer les règles apprises (libellé + catégorie + type) → priorité
+        boolean hadLearnedLabel = MerchantRuleManager.getInstance().hasLearnedLabel(pt.merchantKey);
         MerchantRuleManager.getInstance().applyKnownRule(pt, allowedCategories);
         // Compléter la catégorie si aucune règle ne l'a définie
         applyCategorization(pt, allowedCategories);
-        // FINAL : un virement reste un virement, même si une règle apprise a réécrit
-        // le libellé/catégorie. La détection bancaire a le dernier mot.
+        // Virement : on ne réécrit le libellé QUE si l'utilisateur n'a pas renommé ce
+        // marchand manuellement (sinon son label mémorisé serait écrasé et la dédup raterait).
         String vir = detectTransferName(bt.label, PdfTransactionParser.cleanBankLabel(bt.label));
         if (vir != null && !vir.isEmpty()) {
-            pt.label = "Virement " + vir;
+            if (!hadLearnedLabel) {
+                pt.label = "Virement " + vir;
+            }
             pt.category = "Virements";
         }
         result.add(pt);
@@ -109,17 +112,20 @@ public final class BankImportPipeline {
             List<ParsedTransaction> parsed,
             List<TransactionsModels.Transaction> existing) {
 
-        HashSet<String> existingKeys = new HashSet<>();
-        HashSet<String> importKeys   = new HashSet<>();
+        HashSet<String> existingKeys       = new HashSet<>();
+        HashSet<String> existingMerchKeys  = new HashSet<>();
+        HashSet<String> importKeys         = new HashSet<>();
 
         if (existing != null) {
             for (TransactionsModels.Transaction tx : existing) {
                 if (tx != null) {
-                    existingKeys.add(duplicateKey(
-                            tx.dateMs,
-                            tx.isIncome() ? "income" : "variable",
-                            tx.amount,
-                            tx.label));
+                    String type = tx.isIncome() ? "income" : "variable";
+                    existingKeys.add(duplicateKey(tx.dateMs, type, tx.amount, tx.label));
+                    // Clé secondaire : date + type + montant + merchantKey (résiste aux renommages)
+                    String mk = PdfTransactionParser.merchantKey(tx.label);
+                    if (!mk.isEmpty()) {
+                        existingMerchKeys.add(duplicateKey(tx.dateMs, type, tx.amount, mk));
+                    }
                 }
             }
         }
@@ -127,13 +133,14 @@ public final class BankImportPipeline {
         for (ParsedTransaction pt : parsed) {
             if (pt == null) continue;
 
-            String key = duplicateKey(
-                    pt.dateMs,
-                    "income".equals(pt.type) ? "income" : "variable",
-                    pt.amount,
-                    pt.label);
+            String type = "income".equals(pt.type) ? "income" : "variable";
+            String key  = duplicateKey(pt.dateMs, type, pt.amount, pt.label);
+            String mk   = pt.merchantKey != null ? pt.merchantKey : "";
+            String mkKey = mk.isEmpty() ? "" : duplicateKey(pt.dateMs, type, pt.amount, mk);
 
-            boolean isDup = existingKeys.contains(key) || importKeys.contains(key);
+            boolean isDup = existingKeys.contains(key)
+                    || importKeys.contains(key)
+                    || (!mkKey.isEmpty() && existingMerchKeys.contains(mkKey));
             if (isDup) {
                 pt.duplicate        = true;
                 pt.selected         = false;
@@ -142,6 +149,7 @@ public final class BankImportPipeline {
             }
 
             importKeys.add(key);
+            if (!mkKey.isEmpty()) importKeys.add(mkKey);
         }
     }
 

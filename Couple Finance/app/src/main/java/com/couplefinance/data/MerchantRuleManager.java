@@ -168,6 +168,14 @@ public class MerchantRuleManager {
         return prefs().getString(KEY_CATEGORY + merchantKey, "");
     }
 
+    public boolean hasLearnedLabel(String merchantKey) {
+        if (appContext == null) return false;
+        merchantKey = normalizeKey(merchantKey);
+        if (merchantKey.length() == 0) return false;
+        String v = prefs().getString(KEY_LABEL + merchantKey, "");
+        return v != null && v.trim().length() > 0;
+    }
+
     private SharedPreferences prefs() {
         return appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }

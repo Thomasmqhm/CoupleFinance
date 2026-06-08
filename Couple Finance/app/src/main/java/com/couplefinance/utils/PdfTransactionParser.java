@@ -272,6 +272,11 @@ public class PdfTransactionParser {
         if (s.contains("compte joint")) return "compte_joint";
         if (s.contains("goubard melissa")) return "goubard_melissa";
         if (s.contains("dinan eureka") || s.contains("dinan/eureka")) return "dinan_eureka";
+        if (s.contains("octopus")) return "octopus";
+        if (s.contains("fastt")) return "fastt";
+        if (s.contains("alter interim") || s.contains("alter interimaire")) return "alter_interim";
+        if (s.contains("apicil")) return "apicil";
+        if (s.contains("orange")) return "orange";
 
         // Fallback : garde seulement les premiers mots utiles pour éviter les références finales.
         String[] parts = s.split("\\s+");
@@ -422,6 +427,9 @@ public class PdfTransactionParser {
         if (n.contains("cotisation eurocompte")) return "Cotisation Eurocompte";
         if (n.contains("commission d intervention")) return "Commission d'intervention";
         if (n.contains("prlv impaye") || n.contains("frais prlv")) return "Frais prélèvement impayé";
+        if (n.contains("octopus"))           return "Octopus";
+        if (n.contains("fastt"))             return "FASTT";
+        if (n.contains("alter interim"))     return "ALTER Intérim";
 
         // ── 2. Nettoyage générique ───────────────────────────────────
         String s = original;
