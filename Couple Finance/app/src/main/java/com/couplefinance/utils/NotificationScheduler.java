@@ -190,9 +190,7 @@ public final class NotificationScheduler {
         Intent intent = new Intent(ctx, ChargeAlarmReceiver.class);
         intent.setAction(ACTION_BALANCE_REMINDER);
 
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_NO_CREATE;
+        int flags = PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE;
 
         PendingIntent pi = PendingIntent.getBroadcast(
                 ctx, REQUEST_CODE_BALANCE, intent, flags);
@@ -210,9 +208,7 @@ public final class NotificationScheduler {
         Intent intent = new Intent(ctx, ChargeAlarmReceiver.class);
         intent.setAction(ACTION_TG_ALERTS);
 
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE_TG, intent, flags);
 
         // Inexact : pas besoin de la permission d'alarme exacte (Android 12+)
@@ -226,9 +222,7 @@ public final class NotificationScheduler {
     private static void cancelTelegramAlerts(Context ctx, AlarmManager am) {
         Intent intent = new Intent(ctx, ChargeAlarmReceiver.class);
         intent.setAction(ACTION_TG_ALERTS);
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_NO_CREATE;
+        int flags = PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE_TG, intent, flags);
         if (pi != null) { am.cancel(pi); pi.cancel(); }
     }
@@ -240,23 +234,29 @@ public final class NotificationScheduler {
     private static void scheduleAlarm(Context ctx, AlarmManager am,
                                        int requestCode, String action,
                                        Intent intent, long triggerAtMillis) {
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        PendingIntent pi = PendingIntent.getBroadcast(ctx, requestCode, intent, flags);
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                am.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+        // Android 12+ (S): need SCHEDULE_EXACT_ALARM permission; fall back to setWindow if denied
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (am.canScheduleExactAlarms()) {
+                try {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                } catch (SecurityException e) {
+                    am.setWindow(AlarmManager.RTC_WAKEUP,
+                            triggerAtMillis, 15 * 60 * 1000L, pi);
+                }
             } else {
-                am.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                // 15-min window: close enough for charge reminders
+                am.setWindow(AlarmManager.RTC_WAKEUP,
+                        triggerAtMillis, 15 * 60 * 1000L, pi);
             }
-        } catch (SecurityException e) {
-            try { am.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi); }
-            catch (Exception ignored) {}
+        } else {
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+            } catch (SecurityException e) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+            }
         }
     }
 
@@ -264,9 +264,7 @@ public final class NotificationScheduler {
         Intent intent = new Intent(ctx, ChargeAlarmReceiver.class);
         intent.setAction(ACTION_CHARGE_REMINDER);
 
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_NO_CREATE;
+        int flags = PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE;
 
         PendingIntent pi = PendingIntent.getBroadcast(ctx, requestCode, intent, flags);
         if (pi != null) { am.cancel(pi); pi.cancel(); }

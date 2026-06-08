@@ -12,6 +12,15 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import com.couplefinance.utils.NotifChannels;
+import com.couplefinance.workers.BankSyncWorker;
+
+import java.util.concurrent.TimeUnit;
+
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.ui.transactions.TransactionsRepository;
 import com.couplefinance.utils.ParsedTransaction;
@@ -156,53 +165,85 @@ public final class BankAutoSyncManager {
     // Planification
     // ─────────────────────────────────────────────────────────────
 
+    private static final String WM_TAG_SYNC = "cf_bank_sync_daily";
+
+    /**
+     * Primary scheduler: WorkManager periodic job (Doze-safe, Samsung-safe).
+     * Also keeps an AlarmManager alarm as best-effort backup for the configured time.
+     * Call from DashboardActivity.onCreate when bank sync is enabled.
+     */
     public static void scheduleDaily(Context ctx) {
         if (ctx == null) return;
+
+        // Primary: WorkManager 24h periodic (survives Doze + aggressive kill)
+        try {
+            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
+                    BankSyncWorker.class, 24, TimeUnit.HOURS)
+                    .addTag(WM_TAG_SYNC)
+                    .build();
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                    WM_TAG_SYNC,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    req);
+        } catch (Exception ignored) {}
+
+        // Backup: AlarmManager at user-configured time
+        scheduleAlarmBackup(ctx);
+    }
+
+    /** AlarmManager backup — fires at user-configured HH:MM, inexact to avoid needing exact-alarm permission. */
+    private static void scheduleAlarmBackup(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
 
-        int hour = getHour(ctx);
+        int hour   = getHour(ctx);
         int minute = getMinute(ctx);
         Calendar now     = Calendar.getInstance();
         Calendar trigger = Calendar.getInstance();
         trigger.set(Calendar.HOUR_OF_DAY, hour);
-        trigger.set(Calendar.MINUTE, minute);
-        trigger.set(Calendar.SECOND, 0);
+        trigger.set(Calendar.MINUTE,      minute);
+        trigger.set(Calendar.SECOND,      0);
         trigger.set(Calendar.MILLISECOND, 0);
         if (!trigger.after(now)) trigger.add(Calendar.DAY_OF_YEAR, 1);
 
         Intent intent = new Intent(ctx, BankSyncReceiver.class);
         intent.setAction(ACTION_SYNC);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
-        PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent, flags);
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-                // Inexacte mais se déclenche même en Doze / app fermée,
-                // SANS la permission SCHEDULE_EXACT_ALARM (Android 12+).
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi);
-            else
-                am.set(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi);
-        } catch (Exception e) {
-            try { am.set(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi); }
-            catch (Exception ignored) {}
+        // Android 14+: canScheduleExactAlarms() may be false; fall back to setWindow/WorkManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (am.canScheduleExactAlarms()) {
+                try {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                            trigger.getTimeInMillis(), pi);
+                } catch (SecurityException e) {
+                    am.setWindow(AlarmManager.RTC_WAKEUP,
+                            trigger.getTimeInMillis(), 30 * 60 * 1000L, pi);
+                }
+            } else {
+                // Permission not granted: 30-min window is sufficient since WorkManager is primary
+                am.setWindow(AlarmManager.RTC_WAKEUP,
+                        trigger.getTimeInMillis(), 30 * 60 * 1000L, pi);
+            }
+        } else {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.getTimeInMillis(), pi);
         }
         Log.d(TAG, "Synchro quotidienne planifiée à " + getTimeLabel(ctx));
     }
 
     public static void cancelDaily(Context ctx) {
         if (ctx == null) return;
+        // Cancel WorkManager job
+        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_SYNC); }
+        catch (Exception ignored) {}
+        // Cancel AlarmManager backup
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         Intent intent = new Intent(ctx, BankSyncReceiver.class);
         intent.setAction(ACTION_SYNC);
-        int flags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_NO_CREATE;
-        PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent, flags);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
         if (pi != null) { am.cancel(pi); pi.cancel(); }
     }
 
@@ -575,19 +616,14 @@ public final class BankAutoSyncManager {
 
         Intent intent = new Intent(app, com.couplefinance.ui.DashboardActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        int piFlags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
-        PendingIntent pi = PendingIntent.getActivity(app, id, intent, piFlags);
+        PendingIntent pi = PendingIntent.getActivity(app, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Petite icône : silhouette monochrome "ic_stat_sync" si fournie, sinon système.
         int smallIcon = app.getResources().getIdentifier(
                 "ic_stat_sync", "drawable", app.getPackageName());
         if (smallIcon == 0) smallIcon = android.R.drawable.ic_popup_sync;
 
-        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(app, CHANNEL_ID)
-                : new Notification.Builder(app);
+        Notification.Builder b = new Notification.Builder(app, CHANNEL_ID);
 
         b.setContentTitle(title)
          .setContentText(body)
@@ -640,17 +676,7 @@ public final class BankAutoSyncManager {
     }
 
     private static void ensureChannel(Context app) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        NotificationManager nm = (NotificationManager)
-                app.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-        NotificationChannel ch = new NotificationChannel(
-                CHANNEL_ID, "Synchro bancaire", NotificationManager.IMPORTANCE_DEFAULT);
-        ch.setDescription("Résumé quotidien des opérations bancaires");
-        ch.enableLights(true);
-        ch.setLightColor(ACCENT);
-        ch.setShowBadge(true);
-        nm.createNotificationChannel(ch);
+        NotifChannels.ensureAll(app);
     }
 
     // ─────────────────────────────────────────────────────────────

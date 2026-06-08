@@ -4,10 +4,17 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import com.couplefinance.workers.TelegramDigestWorker;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Envoi Telegram automatique, déclenché à l'ouverture de l'app (pas de serveur).
@@ -139,6 +146,35 @@ public final class TelegramScheduler {
 
     public static boolean isCoverageAlert(Context ctx) {
         return ctx != null && prefs(ctx).getBoolean(K_COVERAGE, false);
+    }
+
+    // ─── WorkManager : survie Doze + Samsung aggressive kill ───────
+
+    private static final String WM_TAG_TELEGRAM = "cf_telegram_daily";
+
+    /**
+     * Enqueue a daily WorkManager job for Telegram alerts/digest.
+     * Call once from DashboardActivity.onCreate (idempotent via KEEP policy).
+     */
+    public static void schedulePeriodicWork(Context ctx) {
+        if (ctx == null) return;
+        try {
+            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
+                    TelegramDigestWorker.class, 24, TimeUnit.HOURS)
+                    .addTag(WM_TAG_TELEGRAM)
+                    .build();
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                    WM_TAG_TELEGRAM,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    req);
+        } catch (Exception ignored) {}
+    }
+
+    /** Cancel the WorkManager periodic job (e.g. on sign-out). */
+    public static void cancelPeriodicWork(Context ctx) {
+        if (ctx == null) return;
+        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_TELEGRAM); }
+        catch (Exception ignored) {}
     }
 
     // ─── Point d'entrée : à appeler à l'ouverture (DashboardActivity.onCreate) ───
