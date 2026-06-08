@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tablette : header en 3 colonnes, liste centrée max-640dp -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="#F5F1EC"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- HEADER 3 colonnes -->
+    <LinearLayout
+        android:background="#E25D2A"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="24dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:text="BUDGETÉ" android:textColor="#F7D6CE"
+                android:textSize="9sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/tvBudget" android:textSize="28sp"
+                android:textColor="#FFFFFF" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="48dp"
+            android:background="#66FFFFFF" android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:text="DÉPENSÉ" android:textColor="#F7D6CE"
+                android:textSize="9sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/tvSpent" android:textSize="28sp"
+                android:textColor="#FFFFFF" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <View android:layout_width="1dp" android:layout_height="48dp"
+            android:background="#66FFFFFF" android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:text="RESTANT" android:textColor="#F7D6CE"
+                android:textSize="9sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/tvRemaining" android:textSize="28sp"
+                android:textColor="#FFFFFF" android:textStyle="bold"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- STATS compactes -->
+    <LinearLayout
+        android:orientation="horizontal"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="4dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/tvExceeded" android:text="0 dépassé"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#C0614A" android:textStyle="bold"/>
+        <TextView android:id="@+id/tvWarning" android:text="0 en alerte"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#D49A46" android:textStyle="bold"/>
+        <TextView android:id="@+id/tvSafe" android:text="0 OK"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#4F9D72" android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- LIST centrée -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <ListView
+            android:id="@+id/listBudgets"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="8dp"/>
+    </LinearLayout>
+
+</LinearLayout>

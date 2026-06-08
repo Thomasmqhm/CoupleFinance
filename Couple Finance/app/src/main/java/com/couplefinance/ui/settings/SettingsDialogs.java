@@ -987,10 +987,47 @@ public final class SettingsDialogs {
 
     public static void toggleDarkMode(Activity activity, boolean checked) {
         if (activity == null) return;
+        com.couplefinance.core.theme.DarkModeManager.setOption(
+                activity, checked
+                        ? com.couplefinance.core.theme.DarkModeManager.OPTION_DARK
+                        : com.couplefinance.core.theme.DarkModeManager.OPTION_LIGHT);
+    }
 
-        SharedPreferences prefs = activity.getSharedPreferences("couplefinance_theme", Activity.MODE_PRIVATE);
-        prefs.edit().putBoolean("dark_mode", checked).apply();
-        activity.recreate();
+    public static void showDarkModeOptions(Activity activity, Runnable onChanged) {
+        if (activity == null) return;
+        String current = com.couplefinance.core.theme.DarkModeManager.getOption(activity);
+        final String[] selected = {current};
+
+        LinearLayout content = vertical(activity);
+        String[] labels  = {"Automatique (système)", "Clair", "Sombre"};
+        String[] values  = {
+                com.couplefinance.core.theme.DarkModeManager.OPTION_AUTO,
+                com.couplefinance.core.theme.DarkModeManager.OPTION_LIGHT,
+                com.couplefinance.core.theme.DarkModeManager.OPTION_DARK
+        };
+        TextView[] rows = new TextView[3];
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            rows[i] = selectable(activity, labels[i], values[i].equals(current));
+            rows[i].setOnClickListener(v -> {
+                selected[0] = values[idx];
+                for (int j = 0; j < 3; j++) rows[j].setText(labels[j]);
+                rows[idx].setText("✓ " + labels[idx]);
+            });
+            content.addView(rows[i]);
+        }
+
+        PremiumDialog.builder(activity)
+                .icon("🌙")
+                .title("Apparence")
+                .subtitle("Choisissez le mode d'affichage.")
+                .content(content)
+                .primary("Appliquer", () -> {
+                    com.couplefinance.core.theme.DarkModeManager.setOption(activity, selected[0]);
+                    if (onChanged != null) onChanged.run();
+                })
+                .secondary("Annuler", null)
+                .show();
     }
 
     public static void showLanguage(Activity activity, Runnable onChanged) {

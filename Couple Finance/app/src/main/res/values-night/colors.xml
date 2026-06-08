@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Surcharges couleurs pour le mode nuit système (UI_MODE_NIGHT_YES). -->
+<resources>
+    <color name="bg_beige">#FF15110F</color>
+    <color name="sidebar_dark">#FF1D1715</color>
+    <color name="sidebar_item">#FF241C1A</color>
+    <color name="sidebar_label">#FF7A6B64</color>
+    <color name="sidebar_separator">#FF2C2420</color>
+
+    <color name="card_white">#FF241D1A</color>
+    <color name="card_border">#FF3A302B</color>
+    <color name="divider">#FF332A26</color>
+
+    <color name="text_primary">#FFF7EFEA</color>
+    <color name="text_secondary">#FFB8A9A0</color>
+    <color name="text_muted">#FF7A6B64</color>
+    <color name="text_label">#FFD4A750</color>
+
+    <color name="accent_terracotta">#FFD28A70</color>
+    <color name="accent_terracotta_light">#FF4A332C</color>
+    <color name="accent_terracotta_medium">#FF6B4035</color>
+
+    <color name="green_dark">#FF4A9B7A</color>
+    <color name="green_dark_light">#FF1E3328</color>
+    <color name="green_success">#FF4ADE80</color>
+    <color name="green_success_light">#FF0F2B1A</color>
+
+    <color name="gold">#FFD4A750</color>
+    <color name="gold_light">#FF2A2010</color>
+    <color name="gold_medium">#FF4A3A18</color>
+</resources>

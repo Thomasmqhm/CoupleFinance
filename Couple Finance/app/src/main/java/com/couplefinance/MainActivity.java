@@ -17,6 +17,7 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		com.couplefinance.core.theme.DarkModeManager.applyToThemeManager(this);
 		ThemeManager.getInstance().initialize(this);
 		SettingsStyles.syncWithGlobalTheme();
 		AuthManager.getInstance().init(this);

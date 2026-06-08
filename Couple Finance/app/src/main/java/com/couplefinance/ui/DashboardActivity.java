@@ -81,6 +81,7 @@ public class DashboardActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		com.couplefinance.core.theme.DarkModeManager.applyToThemeManager(this);
 		BalanceManager.getInstance().init(this);
 
 		// ── Cycle financier configurable ─────────────────────────────────
