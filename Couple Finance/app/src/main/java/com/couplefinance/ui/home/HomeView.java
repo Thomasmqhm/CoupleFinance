@@ -3105,13 +3105,18 @@ HomeMemberCard.Data jointData = jointEnabled
 			}
 		}
 		if (jointData != null) {
-    double live = liveBalanceFor(jointName);
-    if (!Double.isNaN(live)) {
-        jointData.liveBalance = live;
-        jointData.currentBalance = live;
-        jointData.forecastBalance = live - Math.max(0, jointData.upcomingExpenses);
-    }
-}
+			double live = liveBalanceFor(jointName);
+			if (!Double.isNaN(live)) {
+				jointData.liveBalance = live;
+				jointData.currentBalance = live;
+				jointData.forecastBalance = live - Math.max(0, jointData.upcomingExpenses);
+				// Propagate live bank balance to Firestore so the other device sees the same value.
+				try {
+					com.couplefinance.data.JointAccountManager.getInstance()
+							.saveMonthlyStartBalance(activity.getApplicationContext(), live, null);
+				} catch (Exception ignored) { }
+			}
+		}
 
 		if (memberSection == null)
 			memberSection = new HomeMemberSection(activity);

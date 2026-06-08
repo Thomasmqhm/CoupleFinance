@@ -120,8 +120,7 @@ public class TelegramPollingReceiver extends BroadcastReceiver {
                 if (msg != null) {
                     String fromChatId = chatIdOf(msg);
                     if (!configuredChat.equals(fromChatId)) {
-                        tm.sendMessageTo(fromChatId, TelegramCommandHandler.REPLY_UNAUTHORIZED, null);
-                        continue;
+                        continue; // silently ignore — never reply to unauthorized chats
                     }
                     String text = msg.optString("text", "");
                     if (!text.isEmpty()) {
