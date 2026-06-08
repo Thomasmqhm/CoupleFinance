@@ -39,6 +39,11 @@ android {
         exclude 'META-INF/*.kotlin_module'
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
     buildTypes {
         debug {
             minifyEnabled false
@@ -63,7 +68,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
     implementation 'androidx.core:core:1.13.1'
-    implementation 'androidx.work:work-runtime:2.9.0'
+    implementation 'androidx.work:work-runtime:2.8.1'
 
     // Suppression du doublon : cz.adaptech.android était un ancien group ID
     implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'

@@ -5,87 +5,74 @@ import android.content.SharedPreferences;
 
 import com.couplefinance.ui.transactions.TransactionsRepository;
 
-import org.json.JSONObject;
-
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Handles incoming Telegram bot commands and returns reply strings.
  *
- * Supported commands (all checked against configured chat_id):
- *   /solde               — current account balances
- *   /resume              — trigger full Telegram digest
- *   /ajout 45.50 Libellé — add a joint expense
- *   /categorie NomCat    — change category of last bot-added transaction
- *   /aide                — list available commands
- *
- * Called from TelegramPollingWorker (background thread); all Firestore writes
- * are asynchronous via TransactionsRepository (null Activity path).
+ * Supported commands (chat_id security enforced by TelegramPollingWorker):
+ *   /solde               — current balances (all accounts via BankAutoSyncManager)
+ *   /resume              — trigger full digest
+ *   /ajout 45.50 Label [@joint|@perso|@Prenom]  — add transaction
+ *   /ajout +200 Salaire                          — income (positive = income)
+ *   /categorie NomCat    — recategorize last bot-added transaction
+ *   /aide                — list commands
  */
 public final class TelegramCommandHandler {
 
-    private static final String PREFS          = "telegram_cmd_prefs";
-    private static final String K_LAST_TX_ID   = "last_bot_tx_docid";
+    private static final String PREFS           = "telegram_cmd_prefs";
+    private static final String K_LAST_TX_ID    = "last_bot_tx_docid";
     private static final String K_LAST_TX_LABEL = "last_bot_tx_label";
-    private static final String K_LAST_TX_AMT  = "last_bot_tx_amount";
-    private static final String K_LAST_TX_DATE = "last_bot_tx_date";
+    private static final String K_LAST_TX_AMT   = "last_bot_tx_amount";
+    private static final String K_LAST_TX_DATE  = "last_bot_tx_date";
+    private static final String K_LAST_TX_TYPE  = "last_bot_tx_type";
+    private static final String K_LAST_TX_ACCT  = "last_bot_tx_compte";
 
     private TelegramCommandHandler() {}
 
-    /** Reply sent when a message comes from an unauthorised chat. */
     public static final String REPLY_UNAUTHORIZED =
             "⛔ Commande refusée : expéditeur non autorisé.";
 
-    /**
-     * Dispatch a text command.
-     * Returns the reply string to send back, or {@code null} for no reply.
-     */
+    // ─── Dispatch ────────────────────────────────────────────────
+
     public static String handle(Context ctx, String text) {
         if (ctx == null || text == null) return null;
-        String trimmed = text.trim();
-
-        if (trimmed.startsWith("/solde"))      return handleSolde(ctx);
-        if (trimmed.startsWith("/resume"))     return handleResume(ctx);
-        if (trimmed.startsWith("/ajout"))      return handleAjout(ctx, trimmed);
-        if (trimmed.startsWith("/categorie"))  return handleCategorie(ctx, trimmed);
-        if (trimmed.startsWith("/aide")
-         || trimmed.startsWith("/help")
-         || trimmed.startsWith("/start"))      return handleAide();
-        return null; // not a known command, stay silent
+        String t = text.trim();
+        if (t.startsWith("/solde"))     return handleSolde(ctx);
+        if (t.startsWith("/resume"))    return handleResume(ctx);
+        if (t.startsWith("/ajout"))     return handleAjout(ctx, t);
+        if (t.startsWith("/categorie")) return handleCategorie(ctx, t);
+        if (t.startsWith("/aide") || t.startsWith("/help") || t.startsWith("/start"))
+            return handleAide();
+        return null;
     }
 
-    /**
-     * Handle a callback_query (inline keyboard button tap).
-     * Returns the toast text to show the user (via answerCallbackQuery), or null.
-     */
     public static String handleCallback(Context ctx, String data) {
-        if (ctx == null || data == null) return null;
-        if ("ack_expense".equals(data)) {
-            return "✅ Dépense enregistrée.";
-        }
+        if (data == null) return null;
+        if ("ack_expense".equals(data)) return "✅ Dépense enregistrée.";
         if (data.startsWith("cat_")) {
-            // cat_<docId> — user tapped "Catégoriser" on a grosse dépense
-            // Reply with instructions
             TelegramManager.getInstance().sendMessage(
                     "ℹ️ Pour changer la catégorie, répondez :\n"
-                    + "<code>/categorie NomDeLaCategorie</code>",
-                    null);
-            return "Envoi des instructions…";
+                    + "<code>/categorie NomDeLaCategorie</code>", null);
+            return "Instructions envoyées.";
         }
         return null;
     }
 
-    // ─── /solde ───────────────────────────────────────────────────
+    // ─── /solde ──────────────────────────────────────────────────
 
     private static String handleSolde(Context ctx) {
         StringBuilder sb = new StringBuilder();
-        sb.append("🏦 <b>Soldes actuels</b>\n");
-        sb.append(sep());
+        sb.append("🏦 <b>Soldes actuels</b>\n").append(sep());
 
         String live = BankAutoSyncManager.getLiveBalances(ctx);
         if (live != null && !live.isEmpty()) {
-            for (String part : live.split("\\s{2,}·\\s{2,}|\\s·\\s")) {
-                sb.append("• ").append(part.trim()).append("\n");
+            // live format: "Joint : 1 234,00 €  ·  Thomas : 567,00 €"
+            for (String part : live.split("\\s{2,}[·⋅]\\s{2,}|\\s[·⋅]\\s|  ·  ")) {
+                String p = part.trim();
+                if (!p.isEmpty()) sb.append("• ").append(p).append("\n");
             }
         } else {
             try {
@@ -94,7 +81,7 @@ public final class TelegramCommandHandler {
                 if (!Double.isNaN(joint))
                     sb.append("• Compte joint : <b>").append(money(joint)).append("</b>\n");
                 else
-                    sb.append("• Solde non disponible (synchro bancaire désactivée)\n");
+                    sb.append("• Solde non disponible (synchronisation inactive)\n");
             } catch (Exception e) {
                 sb.append("• Solde non disponible\n");
             }
@@ -111,45 +98,83 @@ public final class TelegramCommandHandler {
 
     // ─── /ajout ──────────────────────────────────────────────────
 
+    /**
+     * Syntax:
+     *   /ajout 45.50 Courses             → joint expense (default)
+     *   /ajout 45.50 Courses @joint      → joint (explicit)
+     *   /ajout 45.50 Courses @perso      → personal account of current user
+     *   /ajout 45.50 Courses @Thomas     → attributed to member Thomas
+     *   /ajout +200 Salaire              → income, joint
+     *   /ajout +200 Salaire @perso       → income, personal
+     */
     private static String handleAjout(Context ctx, String text) {
-        // /ajout <montant> <libellé…>
         String args = text.replaceFirst("^/ajout\\b", "").trim();
-        if (args.isEmpty()) {
-            return "❌ Usage : <code>/ajout 45.50 Libellé de la dépense</code>";
-        }
+        if (args.isEmpty()) return usageAjout();
+
         String[] parts = args.split("\\s+", 2);
-        if (parts.length < 2) {
-            return "❌ Usage : <code>/ajout 45.50 Libellé de la dépense</code>";
-        }
-        double amount;
+        if (parts.length < 2) return usageAjout();
+
+        double rawAmount;
         try {
-            amount = Double.parseDouble(parts[0].replace(",", "."));
+            rawAmount = Double.parseDouble(parts[0].replace(",", "."));
         } catch (NumberFormatException e) {
             return "❌ Montant invalide : " + parts[0];
         }
-        String label = parts[1].trim();
-        if (label.isEmpty()) return "❌ Libellé manquant.";
 
-        double finalAmount = -Math.abs(amount); // always an expense
-        long now = System.currentTimeMillis();
+        // Parse optional @tag at end of label
+        String rest   = parts[1].trim();
+        String compte = "joint";   // default
+        String person = "";
+
+        Matcher m = Pattern.compile("@(\\S+)$").matcher(rest);
+        if (m.find()) {
+            String tag = m.group(1).toLowerCase(Locale.FRENCH);
+            rest = rest.substring(0, m.start()).trim();
+            switch (tag) {
+                case "joint":
+                    compte = "joint"; person = ""; break;
+                case "perso": case "moi":
+                    compte = ""; person = currentUser(ctx); break;
+                default:
+                    // Named member (@Thomas, @Melissa…)
+                    person = tag.substring(0, 1).toUpperCase(Locale.FRENCH) + tag.substring(1);
+                    compte = "";
+            }
+        }
+
+        if (rest.isEmpty()) return "❌ Libellé manquant.";
+
+        boolean isIncome  = rawAmount > 0;
+        double finalAmt   = isIncome ? rawAmount : -Math.abs(rawAmount);
+        String type       = isIncome ? "income" : "variable";
+        String defaultCat = isIncome ? "Revenus" : "Autre";
+        String label      = rest;
+        long now          = System.currentTimeMillis();
+        String finalCpt   = compte;
+        String finalPer   = person;
 
         TransactionsRepository.addTransaction(
-                label, finalAmount, "variable", "Autre", now,
-                "", false, false, "joint", null,
+                label, finalAmt, type, defaultCat, now,
+                finalPer, false, false, finalCpt, null,
                 new TransactionsRepository.OnWriteComplete() {
                     @Override public void onSuccess() {
-                        // Firestore response carries the doc path; we can't get docId here
-                        // since the callback above has no response param. Store a placeholder.
                         prefs(ctx).edit()
+                                .putString(K_LAST_TX_ID,    "")
                                 .putString(K_LAST_TX_LABEL, label)
-                                .putString(K_LAST_TX_ID, "")      // filled by listener below
-                                .putDouble(K_LAST_TX_AMT, finalAmount)
-                                .putLong(K_LAST_TX_DATE, now)
+                                .putString(K_LAST_TX_AMT,   String.valueOf(finalAmt))
+                                .putLong(K_LAST_TX_DATE,    now)
+                                .putString(K_LAST_TX_TYPE,  type)
+                                .putString(K_LAST_TX_ACCT,  finalCpt)
                                 .apply();
-                        String confirm = "✅ Dépense ajoutée au compte joint :\n"
-                                + "• <b>" + label + "</b> · " + money(Math.abs(finalAmount)) + "\n"
+                        String compteLabel = "joint".equals(finalCpt)
+                                ? "compte joint"
+                                : (!finalPer.isEmpty() ? "compte de " + finalPer : "compte perso");
+                        String sign = isIncome ? "+" : "−";
+                        String msg = "✅ Transaction ajoutée (" + compteLabel + ") :\n"
+                                + "• <b>" + label + "</b>\n"
+                                + "• " + sign + money(Math.abs(finalAmt)) + "\n"
                                 + "<i>Utilisez /categorie pour changer la catégorie.</i>";
-                        TelegramManager.getInstance().sendMessage(confirm, null);
+                        TelegramManager.getInstance().sendMessage(msg, null);
                     }
                     @Override public void onError(String e) {
                         TelegramManager.getInstance().sendMessage(
@@ -160,60 +185,65 @@ public final class TelegramCommandHandler {
         return "⏳ Ajout en cours…";
     }
 
+    private static String usageAjout() {
+        return "❌ Usage :\n"
+             + "<code>/ajout 45.50 Courses</code> — dépense joint\n"
+             + "<code>/ajout 45.50 Courses @perso</code> — dépense perso\n"
+             + "<code>/ajout 45.50 Courses @Thomas</code> — attribuer à un membre\n"
+             + "<code>/ajout +200 Salaire @perso</code> — revenu perso";
+    }
+
     // ─── /categorie ──────────────────────────────────────────────
 
     private static String handleCategorie(Context ctx, String text) {
-        // /categorie <NomCatégorie>
         String cat = text.replaceFirst("^/categorie\\b", "").trim();
         if (cat.isEmpty()) {
             return "❌ Usage : <code>/categorie Alimentation</code>";
         }
 
-        String docId    = prefs(ctx).getString(K_LAST_TX_ID, "");
-        String txLabel  = prefs(ctx).getString(K_LAST_TX_LABEL, "");
-        double txAmount;
-        try { txAmount = Double.parseDouble(prefs(ctx).getString(K_LAST_TX_AMT, "0")); }
-        catch (Exception e) { txAmount = 0; }
-        long   txDate   = prefs(ctx).getLong(K_LAST_TX_DATE, 0);
+        String txLabel = prefs(ctx).getString(K_LAST_TX_LABEL, "");
+        String docId   = prefs(ctx).getString(K_LAST_TX_ID,    "");
+        double txAmt;
+        try { txAmt = Double.parseDouble(prefs(ctx).getString(K_LAST_TX_AMT, "0")); }
+        catch (Exception e) { txAmt = 0; }
+        long   txDate  = prefs(ctx).getLong(K_LAST_TX_DATE, 0);
+        String txType  = prefs(ctx).getString(K_LAST_TX_TYPE, "variable");
+        String txAcct  = prefs(ctx).getString(K_LAST_TX_ACCT, "joint");
 
         if (txLabel.isEmpty()) {
-            return "❌ Aucune transaction récente trouvée. Utilisez <code>/ajout</code> d'abord.";
+            return "❌ Aucune transaction récente. Utilisez <code>/ajout</code> d'abord.";
         }
 
-        if (docId.isEmpty()) {
-            // docId not stored (TransactionsRepository.addTransaction doesn't return it).
-            // Fall back: update via label search in Firestore.
-            updateLastByLabel(ctx, txLabel, txAmount, txDate, cat);
-            return null; // async reply
+        if (!docId.isEmpty()) {
+            // Have docId: direct update
+            TransactionsRepository.updateTransaction(
+                    docId, txLabel, txAmt, txType, cat, txDate,
+                    "", false, txAcct, null,
+                    new TransactionsRepository.OnWriteComplete() {
+                        @Override public void onSuccess() {
+                            TelegramManager.getInstance().sendMessage(
+                                    "✅ Catégorie mise à jour : <b>" + cat + "</b>", null);
+                        }
+                        @Override public void onError(String e) {
+                            TelegramManager.getInstance().sendMessage(
+                                    "❌ Mise à jour échouée : " + e, null);
+                        }
+                    });
+            return "⏳ Mise à jour en cours…";
         }
 
-        TransactionsRepository.updateTransaction(
-                docId, txLabel, txAmount, "variable", cat, txDate,
-                "", false, "joint", null,
-                new TransactionsRepository.OnWriteComplete() {
-                    @Override public void onSuccess() {
-                        TelegramManager.getInstance().sendMessage(
-                                "✅ Catégorie mise à jour : <b>" + cat + "</b>", null);
-                    }
-                    @Override public void onError(String e) {
-                        TelegramManager.getInstance().sendMessage(
-                                "❌ Mise à jour échouée : " + e, null);
-                    }
-                });
-        return "⏳ Mise à jour en cours…";
+        // No docId: search by label
+        updateLastByLabel(ctx, txLabel, cat);
+        return null;
     }
 
-    /**
-     * Fallback for when docId is unknown: load recent transactions and
-     * update the most recent one matching the stored label.
-     */
-    private static void updateLastByLabel(Context ctx, String txLabel, double txAmount,
-                                           long txDate, String newCategory) {
+    private static void updateLastByLabel(Context ctx, String txLabel, String newCat) {
         TransactionsRepository.loadAll(null, new TransactionsRepository.OnDataLoaded() {
             @Override
-            public void onLoaded(java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> txs,
-                                  java.util.List<String> members,
-                                  java.util.List<String[]> cats) {
+            public void onLoaded(
+                    java.util.List<com.couplefinance.ui.transactions.TransactionsModels.Transaction> txs,
+                    java.util.List<String> members,
+                    java.util.List<String[]> cats) {
                 String target = txLabel.toLowerCase(Locale.FRENCH);
                 com.couplefinance.ui.transactions.TransactionsModels.Transaction best = null;
                 for (com.couplefinance.ui.transactions.TransactionsModels.Transaction t : txs) {
@@ -226,38 +256,41 @@ public final class TelegramCommandHandler {
                             "❌ Transaction introuvable : " + txLabel, null);
                     return;
                 }
-                final com.couplefinance.ui.transactions.TransactionsModels.Transaction found = best;
+                final com.couplefinance.ui.transactions.TransactionsModels.Transaction f = best;
                 TransactionsRepository.updateTransaction(
-                        found.docId, found.label, found.amount, found.type, newCategory,
-                        found.dateMs, found.person, found.shared, found.compte, null,
+                        f.docId, f.label, f.amount, f.type, newCat,
+                        f.dateMs, f.person, f.shared, f.compte, null,
                         new TransactionsRepository.OnWriteComplete() {
                             @Override public void onSuccess() {
                                 TelegramManager.getInstance().sendMessage(
-                                        "✅ Catégorie de <b>" + found.label
-                                        + "</b> mise à jour : <b>" + newCategory + "</b>", null);
+                                        "✅ Catégorie de <b>" + f.label
+                                        + "</b> → <b>" + newCat + "</b>", null);
                             }
                             @Override public void onError(String e) {
                                 TelegramManager.getInstance().sendMessage(
-                                        "❌ Mise à jour échouée : " + e, null);
+                                        "❌ Échec : " + e, null);
                             }
                         });
             }
             @Override public void onError(String msg) {
                 TelegramManager.getInstance().sendMessage(
-                        "❌ Erreur chargement transactions : " + msg, null);
+                        "❌ Erreur chargement : " + msg, null);
             }
         });
     }
 
-    // ─── /aide ────────────────────────────────────────────────────
+    // ─── /aide ───────────────────────────────────────────────────
 
     private static String handleAide() {
         return "🦸 <b>CoupleFinance Bot</b>\n\n"
              + "Commandes disponibles :\n"
-             + "• <code>/solde</code> — afficher les soldes\n"
-             + "• <code>/resume</code> — envoyer le résumé complet\n"
-             + "• <code>/ajout 45.50 Courses</code> — ajouter une dépense joint\n"
-             + "• <code>/categorie Alimentation</code> — changer la catégorie du dernier ajout\n"
+             + "• <code>/solde</code> — tous les soldes\n"
+             + "• <code>/resume</code> — résumé complet\n"
+             + "• <code>/ajout 45.50 Courses</code> — dépense joint\n"
+             + "• <code>/ajout 45.50 Courses @perso</code> — dépense perso\n"
+             + "• <code>/ajout +200 Salaire @perso</code> — revenu perso\n"
+             + "• <code>/ajout 45.50 Courses @Thomas</code> — attribuer à Thomas\n"
+             + "• <code>/categorie Alimentation</code> — changer catégorie\n"
              + "• <code>/aide</code> — cette aide";
     }
 
@@ -268,21 +301,31 @@ public final class TelegramCommandHandler {
     }
 
     private static String money(double v) {
-        return String.format(Locale.FRANCE, "%,.2f €", v).replace(' ', ' ');
+        return String.format(Locale.FRANCE, "%,.2f €", v);
     }
 
-    private static String sep() {
-        return "─────────────\n";
+    private static String sep() { return "─────────\n"; }
+
+    private static String currentUser(Context ctx) {
+        try {
+            String n = com.couplefinance.UserSession.getInstance().getNameOrFallback();
+            if (n != null && !n.contains("@") && !n.trim().isEmpty()) return n.trim();
+        } catch (Exception ignored) {}
+        try {
+            String n = com.couplefinance.AuthManager.getInstance().getDisplayName();
+            if (n != null && !n.contains("@") && !n.trim().isEmpty()) return n.trim();
+        } catch (Exception ignored) {}
+        return "";
     }
 
-    /** Save last bot-added transaction docId (called from BankAutoSyncManager or after /ajout). */
+    /** Store last bot-added docId (can be called externally once docId is known). */
     public static void saveLastTxDocId(Context ctx, String docId, String label,
                                         double amount, long dateMs) {
         if (ctx == null) return;
         prefs(ctx).edit()
                 .putString(K_LAST_TX_ID,    docId != null ? docId : "")
                 .putString(K_LAST_TX_LABEL, label != null ? label : "")
-                .putString(K_LAST_TX_AMT, String.valueOf(amount))
+                .putString(K_LAST_TX_AMT,   String.valueOf(amount))
                 .putLong(K_LAST_TX_DATE,    dateMs)
                 .apply();
     }
