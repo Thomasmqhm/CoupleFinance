@@ -133,6 +133,7 @@ public class DashboardActivity extends Activity {
 			NotificationHelper.getInstance(this).notifyPendingFixedCharges(3);
 			TelegramScheduler.checkAndSend(this);
 			TelegramScheduler.schedulePeriodicWork(this);
+			TelegramScheduler.schedulePollingWork(this);
 			com.couplefinance.data.CategoryManager.getInstance().seedSystemCategories();
 			if (BankAutoSyncManager.isEnabled(this)) BankAutoSyncManager.scheduleDaily(this);
 		} catch (Exception ignored) {
