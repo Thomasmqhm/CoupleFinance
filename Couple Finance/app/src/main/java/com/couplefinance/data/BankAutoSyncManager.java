@@ -12,14 +12,7 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
-
 import com.couplefinance.utils.NotifChannels;
-import com.couplefinance.workers.BankSyncWorker;
-
-import java.util.concurrent.TimeUnit;
 
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.ui.transactions.TransactionsRepository;
@@ -165,34 +158,13 @@ public final class BankAutoSyncManager {
     // Planification
     // ─────────────────────────────────────────────────────────────
 
-    private static final String WM_TAG_SYNC = "cf_bank_sync_daily";
-
-    /**
-     * Primary scheduler: WorkManager periodic job (Doze-safe, Samsung-safe).
-     * Also keeps an AlarmManager alarm as best-effort backup for the configured time.
-     * Call from DashboardActivity.onCreate when bank sync is enabled.
-     */
     public static void scheduleDaily(Context ctx) {
         if (ctx == null) return;
-
-        // Primary: WorkManager 24h periodic (survives Doze + aggressive kill)
-        try {
-            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
-                    BankSyncWorker.class, 24, TimeUnit.HOURS)
-                    .addTag(WM_TAG_SYNC)
-                    .build();
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                    WM_TAG_SYNC,
-                    ExistingPeriodicWorkPolicy.KEEP,
-                    req);
-        } catch (Exception ignored) {}
-
-        // Backup: AlarmManager at user-configured time
-        scheduleAlarmBackup(ctx);
+        scheduleAlarm(ctx);
     }
 
-    /** AlarmManager backup — fires at user-configured HH:MM, inexact to avoid needing exact-alarm permission. */
-    private static void scheduleAlarmBackup(Context ctx) {
+    /** AlarmManager alarm — fires at user-configured HH:MM. */
+    private static void scheduleAlarm(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
 
@@ -211,7 +183,7 @@ public final class BankAutoSyncManager {
         PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Android 14+: canScheduleExactAlarms() may be false; fall back to setWindow/WorkManager
+        // Android 14+: canScheduleExactAlarms() may be false; fall back to setWindow
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (am.canScheduleExactAlarms()) {
                 try {
@@ -234,10 +206,6 @@ public final class BankAutoSyncManager {
 
     public static void cancelDaily(Context ctx) {
         if (ctx == null) return;
-        // Cancel WorkManager job
-        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_SYNC); }
-        catch (Exception ignored) {}
-        // Cancel AlarmManager backup
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         Intent intent = new Intent(ctx, BankSyncReceiver.class);
