@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.couplefinance.workers.TelegramDigestWorker;
+import com.couplefinance.workers.TelegramPollingWorker;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -174,6 +175,34 @@ public final class TelegramScheduler {
     public static void cancelPeriodicWork(Context ctx) {
         if (ctx == null) return;
         try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_TELEGRAM); }
+        catch (Exception ignored) {}
+    }
+
+    // ─── Polling bidirectionnel (getUpdates) ────────────────────
+
+    private static final String WM_TAG_POLLING = "cf_telegram_polling";
+
+    /**
+     * Enqueue a 15-minute periodic polling job to receive incoming commands.
+     * KEEP policy: idempotent, safe to call on every app open.
+     */
+    public static void schedulePollingWork(Context ctx) {
+        if (ctx == null) return;
+        try {
+            PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(
+                    TelegramPollingWorker.class, 15, TimeUnit.MINUTES)
+                    .addTag(WM_TAG_POLLING)
+                    .build();
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                    WM_TAG_POLLING,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    req);
+        } catch (Exception ignored) {}
+    }
+
+    public static void cancelPollingWork(Context ctx) {
+        if (ctx == null) return;
+        try { WorkManager.getInstance(ctx).cancelAllWorkByTag(WM_TAG_POLLING); }
         catch (Exception ignored) {}
     }
 

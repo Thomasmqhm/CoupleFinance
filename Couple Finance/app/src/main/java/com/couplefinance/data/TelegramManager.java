@@ -208,6 +208,82 @@ public class TelegramManager {
         sendMessage("\u2705 <b>CoupleFinance</b> est bien connecté \u00e0 Telegram !", cb);
     }
 
+    // ─── Inline keyboard ───────────────────────────────────────────
+
+    /**
+     * Sends a message with an inline keyboard.
+     * {@code inlineKeyboard} = JSONArray of rows; each row = JSONArray of
+     * {"text":"…","callback_data":"…"} objects.
+     */
+    public void sendMessageWithKeyboard(String text, JSONArray inlineKeyboard, Callback cb) {
+        final String token  = getBotToken();
+        final String chatId = getChatId();
+        if (token.isEmpty() || chatId.isEmpty()) {
+            post(cb, false, "Telegram non configuré");
+            return;
+        }
+        executor.execute(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(API + token + "/sendMessage");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                conn.setConnectTimeout(12000);
+                conn.setReadTimeout(12000);
+                conn.setDoOutput(true);
+                JSONObject body = new JSONObject();
+                body.put("chat_id", chatId);
+                body.put("text", text != null ? text : "");
+                body.put("parse_mode", "HTML");
+                body.put("disable_web_page_preview", true);
+                if (inlineKeyboard != null) {
+                    JSONObject markup = new JSONObject();
+                    markup.put("inline_keyboard", inlineKeyboard);
+                    body.put("reply_markup", markup);
+                }
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                int code = conn.getResponseCode();
+                if (code == 200) post(cb, true, read(conn.getInputStream()));
+                else post(cb, false, "Erreur Telegram (" + code + ")");
+            } catch (Exception e) {
+                post(cb, false, e.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
+    /** Answers an inline keyboard callback_query (clears the loading spinner on the button). */
+    public void answerCallbackQuery(String callbackQueryId, String text) {
+        final String token = getBotToken();
+        if (token.isEmpty() || callbackQueryId == null) return;
+        executor.execute(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(API + token + "/answerCallbackQuery");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setDoOutput(true);
+                JSONObject body = new JSONObject();
+                body.put("callback_query_id", callbackQueryId);
+                if (text != null && !text.isEmpty()) body.put("text", text);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                conn.getResponseCode();
+            } catch (Exception ignored) {
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────
 
     private String describe(String json) {

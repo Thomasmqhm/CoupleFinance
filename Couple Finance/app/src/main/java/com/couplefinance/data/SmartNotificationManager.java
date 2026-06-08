@@ -155,12 +155,95 @@ public final class SmartNotificationManager {
         if (now - last < 30 * 60 * 1000L) return;
         p.edit().putLong(K_LAST_EXPENSE_ALERT_TS, now).apply();
 
-        String title = "Grosse dépense détectée";
         String name  = (label != null && !label.isEmpty()) ? label : "Dépense";
         String cat   = (category != null && !category.isEmpty()) ? " · " + category : "";
         String body  = fmt(amount) + " — " + name + cat;
 
-        sendAlert(app, NOTIF_BASE_EXPENSE, title, body);
+        sendExpenseAlertWithActions(app, NOTIF_BASE_EXPENSE, name, body);
+        sendTelegramExpenseAlert(app, name, amount, cat);
+    }
+
+    /** Sends the "grosse dépense" Android notification with action buttons. */
+    private static void sendExpenseAlertWithActions(Context app, int notifId,
+                                                     String label, String body) {
+        ensureChannel(app);
+        NotificationManager nm = (NotificationManager) app.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        android.app.PendingIntent tapIntent = android.app.PendingIntent.getActivity(
+                app, notifId,
+                new android.content.Intent(app, com.couplefinance.ui.DashboardActivity.class)
+                        .setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+
+        // Action "✅ Noté" — BroadcastReceiver, dismisses + Telegram ack
+        android.content.Intent ackIntent = new android.content.Intent(app, TelegramActionReceiver.class);
+        ackIntent.setAction(TelegramActionReceiver.ACTION_ACK);
+        ackIntent.putExtra(TelegramActionReceiver.EXTRA_NOTIF_ID, notifId);
+        ackIntent.putExtra(TelegramActionReceiver.EXTRA_LABEL, label);
+        android.app.PendingIntent ackPi = android.app.PendingIntent.getBroadcast(
+                app, notifId + 1, ackIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+
+        // Action "📂 Catégoriser" — opens app
+        android.content.Intent catIntent = new android.content.Intent(app, TelegramActionReceiver.class);
+        catIntent.setAction(TelegramActionReceiver.ACTION_CATEGORIZE);
+        catIntent.putExtra(TelegramActionReceiver.EXTRA_NOTIF_ID, notifId);
+        android.app.PendingIntent catPi = android.app.PendingIntent.getBroadcast(
+                app, notifId + 2, catIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+
+        int smallIcon = app.getResources().getIdentifier("ic_stat_sync", "drawable", app.getPackageName());
+        if (smallIcon == 0) smallIcon = android.R.drawable.ic_dialog_alert;
+
+        Notification notif = new Notification.Builder(app, CHANNEL_ID)
+                .setContentTitle("💸 Grosse dépense détectée")
+                .setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body).setSummaryText("CoupleFinance"))
+                .setSmallIcon(smallIcon)
+                .setColor(ACCENT)
+                .setSubText("CoupleFinance")
+                .setCategory(Notification.CATEGORY_STATUS)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setShowWhen(true)
+                .setContentIntent(tapIntent)
+                .setAutoCancel(true)
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_save, "✅ Noté", ackPi).build())
+                .addAction(new Notification.Action.Builder(
+                        android.R.drawable.ic_menu_edit, "📂 Catégoriser", catPi).build())
+                .build();
+
+        try { nm.notify(notifId, notif); }
+        catch (Exception e) { Log.w(TAG, "notify grosse dépense : " + e.getMessage()); }
+    }
+
+    /** Sends a Telegram alert for a large expense with inline keyboard buttons. */
+    private static void sendTelegramExpenseAlert(Context app, String label, double amount, String cat) {
+        try {
+            TelegramManager tm = TelegramManager.getInstance();
+            tm.init(app);
+            if (!tm.isConfigured()) return;
+
+            String msg = "💸 <b>Grosse dépense détectée</b>\n"
+                    + "• " + label + cat + "\n"
+                    + "• Montant : <b>" + fmt(amount) + "</b>\n"
+                    + "<i>Répondez /categorie pour recatégoriser.</i>";
+
+            org.json.JSONArray row = new org.json.JSONArray();
+            org.json.JSONObject btnOk = new org.json.JSONObject();
+            btnOk.put("text", "✅ Noté");
+            btnOk.put("callback_data", "ack_expense");
+            org.json.JSONObject btnCat = new org.json.JSONObject();
+            btnCat.put("text", "📂 /categorie ?");
+            btnCat.put("callback_data", "cat_expense");
+            row.put(btnOk);
+            row.put(btnCat);
+            org.json.JSONArray keyboard = new org.json.JSONArray();
+            keyboard.put(row);
+
+            tm.sendMessageWithKeyboard(msg, keyboard, null);
+        } catch (Exception ignored) {}
     }
 
     private static void checkAndFireBalanceAlert(Context app, double balance, double threshold) {
