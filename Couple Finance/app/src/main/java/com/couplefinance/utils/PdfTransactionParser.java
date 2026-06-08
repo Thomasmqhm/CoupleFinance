@@ -386,21 +386,19 @@ public class PdfTransactionParser {
         String n = normalizeStatic(original).toLowerCase(Locale.FRENCH)
                 .replaceAll("[''`.,/\\-]", " ").replaceAll("\\s+", " ");
 
-        // ── 1. Règles merchant ciblées (nom d'affichage propre) ──────
-        if (n.contains("apicil"))            return "APICIL Mutuelle";
-
-        // ── 1b. Virement entre comptes/personnes → "Virement {Nom}" ──
-        if (isVirementRaw(original)) {
-            String party = virementCounterparty(original);
-            return party.isEmpty() ? "Virement" : "Virement " + party;
-        }
-
+        // ── 1. Règles merchant ciblées AVANT la détection virement ──
+        // (certains prélèvements arrivent préfixés "VIR INST ..." alors que
+        //  ce sont de vrais paiements, pas des virements entre comptes)
         if (n.contains("edf"))               return "EDF";
         if (n.matches(".*\\bsaur\\b.*"))     return "SAUR";
         if (n.matches(".*\\bdiac\\b.*"))     return "DIAC";
         if (n.contains("personal finance"))  return "BNP Paribas Personal Finance";
         if (n.contains("suravenir"))         return "Suravenir";
         if (n.contains("bouygues"))          return "Bouygues Telecom";
+        if (n.contains("apicil"))            return "APICIL Mutuelle";
+        if (n.contains("octopus"))           return "Octopus";
+        if (n.contains("fastt"))             return "FASTT";
+        if (n.contains("alter interim"))     return "ALTER Intérim";
         if (n.contains("free mobile"))       return "Free Mobile";
         if (n.contains("free "))             return "Free";
         if (n.contains("sfr"))               return "SFR";
@@ -421,15 +419,18 @@ public class PdfTransactionParser {
         if (n.contains("intermarche"))       return "Intermarché";
         if (n.contains("netto"))             return "Netto";
         if (n.contains("auchan"))            return "Auchan";
-        if (n.contains("paddington"))        return "Paddington";
-        if (n.contains("central bar"))       return "Le Central Bar";
-        if (n.contains("jean bart"))         return "Le Jean Bart";
         if (n.contains("cotisation eurocompte")) return "Cotisation Eurocompte";
         if (n.contains("commission d intervention")) return "Commission d'intervention";
         if (n.contains("prlv impaye") || n.contains("frais prlv")) return "Frais prélèvement impayé";
-        if (n.contains("octopus"))           return "Octopus";
-        if (n.contains("fastt"))             return "FASTT";
-        if (n.contains("alter interim"))     return "ALTER Intérim";
+
+        // ── 1b. Virement entre comptes/personnes → "Virement {Nom}" ──
+        if (isVirementRaw(original)) {
+            String party = virementCounterparty(original);
+            return party.isEmpty() ? "Virement" : "Virement " + party;
+        }
+        if (n.contains("paddington"))        return "Paddington";
+        if (n.contains("central bar"))       return "Le Central Bar";
+        if (n.contains("jean bart"))         return "Le Jean Bart";
 
         // ── 2. Nettoyage générique ───────────────────────────────────
         String s = original;
