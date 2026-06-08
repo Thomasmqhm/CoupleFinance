@@ -132,13 +132,16 @@ public class AbonnementsView {
     }
 
     private View buildHeroCard() {
-        double total = totalCharges();
+        double typique = totalTypique();
+        double minTotal = totalMin();
+        double maxTotal = totalMax();
         int members = Math.max(1, memberCount());
-        double perPers = total / members;
-        double annual = total * 12;
+        double perPers = typique / members;
+        double annual  = typique * 12;
+        boolean hasVar = hasVariableCharges();
 
         Calendar cal = Calendar.getInstance();
-        int day = cal.get(Calendar.DAY_OF_MONTH);
+        int day    = cal.get(Calendar.DAY_OF_MONTH);
         int maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
         float progress = Math.min(1f, (float) day / maxDay);
 
@@ -164,7 +167,7 @@ public class AbonnementsView {
         card.setLayoutParams(heroLp);
 
         TextView tvLabel = new TextView(activity);
-        tvLabel.setText("TOTAL MENSUEL");
+        tvLabel.setText("TOTAL TYPIQUE");
         tvLabel.setTextColor(ThemeColors.withAlpha(Color.WHITE, 180));
         tvLabel.setTextSize(DS.TEXT_XS);
         tvLabel.setTypeface(null, Typeface.BOLD);
@@ -172,15 +175,40 @@ public class AbonnementsView {
         card.addView(tvLabel);
 
         TextView tvTotal = new TextView(activity);
-        tvTotal.setText(Fmt.money(total));
+        tvTotal.setText(Fmt.money(typique));
         tvTotal.setTextColor(Color.WHITE);
         tvTotal.setTextSize(DS.TEXT_BALANCE);
         tvTotal.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
 
         LinearLayout.LayoutParams totalLp = new LinearLayout.LayoutParams(-1, -2);
         totalLp.topMargin = DS.dp(activity, 6);
-        totalLp.bottomMargin = DS.dp(activity, 16);
+        totalLp.bottomMargin = DS.dp(activity, hasVar ? 8 : 16);
         card.addView(tvTotal, totalLp);
+
+        // Fourchette seuil bas / seuil haut (visible uniquement si charges variables)
+        if (hasVar) {
+            LinearLayout rangeRow = new LinearLayout(activity);
+            rangeRow.setOrientation(LinearLayout.HORIZONTAL);
+            rangeRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+            LinearLayout.LayoutParams rangeLp = new LinearLayout.LayoutParams(-1, -2);
+            rangeLp.bottomMargin = DS.dp(activity, 14);
+            rangeRow.setLayoutParams(rangeLp);
+
+            TextView tvRange = new TextView(activity);
+            tvRange.setText("Fourchette  ");
+            tvRange.setTextColor(ThemeColors.withAlpha(Color.WHITE, 160));
+            tvRange.setTextSize(DS.TEXT_XS);
+            rangeRow.addView(tvRange);
+
+            rangeRow.addView(rangePill("Seuil bas", Fmt.money(minTotal)));
+
+            LinearLayout.LayoutParams rp2 = new LinearLayout.LayoutParams(-2, -2);
+            rp2.leftMargin = DS.dp(activity, 8);
+            rangeRow.addView(rangePill("Seuil haut", Fmt.money(maxTotal)), rp2);
+
+            card.addView(rangeRow);
+        }
 
         LinearLayout statsRow = new LinearLayout(activity);
         statsRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -227,6 +255,38 @@ public class AbonnementsView {
         card.addView(btnAdd);
 
         return card;
+    }
+
+    private View rangePill(String label, String value) {
+        LinearLayout pill = new LinearLayout(activity);
+        pill.setOrientation(LinearLayout.VERTICAL);
+        pill.setPadding(
+                DS.dp(activity, 10),
+                DS.dp(activity, 6),
+                DS.dp(activity, 10),
+                DS.dp(activity, 6)
+        );
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(ThemeColors.withAlpha(Color.WHITE, 20));
+        bg.setCornerRadius(DS.dp(activity, DS.R_SM));
+        bg.setStroke(DS.dp(activity, 1), ThemeColors.withAlpha(Color.WHITE, 50));
+        pill.setBackground(bg);
+
+        TextView tvValue = new TextView(activity);
+        tvValue.setText(value);
+        tvValue.setTextColor(Color.WHITE);
+        tvValue.setTextSize(DS.TEXT_SM);
+        tvValue.setTypeface(null, Typeface.BOLD);
+        pill.addView(tvValue);
+
+        TextView tvLabel = new TextView(activity);
+        tvLabel.setText(label);
+        tvLabel.setTextColor(ThemeColors.withAlpha(Color.WHITE, 160));
+        tvLabel.setTextSize(DS.TEXT_XS);
+        pill.addView(tvLabel);
+
+        return pill;
     }
 
     private View statPill(String label, String value) {
@@ -469,7 +529,7 @@ public class AbonnementsView {
         double groupTotal = 0;
 
         for (SettingsModels.FixedCharge c : items) {
-            groupTotal += c.amountForProjection();
+            groupTotal += c.amount;
         }
 
         TextView tvTotal = new TextView(activity);
@@ -1192,12 +1252,44 @@ public class AbonnementsView {
         renderCharges();
     }
 
-    private double totalCharges() {
+    /** Montant typique (= amount pour tous) — utilisé partout comme référence principale. */
+    private double totalTypique() {
+        double t = 0;
+        for (SettingsModels.FixedCharge c : charges) {
+            if (c != null) t += c.amount;
+        }
+        return t;
+    }
+
+    /** Seuil bas : amountMin pour les charges variables, amount pour les fixes. */
+    private double totalMin() {
+        double t = 0;
+        for (SettingsModels.FixedCharge c : charges) {
+            if (c == null) continue;
+            t += c.isVariable() ? c.amountMin : c.amount;
+        }
+        return t;
+    }
+
+    /** Seuil haut : amountMax pour les charges variables (pire cas), amount pour les fixes. */
+    private double totalMax() {
         double t = 0;
         for (SettingsModels.FixedCharge c : charges) {
             if (c != null) t += c.amountForProjection();
         }
         return t;
+    }
+
+    private double totalCharges() {
+        return totalTypique();
+    }
+
+    /** Vrai si au moins une charge variable est présente. */
+    private boolean hasVariableCharges() {
+        for (SettingsModels.FixedCharge c : charges) {
+            if (c != null && c.isVariable()) return true;
+        }
+        return false;
     }
 
 private int memberCount() {
