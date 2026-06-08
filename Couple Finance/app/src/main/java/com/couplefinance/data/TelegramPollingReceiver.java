@@ -62,7 +62,8 @@ public class TelegramPollingReceiver extends BroadcastReceiver {
         PendingIntent pi = PendingIntent.getBroadcast(ctx, REQUEST_CODE, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        long firstAt = System.currentTimeMillis() + AlarmManager.INTERVAL_FIFTEEN_MINUTES;
+        // First poll in 30 s, then every 15 min
+        long firstAt = System.currentTimeMillis() + 30_000L;
         am.setInexactRepeating(AlarmManager.RTC_WAKEUP, firstAt,
                 AlarmManager.INTERVAL_FIFTEEN_MINUTES, pi);
     }
