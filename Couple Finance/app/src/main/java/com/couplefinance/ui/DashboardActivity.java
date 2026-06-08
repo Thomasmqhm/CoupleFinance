@@ -122,6 +122,7 @@ public class DashboardActivity extends Activity {
 		if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_QUICK_ADD, false)) {
 			container.post(this::showQuickAddDialog);
 		}
+		com.couplefinance.utils.NotifChannels.ensureAll(this);
 		requestNotificationPermission();
 		UserManager.getInstance().registerCurrentUserAsMember();
 		try {
@@ -131,6 +132,7 @@ public class DashboardActivity extends Activity {
 			CreditManager.getInstance().checkAndApplyCredits(null);
 			NotificationHelper.getInstance(this).notifyPendingFixedCharges(3);
 			TelegramScheduler.checkAndSend(this);
+			TelegramScheduler.schedulePeriodicWork(this);
 			com.couplefinance.data.CategoryManager.getInstance().seedSystemCategories();
 			if (BankAutoSyncManager.isEnabled(this)) BankAutoSyncManager.scheduleDaily(this);
 		} catch (Exception ignored) {

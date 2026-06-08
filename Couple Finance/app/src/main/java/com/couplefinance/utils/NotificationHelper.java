@@ -7,8 +7,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
-
 import com.couplefinance.R;
 import com.couplefinance.ui.DashboardActivity;
 import com.couplefinance.utils.ActivityLogger;
@@ -40,7 +38,7 @@ public class NotificationHelper {
 
     private NotificationHelper(Context ctx) {
         this.context = ctx.getApplicationContext();
-        createChannels();
+        NotifChannels.ensureAll(this.context);
     }
 
     public static NotificationHelper getInstance(Context ctx) {
@@ -50,62 +48,8 @@ public class NotificationHelper {
         return instance;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Canaux (Android 8+)
-    // ─────────────────────────────────────────────────────────────
-
-    private static final String CHANNEL_BUDGET  = "channel_budget";
-    private static final String CHANNEL_SAVINGS = "channel_savings";
-
-    private void createChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-
-        NotificationManager nm = (NotificationManager)
-                context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-
-        // Budget dépassé / en alerte
-        NotificationChannel budgetChannel = new NotificationChannel(
-                CHANNEL_BUDGET, "Alertes budget",
-                NotificationManager.IMPORTANCE_HIGH);
-        budgetChannel.setDescription("Alerte quand une catégorie dépasse son budget");
-        nm.createNotificationChannel(budgetChannel);
-
-        // Objectif épargne atteint
-        NotificationChannel savingsChannel = new NotificationChannel(
-                CHANNEL_SAVINGS, "Objectifs épargne",
-                NotificationManager.IMPORTANCE_DEFAULT);
-        savingsChannel.setDescription("Félicitations quand un objectif d'épargne est atteint");
-        nm.createNotificationChannel(savingsChannel);
-
-        // Transactions partenaire
-        NotificationChannel txChannel = new NotificationChannel(
-                CHANNEL_TRANSACTIONS, "Nouvelles transactions",
-                NotificationManager.IMPORTANCE_DEFAULT);
-        txChannel.setDescription("Notifie quand votre partenaire ajoute une dépense");
-        nm.createNotificationChannel(txChannel);
-
-        // Charges fixes à appliquer
-        NotificationChannel chargeChannel = new NotificationChannel(
-                CHANNEL_CHARGES, "Charges fixes",
-                NotificationManager.IMPORTANCE_HIGH);
-        chargeChannel.setDescription("Rappels pour les charges fixes du mois");
-        nm.createNotificationChannel(chargeChannel);
-
-        // Rappels avant prélèvement
-        NotificationChannel reminderChannel = new NotificationChannel(
-                CHANNEL_REMINDERS, "Rappels prélèvements",
-                NotificationManager.IMPORTANCE_DEFAULT);
-        reminderChannel.setDescription("Rappels 3 jours avant chaque prélèvement");
-        nm.createNotificationChannel(reminderChannel);
-
-        // Début de cycle — saisie de solde
-        NotificationChannel cycleChannel = new NotificationChannel(
-                CHANNEL_CYCLE, "Début de cycle",
-                NotificationManager.IMPORTANCE_HIGH);
-        cycleChannel.setDescription("Rappel de saisir le solde au début de chaque cycle");
-        nm.createNotificationChannel(cycleChannel);
-    }
+    private static final String CHANNEL_BUDGET  = NotifChannels.BUDGET;
+    private static final String CHANNEL_SAVINGS = NotifChannels.SAVINGS;
 
     // ─────────────────────────────────────────────────────────────
     // Nouvelle transaction partenaire
@@ -196,15 +140,10 @@ public class NotificationHelper {
             intent.putExtra(EXTRA_OPEN_BALANCE_DIALOG, true);
         }
 
-        int piFlags = Build.VERSION.SDK_INT >= 23
-                ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                : PendingIntent.FLAG_UPDATE_CURRENT;
+        PendingIntent pi = PendingIntent.getActivity(context, notifId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        PendingIntent pi = PendingIntent.getActivity(context, notifId, intent, piFlags);
-
-        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(context, channelId)
-                : new Notification.Builder(context);
+        Notification.Builder builder = new Notification.Builder(context, channelId);
 
         Notification notif = builder
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -300,22 +239,11 @@ public class NotificationHelper {
         sendNotification(CHANNEL_TRANSACTIONS, 5001, title, body, false);
     }
 
-    // Vérifie tous les budgets et envoie les alertes nécessaires (appel best-effort)
+    /**
+     * Delegate to SmartNotificationManager to avoid duplicate alerts.
+     * SmartNotificationManager is the single authoritative budget alert entry point.
+     */
     public void checkAndNotifyBudgets(java.util.List<com.couplefinance.ui.budget.BudgetModels.CategoryBudget> budgets) {
-        if (budgets == null) return;
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        for (com.couplefinance.ui.budget.BudgetModels.CategoryBudget b : budgets) {
-            if (b == null || b.budget <= 0) continue;
-            String key = "budget_notif_" + b.name + "_" + java.util.Calendar.getInstance().get(java.util.Calendar.MONTH);
-            int lastPct = prefs.getInt(key, 0);
-            int pct = b.getPercent();
-            if (b.isExceeded() && lastPct < 100) {
-                notifyBudgetExceeded(b.name, b.spent, b.budget);
-                prefs.edit().putInt(key, 100).apply();
-            } else if (pct >= 80 && lastPct < 80) {
-                notifyBudgetWarning(b.name, pct);
-                prefs.edit().putInt(key, 80).apply();
-            }
-        }
+        com.couplefinance.data.SmartNotificationManager.checkBudgetsFromView(context, budgets);
     }
 }
