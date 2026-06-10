@@ -20,7 +20,11 @@ import com.couplefinance.core.ui.DS;
 import com.couplefinance.core.ui.Fmt;
 import com.couplefinance.core.ui.UiFactory;
 import com.couplefinance.data.MerchantRuleManager;
+import com.couplefinance.ui.settings.SettingsCache;
+import com.couplefinance.ui.settings.SettingsChargeWriter;
+import com.couplefinance.ui.settings.SettingsModels;
 import com.couplefinance.utils.ParsedTransaction;
+import com.couplefinance.utils.PdfTransactionParser;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -356,11 +360,62 @@ public final class OcrTransactionPreviewDialog {
 							amountInputs,
 							selectedDates,
 							selectedCategories);
+					updateFixedChargeActualAmounts(activity, confirmed);
 					if (onConfirm != null) {
 						onConfirm.onConfirm(confirmed);
 					}
 				})
 				.show();
+	}
+
+	/**
+	 * Pour chaque transaction confirmée, si elle correspond à une charge fixe connue
+	 * (merchantKey identique), met à jour lastActualAmount avec le montant réel importé.
+	 * Cela permet d'adapter le seuil typique au fil des mois.
+	 */
+	private static void updateFixedChargeActualAmounts(Activity activity,
+			List<ParsedTransaction> confirmed) {
+		if (confirmed == null || confirmed.isEmpty()) return;
+		try {
+			SettingsModels.State state = SettingsCache.get();
+			if (state == null || state.charges == null || state.charges.isEmpty()) return;
+
+			java.text.SimpleDateFormat sdf =
+					new java.text.SimpleDateFormat("yyyy-MM", Locale.FRENCH);
+			String currentMonth = sdf.format(new java.util.Date());
+
+			for (ParsedTransaction tx : confirmed) {
+				if (tx == null || "income".equals(tx.type)) continue;
+				String txKey = tx.merchantKey != null ? tx.merchantKey.trim()
+						: MerchantRuleManager.getInstance().resolveMerchantKey(tx.label);
+				if (txKey.isEmpty()) continue;
+
+				double txAmount = Math.abs(tx.amount);
+				if (txAmount <= 0) continue;
+
+				for (SettingsModels.FixedCharge c : state.charges) {
+					if (c == null || c.name == null) continue;
+					String chargeKey = PdfTransactionParser.merchantKey(c.name);
+					if (!txKey.equals(chargeKey)) continue;
+
+					// Ne mettre à jour que si le montant est plausible (±50% du typique)
+					double ref = c.amount > 0 ? c.amount : txAmount;
+					if (txAmount < ref * 0.5 || txAmount > ref * 2.0) continue;
+
+					if (Math.abs(txAmount - c.lastActualAmount) < 0.01
+							&& currentMonth.equals(c.lastActualMonth)) continue;
+
+					c.lastActualAmount = txAmount;
+					c.lastActualMonth = currentMonth;
+					final SettingsModels.FixedCharge toSave = c;
+					activity.runOnUiThread(() ->
+							SettingsChargeWriter.saveCharge(toSave, null));
+					break;
+				}
+			}
+			SettingsCache.set(state);
+		} catch (Exception ignored) {
+		}
 	}
 
 	private static void applyKnownRulesAndAdaptCategories(List<ParsedTransaction> transactions,

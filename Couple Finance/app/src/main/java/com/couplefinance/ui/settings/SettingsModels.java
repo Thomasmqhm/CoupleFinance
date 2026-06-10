@@ -132,6 +132,11 @@ public class SettingsModels {
             this.paidBy = "";
         }
 
+        // Dernier montant réel confirmé via import bancaire (0 = jamais confirmé)
+        public double lastActualAmount;
+        // Mois correspondant au dernier montant réel (format "2026-06")
+        public String lastActualMonth;
+
         /** Vrai si une fourchette min/max est configurée. */
         public boolean isVariable() {
             return amountMax > 0 && amountMin >= 0 && amountMax > amountMin;
@@ -140,6 +145,14 @@ public class SettingsModels {
         /** Montant pour la projection budgétaire = pire cas. */
         public double amountForProjection() {
             return isVariable() ? amountMax : amount;
+        }
+
+        /**
+         * Montant typique effectif : dernier montant réel confirmé si disponible,
+         * sinon le montant typique configuré manuellement.
+         */
+        public double effectiveTypique() {
+            return lastActualAmount > 0 ? lastActualAmount : amount;
         }
 
         public double perPerson() {

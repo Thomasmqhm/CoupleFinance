@@ -1252,21 +1252,21 @@ public class AbonnementsView {
         renderCharges();
     }
 
-    /** Montant typique (= amount pour tous) — utilisé partout comme référence principale. */
+    /** Montant typique effectif (lastActualAmount si confirmé, sinon amount configuré). */
     private double totalTypique() {
         double t = 0;
         for (SettingsModels.FixedCharge c : charges) {
-            if (c != null) t += c.amount;
+            if (c != null) t += c.effectiveTypique();
         }
         return t;
     }
 
-    /** Seuil bas : amountMin pour les charges variables, amount pour les fixes. */
+    /** Seuil bas : amountMin pour les charges variables, effectiveTypique pour les fixes. */
     private double totalMin() {
         double t = 0;
         for (SettingsModels.FixedCharge c : charges) {
             if (c == null) continue;
-            t += c.isVariable() ? c.amountMin : c.amount;
+            t += c.isVariable() ? c.amountMin : c.effectiveTypique();
         }
         return t;
     }

@@ -92,7 +92,9 @@ public class SettingsChargeWriter {
                 + "\"ratioA\":{\"integerValue\":\"" + charge.ratioA + "\"},"
                 + "\"ratioB\":{\"integerValue\":\"" + charge.ratioB + "\"},"
                 + "\"paidBy\":{\"stringValue\":\"" + escape(charge.paidBy) + "\"},"
-                + "\"lastAppliedMonth\":{\"stringValue\":\"" + escape(charge.lastAppliedMonth) + "\"}"
+                + "\"lastAppliedMonth\":{\"stringValue\":\"" + escape(charge.lastAppliedMonth) + "\"},"
+                + "\"lastActualAmount\":{\"doubleValue\":" + charge.lastActualAmount + "},"
+                + "\"lastActualMonth\":{\"stringValue\":\"" + escape(charge.lastActualMonth == null ? "" : charge.lastActualMonth) + "\"}"
                 + "}}";
 
         String mask =
@@ -107,7 +109,9 @@ public class SettingsChargeWriter {
                         + "&updateMask.fieldPaths=ratioA"
                         + "&updateMask.fieldPaths=ratioB"
                         + "&updateMask.fieldPaths=paidBy"
-                        + "&updateMask.fieldPaths=lastAppliedMonth";
+                        + "&updateMask.fieldPaths=lastAppliedMonth"
+                        + "&updateMask.fieldPaths=lastActualAmount"
+                        + "&updateMask.fieldPaths=lastActualMonth";
 
         FirestoreManager.getInstance().patchDocument(path, body, mask, new FirestoreManager.Callback() {
             public void onSuccess(String response) {
