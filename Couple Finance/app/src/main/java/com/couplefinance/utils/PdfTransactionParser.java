@@ -396,6 +396,7 @@ public class PdfTransactionParser {
         if (n.contains("suravenir"))         return "Suravenir";
         if (n.contains("bouygues"))          return "Bouygues Telecom";
         if (n.contains("apicil"))            return "APICIL Mutuelle";
+        if (n.contains("anthropic") || n.contains("claude.ai")) return "Anthropic Claude";
         if (n.contains("octopus"))           return "Octopus";
         if (n.contains("fastt"))             return "FASTT";
         if (n.contains("alter interim"))     return "ALTER Intérim";
@@ -472,6 +473,9 @@ public class PdfTransactionParser {
         s = s.replaceAll("^[-–—:;,.\\s]+", "").trim();
         if (s.isEmpty()) s = original;
 
+        // ── 2b. Ville en fin de libellé → entre parenthèses ─────────
+        s = extractCityFromLabel(s);
+
         // ── 3. Expansions d'abréviations courantes ───────────────────
         s = expandAbbreviations(s);
 
@@ -536,6 +540,53 @@ public class PdfTransactionParser {
     }
 
     /** Met en forme « TITRE EXEMPLE » → « Titre Exemple ». */
+    /**
+     * Détecte une ville en fin de libellé brut (avant titleCase) et la met entre parenthèses.
+     * Dédoublonne aussi la ville si elle apparaît deux fois consécutivement.
+     * Ex: "LA FRITERIE LOUDEAC" → "LA FRITERIE (LOUDEAC)"
+     * Ex: "CENTRAKOR LOUDEAC LOUDEAC" → "CENTRAKOR (LOUDEAC)"
+     */
+    private static String extractCityFromLabel(String s) {
+        if (s == null || s.contains("(")) return s; // Déjà formaté
+        String trimmed = s.trim();
+        String[] words = trimmed.split("\\s+");
+        if (words.length < 2) return trimmed;
+
+        // Dédoublonnage : "LOUDEAC LOUDEAC" → "LOUDEAC"
+        if (words.length >= 3
+                && words[words.length - 1].equalsIgnoreCase(words[words.length - 2])) {
+            int lastSpace = trimmed.lastIndexOf(' ');
+            trimmed = trimmed.substring(0, lastSpace).trim();
+            words = trimmed.split("\\s+");
+            if (words.length < 2) return trimmed;
+        }
+
+        String lastWord = words[words.length - 1];
+
+        // Pas une ville : trop court, contient des chiffres, ou suffixe entreprise connu
+        if (lastWord.length() < 4) return trimmed;
+        if (!lastWord.matches("[A-ZÀ-Ÿa-zà-ÿ][A-ZÀ-Ÿa-zà-ÿ\\-]+")) return trimmed;
+
+        // Suffixes non géographiques à exclure
+        String upLast = lastWord.toUpperCase(Locale.FRENCH);
+        switch (upLast) {
+            case "SA": case "SAS": case "SARL": case "SCM": case "SNC": case "SNCF":
+            case "ETS": case "MAG": case "SHOP": case "FRANCE": case "SERVICE":
+            case "SERVICES": case "GROUP": case "GROUPE": case "CENTRE": case "CENTER":
+            case "PRO": case "PLUS": case "MARKET": case "INTER": case "DRIVE":
+            case "CONTACT": case "EXPRESS": case "ONLINE": case "MOBILE":
+            case "DIGITAL": case "STORE": case "DIRECT": case "CLICK":
+                return trimmed;
+        }
+
+        // Construire "NOM MARCHAND (VILLE)"
+        int lastSpace = trimmed.lastIndexOf(' ');
+        String namePart = trimmed.substring(0, lastSpace).trim();
+        if (namePart.length() < 3) return trimmed;
+
+        return namePart + " (" + lastWord + ")";
+    }
+
     private static String titleCase(String s) {
         if (s == null || s.isEmpty()) return s;
         // Ne re-cap que si le texte est majoritairement en majuscules
@@ -546,7 +597,8 @@ public class PdfTransactionParser {
         StringBuilder out = new StringBuilder();
         boolean newWord = true;
         for (char c : s.toCharArray()) {
-            if (Character.isWhitespace(c) || c == '-' || c == '\'') {
+            // Traiter '(' comme délimiteur de mot pour capitaliser la ville
+            if (Character.isWhitespace(c) || c == '-' || c == '\'' || c == '(') {
                 out.append(c); newWord = true;
             } else if (newWord) {
                 out.append(Character.toUpperCase(c)); newWord = false;

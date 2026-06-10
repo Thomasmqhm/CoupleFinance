@@ -288,6 +288,8 @@ public class SettingsRepository {
 								c.lastAppliedMonth = str(fields, "lastAppliedMonth");
 								c.amountMin = number(fields, "amountMin");
 								c.amountMax = number(fields, "amountMax");
+								c.lastActualAmount = number(fields, "lastActualAmount");
+								c.lastActualMonth = str(fields, "lastActualMonth");
 								c.paidBy = str(fields, "paidBy");
 								c.ratioA = intVal(fields, "ratioA", 50);
 								c.ratioB = intVal(fields, "ratioB", 50);
