@@ -1205,7 +1205,8 @@ public final class BankConnectionView {
         });
         c.addView(disc, marginTop(a));
 
-        String subtitle = bankName.isEmpty() ? "Open Banking · DSP2" : bankName + " · Connectée ✓";
+        String allBanks = EnableBankingManager.getInstance().getConnectedBankNames();
+        String subtitle = allBanks.isEmpty() ? "Open Banking · DSP2" : allBanks + " · Connectée(s) ✓";
         h[0] = new AppDialog.Builder(a).icon("🏦")
                 .title("Connexion bancaire").subtitle(subtitle)
                 .content(c).primaryBtn("FERMER", () -> dismiss(h)).show();
