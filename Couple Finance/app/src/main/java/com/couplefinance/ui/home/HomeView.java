@@ -3082,13 +3082,13 @@ HomeMemberCard.Data jointData = jointEnabled
 				if (d == null || d.name == null) continue;
 				double live = liveBalanceFor(d.name);
 				if (!Double.isNaN(live)) {
-					// Le solde live (banque) est prioritaire sur le solde calculé.
-					// On l'applique directement à currentBalance/forecastBalance car
-					// buildMemberDataList() écrase currentBalance APRÈS compute() — il
-					// faut donc le réappliquer ici, après coup.
+					// On stocke le solde bancaire brut pour affichage informatif,
+					// mais on ne l'utilise PAS pour écraser currentBalance : le solde
+					// "live" peut dater d'avant les revenus du mois et provoquerait
+					// une incohérence avec le Solde commun héro (départ + transactions).
 					d.liveBalance = live;
-					d.currentBalance = live;
-					d.forecastBalance = live - Math.max(0, d.upcomingExpenses);
+					// currentBalance et forecastBalance restent ceux calculés par
+					// buildMemberDataList() : startBalance + income - expenses.
 				}
 				// Avatar animal de l'utilisateur courant (depuis la session)
 				if (myName != null && d.name.equalsIgnoreCase(myName)) {

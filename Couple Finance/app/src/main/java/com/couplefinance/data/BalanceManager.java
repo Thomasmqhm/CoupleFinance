@@ -161,6 +161,69 @@ public class BalanceManager {
 		} catch (Exception ignored) {}
 	}
 
+	/**
+	 * Sauvegarde le solde d'un autre membre (par nom) dans son profil /persons/.
+	 * Permet la synchro centralisée depuis un seul appareil ayant tous les comptes
+	 * Enable Banking connectés. Fire-and-forget.
+	 */
+	public void saveMonthlyStartBalanceByName(String personName, double amount) {
+		if (personName == null || personName.trim().isEmpty()) return;
+		executor.execute(() -> {
+			try {
+				String token       = AuthManager.getInstance().getFreshTokenSync();
+				String householdId = HouseholdManager.getInstance().getHouseholdId();
+				if (!isValid(token) || !isValid(householdId)) return;
+
+				String listUrl = BASE_URL + "households/" + householdId + "/persons?key=" + API_KEY;
+				HttpURLConnection getConn = open(listUrl, "GET", token, false);
+				if (getConn.getResponseCode() != 200) return;
+
+				String personsJson = safeRead(getConn.getInputStream());
+				String docPath = findPersonDocPathByName(personsJson, personName.trim());
+				if (docPath == null || docPath.isEmpty()) return;
+
+				String patchUrl = BASE_URL + docPath
+						+ "?updateMask.fieldPaths=monthlyStartBalance"
+						+ "&key=" + API_KEY;
+				HttpURLConnection patchConn = open(patchUrl, "PATCH", token, true);
+				String body = "{\"fields\":{"
+						+ "\"monthlyStartBalance\":{\"doubleValue\":" + amount + "}"
+						+ "}}";
+				patchConn.getOutputStream().write(body.getBytes("UTF-8"));
+				patchConn.getResponseCode();
+			} catch (Exception ignored) {}
+		});
+	}
+
+	private String findPersonDocPathByName(String personsJson, String name) {
+		if (personsJson == null || personsJson.isEmpty()) return null;
+		String nameLc = name.toLowerCase(java.util.Locale.FRENCH);
+		String firstName = nameLc.split("\\s+")[0];
+		try {
+			JSONObject root = new JSONObject(personsJson);
+			JSONArray  docs = root.optJSONArray("documents");
+			if (docs == null) return null;
+			for (int i = 0; i < docs.length(); i++) {
+				JSONObject doc = docs.optJSONObject(i);
+				if (doc == null) continue;
+				JSONObject fields = doc.optJSONObject("fields");
+				if (fields == null) continue;
+				String docName = firstNonEmpty(
+						readString(fields, "name"),
+						readString(fields, "displayName"),
+						readString(fields, "prenom"),
+						readString(fields, "firstName")
+				);
+				if (!isValid(docName)) continue;
+				String docFirst = docName.trim().toLowerCase(java.util.Locale.FRENCH).split("\\s+")[0];
+				if (docFirst.equals(firstName)) {
+					return cleanDocumentPath(doc.optString("name", ""));
+				}
+			}
+		} catch (Exception ignored) {}
+		return null;
+	}
+
 	private String findPersonDocPath(String personsJson, String userId) {
 		if (personsJson == null || personsJson.isEmpty()) return null;
 		try {

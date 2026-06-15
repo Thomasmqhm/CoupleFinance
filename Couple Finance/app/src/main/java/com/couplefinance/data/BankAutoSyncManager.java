@@ -12,11 +12,14 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
+import com.couplefinance.ui.settings.SettingsCache;
+import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.utils.NotifChannels;
 
 import com.couplefinance.ui.transactions.TransactionsModels;
 import com.couplefinance.ui.transactions.TransactionsRepository;
 import com.couplefinance.utils.ParsedTransaction;
+import com.couplefinance.utils.PdfTransactionParser;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -327,6 +330,7 @@ public final class BankAutoSyncManager {
                                 .apply();
                         BankImportPipeline.autoDetectRecurringCharges(freshFinal, app);
                         BankImportPipeline.autoCreateTransfers(freshFinal, app);
+                        confirmFixedChargesFromBankSync(app, freshFinal);
                         fetchBalanceAndNotify(app, count, spent, income, freshFinal);
                         rescheduleTomorrow(app);
                     }
@@ -338,6 +342,55 @@ public final class BankAutoSyncManager {
     }
 
     /** Clé de doublon stable : date|type|centimes|merchantKey. */
+    /**
+     * Lors de chaque synchro bancaire auto, tente de relier les nouvelles transactions
+     * à leurs charges fixes correspondantes. Si une transaction correspond (même marchand,
+     * montant dans la plage ±60%), met à jour lastActualAmount + lastActualMonth sur la
+     * charge fixe → le statut passe de "⏳ En attente" à "✅ Confirmé" dans l'onglet
+     * Abonnements, et le typique adaptatif se met à jour pour le mois suivant.
+     */
+    private static void confirmFixedChargesFromBankSync(Context app,
+            List<ParsedTransaction> fresh) {
+        if (fresh == null || fresh.isEmpty()) return;
+        try {
+            com.couplefinance.ui.settings.SettingsModels.State state =
+                    com.couplefinance.ui.settings.SettingsCache.get();
+            if (state == null || state.charges == null || state.charges.isEmpty()) return;
+
+            String cycleKey = CycleManager.getInstance().getCurrentCycleKey();
+
+            for (ParsedTransaction pt : fresh) {
+                if (pt == null || "income".equals(pt.type) || pt.amount <= 0) continue;
+                if (pt.merchantKey == null || pt.merchantKey.isEmpty()) continue;
+
+                for (com.couplefinance.ui.settings.SettingsModels.FixedCharge charge
+                        : state.charges) {
+                    if (charge == null || charge.docPath == null) continue;
+                    // Déjà confirmé ce cycle → pas de double mise à jour
+                    if (cycleKey != null && cycleKey.equals(charge.lastActualMonth)) continue;
+
+                    String chargeKey = com.couplefinance.utils.PdfTransactionParser
+                            .merchantKey(charge.name);
+                    if (chargeKey == null || chargeKey.isEmpty()) continue;
+                    if (!chargeKey.equals(pt.merchantKey)) continue;
+
+                    // Plage de tolérance ±60%
+                    double ref = charge.amount > 0 ? charge.amount : 1;
+                    double ratio = pt.amount / ref;
+                    if (ratio < 0.4 || ratio > 1.6) continue;
+
+                    charge.lastActualAmount = pt.amount;
+                    charge.lastActualMonth  = cycleKey != null ? cycleKey : "";
+                    try {
+                        com.couplefinance.ui.settings.SettingsChargeWriter
+                                .saveCharge(charge, null);
+                    } catch (Exception ignored) {}
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     private static String dedupKey(ParsedTransaction pt) {
         long cents = Math.round(Math.abs(pt.amount) * 100);
         Calendar c = Calendar.getInstance();
@@ -476,8 +529,13 @@ public final class BankAutoSyncManager {
                                     @Override public void onError(String message) { Log.w(TAG, "Solde " + ownerFinal + " : " + message); }
                                 });
                     } catch (Exception ex) { Log.w(TAG, "saveMonthlyStartBalance user", ex); }
+                } else {
+                    // Autre membre : écriture directe dans son profil /persons/ Firestore.
+                    // Permet la synchro centralisée depuis un seul appareil.
+                    try {
+                        BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, value);
+                    } catch (Exception ignored) {}
                 }
-                // autre membre : pas d'API pour ecrire son solde depuis cet appareil -> ignore
             }
         }
     }
