@@ -182,8 +182,10 @@ public class EnableBankingManager {
                 List<String> owners = new ArrayList<>(split(sess.optString("o", ""), SEP));
                 while (owners.size() <= localIdx) owners.add("");
                 owners.set(localIdx, owner != null ? owner : "");
-                try { sess.put("o", join(owners, SEP)); } catch (Exception ignored) {}
-                sessions.put(s, sess);
+                try {
+                    sess.put("o", join(owners, SEP));
+                    sessions.put(s, sess);
+                } catch (Exception ignored) {}
                 saveSessions(sessions);
                 return;
             }
