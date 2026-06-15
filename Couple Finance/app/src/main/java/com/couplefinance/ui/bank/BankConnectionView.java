@@ -842,7 +842,8 @@ public final class BankConnectionView {
         rp.bottomMargin = DS.dp(a,4); row.setLayoutParams(rp);
 
         android.widget.CheckBox cb = new android.widget.CheckBox(a);
-        cb.setChecked(pt.selected); cb.setEnabled(!pt.duplicate);
+        cb.setChecked(pt.selected);
+        cb.setEnabled(true); // toujours activée — l'utilisateur peut forcer l'import d'un doublon
         cb.setOnCheckedChangeListener((v,c) -> pt.selected = c);
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2,-2);
         cp.rightMargin = DS.dp(a,6); row.addView(cb, cp);
@@ -855,12 +856,21 @@ public final class BankConnectionView {
         TextView lv = new TextView(a);
         String ownerBadge = "joint".equals(pt.owner) ? "🏠 "
                 : (pt.owner != null && !pt.owner.isEmpty()) ? "👤 " : "";
-        lv.setText(pt.duplicate ? "⚠️ " + pt.label : ownerBadge + pt.label + "  ✎");
+        lv.setText(pt.duplicate ? "⚠️ " + pt.label + "  ✎" : ownerBadge + pt.label + "  ✎");
         lv.setTextSize(DS.TEXT_SM);
-        lv.setTextColor(pt.duplicate ? ThemeColors.subtext() : ThemeColors.text());
+        lv.setTextColor(pt.duplicate ? Color.parseColor("#B45309") : ThemeColors.text());
         lv.setTypeface(null, Typeface.BOLD); lv.setSingleLine(true);
         lv.setOnClickListener(v -> showEditTransactionDialog(a, pt, categories, all, onChanged));
         info.addView(lv);
+
+        // Avertissement doublon (sous le libellé, cliquable pour débloquer)
+        if (pt.duplicate) {
+            TextView dupWarn = new TextView(a);
+            dupWarn.setText("Probable doublon — cochez pour forcer l'import");
+            dupWarn.setTextSize(DS.TEXT_XS);
+            dupWarn.setTextColor(Color.parseColor("#92400E"));
+            info.addView(dupWarn);
+        }
 
         String ownerLbl = "joint".equals(pt.owner) ? "Compte joint"
                 : (pt.owner != null && !pt.owner.isEmpty()) ? pt.owner : "";
@@ -923,6 +933,41 @@ public final class BankConnectionView {
                 () -> catBtn.setText("🏷️ Catégorie : " + pt.category + "  ✎")));
         box.addView(catBtn, marginTop(a));
 
+        // Direction : Entrant (+) / Sortant (-)
+        final boolean[] isIncome = {"income".equals(pt.type)};
+        LinearLayout dirRow = new LinearLayout(a);
+        dirRow.setOrientation(LinearLayout.HORIZONTAL);
+        dirRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams dirLp = new LinearLayout.LayoutParams(-1, -2);
+        dirLp.topMargin = DS.dp(a, DS.GAP_SM);
+        dirRow.setLayoutParams(dirLp);
+
+        TextView dirLabel = UiFactory.bodyMuted(a, "Direction : ");
+        dirLabel.setTextSize(DS.TEXT_SM);
+        dirRow.addView(dirLabel);
+
+        final TextView dirBtn = new TextView(a);
+        dirBtn.setTextSize(DS.TEXT_SM);
+        dirBtn.setTypeface(null, Typeface.BOLD);
+        dirBtn.setPadding(DS.dp(a, 10), DS.dp(a, 6), DS.dp(a, 10), DS.dp(a, 6));
+        Runnable updateDirBtn = () -> {
+            if (isIncome[0]) {
+                dirBtn.setText("📈 Entrant (+)");
+                dirBtn.setTextColor(Color.parseColor("#059669"));
+                dirBtn.setBackground(UiFactory.bgBordered(Color.parseColor("#ECFDF5"),
+                        Color.parseColor("#059669"), DS.R_SM, a));
+            } else {
+                dirBtn.setText("📉 Sortant (−)");
+                dirBtn.setTextColor(ThemeColors.text());
+                dirBtn.setBackground(UiFactory.bgBordered(ThemeColors.card(),
+                        ThemeColors.border(), DS.R_SM, a));
+            }
+        };
+        updateDirBtn.run();
+        dirBtn.setOnClickListener(v -> { isIncome[0] = !isIncome[0]; updateDirBtn.run(); });
+        dirRow.addView(dirBtn);
+        box.addView(dirRow);
+
         // Charge fixe (abonnement récurrent) — comme dans les transactions
         final android.widget.CheckBox fixe = new android.widget.CheckBox(a);
         fixe.setText("  Charge fixe → abonnement récurrent");
@@ -933,7 +978,7 @@ public final class BankConnectionView {
 
         final AlertDialog[] h = {null};
         h[0] = new AppDialog.Builder(a).icon("✏️")
-                .title("Modifier").subtitle("Libellé, catégorie, charge fixe")
+                .title("Modifier").subtitle("Libellé, catégorie, direction, charge fixe")
                 .content(box)
                 .primaryBtn("ENREGISTRER", () -> {
                     String newLabel = input.getText().toString().trim();
@@ -942,6 +987,7 @@ public final class BankConnectionView {
                         rememberLabelAndApplyToSimilar(pt, all);
                     }
                     rememberCategoryAndApplyToSimilar(pt, all);
+                    pt.type = isIncome[0] ? "income" : "expense";
                     pt.recurringCandidate = fixe.isChecked();
                     dismiss(h);
                     if (onChanged != null) onChanged.run();
