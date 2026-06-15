@@ -697,10 +697,10 @@ public final class BankConnectionView {
             // Détermine la cible : si au moins une visible est cochée → tout décocher
             boolean anyChecked = false;
             for (ParsedTransaction pt : parsed)
-                if (visible.test(pt) && !pt.duplicate && pt.selected) { anyChecked = true; break; }
+                if (visible.test(pt) && pt.selected) { anyChecked = true; break; }
             boolean target = !anyChecked;
             for (ParsedTransaction pt : parsed)
-                if (visible.test(pt) && !pt.duplicate) pt.selected = target;
+                if (visible.test(pt) && !pt.duplicate) pt.selected = target; // doublons non touchés par selectAll
             refilterRef[0].run();
         });
         root.addView(selectAll);
@@ -1129,7 +1129,7 @@ public final class BankConnectionView {
     private static void executeImport(Activity a, List<ParsedTransaction> all,
                                        List<TransactionsModels.Transaction> existing) {
         List<ParsedTransaction> confirmed = new ArrayList<>();
-        for (ParsedTransaction pt : all) if (pt.selected && !pt.duplicate) confirmed.add(pt);
+        for (ParsedTransaction pt : all) if (pt.selected) confirmed.add(pt); // doublons cochés volontairement = forcé
         if (confirmed.isEmpty()) { AppToast.info(a, "Aucune transaction sélectionnée"); return; }
 
         String me = getCurrentPersonName(a);
