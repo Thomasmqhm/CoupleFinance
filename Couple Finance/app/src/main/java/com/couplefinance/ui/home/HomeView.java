@@ -2174,15 +2174,15 @@ public class HomeView {
 					double[] vals = personBalances.get(personKey);
 
 					if (vals != null) {
-						if (!isTransferCategory) {
-							if (type.equals("income")) {
-								vals[0] += amount;
-							} else {
-								vals[1] += amount;
-							}
+						// Les virements comptent comme revenu/dépense pour le membre concerné
+						// (virement sortant = dépense, virement entrant = revenu)
+						if (type.equals("income")) {
+							vals[0] += amount;
+						} else {
+							vals[1] += amount;
 						}
 
-						if (!isTransferCategory && shouldImpactAvailableBalance(dateMs)) {
+						if (shouldImpactAvailableBalance(dateMs)) {
 							if (type.equals("income")) {
 								vals[2] += amount;
 							} else {
@@ -3108,13 +3108,9 @@ HomeMemberCard.Data jointData = jointEnabled
 			double live = liveBalanceFor(jointName);
 			if (!Double.isNaN(live)) {
 				jointData.liveBalance = live;
-				jointData.currentBalance = live;
-				jointData.forecastBalance = live - Math.max(0, jointData.upcomingExpenses);
-				// Propagate live bank balance to Firestore so the other device sees the same value.
-				try {
-					com.couplefinance.data.JointAccountManager.getInstance()
-							.saveMonthlyStartBalance(activity.getApplicationContext(), live, null);
-				} catch (Exception ignored) { }
+				// currentBalance et forecastBalance restent calculés (startBalance + transactions)
+				// pour rester cohérents avec le Solde commun héro. liveBalance s'affiche
+				// via HomeMemberCard comme "Solde actuel" sans écraser les calculs.
 			}
 		}
 
