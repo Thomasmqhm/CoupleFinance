@@ -1367,17 +1367,31 @@ public final class BankConnectionView {
             sp.rightMargin = DS.dp(a,4);
 
             final String ownerFinal = owner;
+            // Détecter si ce compte appartient à l'utilisateur courant
+            String me = getCurrentPersonName(a).trim().toLowerCase(Locale.FRANCE);
+            String meFirst = me.isEmpty() ? "" : me.split("\\s+")[0];
+            String ownerLc = ownerFinal != null ? ownerFinal.trim().toLowerCase(Locale.FRANCE) : "";
+            boolean isCurrentUser = !me.isEmpty() && !ownerLc.isEmpty()
+                    && (ownerLc.equals(me) || ownerLc.split("\\s+")[0].equals(meFirst));
+
             if ("joint".equals(ownerFinal)) {
                 // Compte joint : boutons Joint uniquement
                 btns.addView(saveBtn(a, "Joint +" + absStr, () -> saveJointBalance(a,  abs)), sp);
                 btns.addView(saveBtn(a, "Joint −" + absStr, () -> saveJointBalance(a, -abs)));
+            } else if (isCurrentUser) {
+                // Compte de l'utilisateur courant : mise à jour locale + Firestore immédiate
+                btns.addView(saveBtn(a, ownerLbl + " +" + absStr, () -> savePersonalBalance(a,  abs)), sp);
+                btns.addView(saveBtn(a, ownerLbl + " −" + absStr, () -> savePersonalBalance(a, -abs)));
             } else if (ownerFinal != null && !ownerFinal.isEmpty()) {
-                // Compte personnel identifié : enregistrer par nom de membre
-                String lbl = ownerLbl; // Thomas / Mélissa / …
-                btns.addView(saveBtn(a, lbl + " +" + absStr,
-                        () -> BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, abs)), sp);
-                btns.addView(saveBtn(a, lbl + " −" + absStr,
-                        () -> BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, -abs)));
+                // Compte d'un autre membre : mise à jour Firestore via son profil
+                btns.addView(saveBtn(a, ownerLbl + " +" + absStr, () -> {
+                    BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, abs);
+                    AppToast.success(a, "Solde " + ownerLbl + " : +" + absStr + " € envoyé ✓");
+                }), sp);
+                btns.addView(saveBtn(a, ownerLbl + " −" + absStr, () -> {
+                    BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, -abs);
+                    AppToast.success(a, "Solde " + ownerLbl + " : −" + absStr + " € envoyé ✓");
+                }));
             } else {
                 // Propriétaire inconnu : proposer les deux destinations
                 btns.addView(saveBtn(a, "Perso +" + absStr, () -> savePersonalBalance(a,  abs)), sp);
