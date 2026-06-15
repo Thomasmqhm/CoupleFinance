@@ -26,6 +26,7 @@ import com.couplefinance.ui.settings.SettingsChargeWriter;
 import com.couplefinance.ui.settings.SettingsDialog;
 import com.couplefinance.ui.settings.SettingsModels;
 import com.couplefinance.ui.settings.SettingsRepository;
+import com.couplefinance.data.CycleManager;
 import com.couplefinance.data.JointAccountManager;
 
 import java.util.ArrayList;
@@ -592,17 +593,32 @@ public class AbonnementsView {
 
         int dayOfMonth = normalizeDayOfMonth(charge.dayOfMonth);
         int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
-        boolean alreadyDone = today >= dayOfMonth;
+        boolean dueReached = today >= dayOfMonth;
 
-        String statusText = alreadyDone
-                ? "Prélevé le " + dayOfMonth
-                : "Dans " + (dayOfMonth - today) + " jour" + ((dayOfMonth - today) > 1 ? "s" : "");
+        // Confirmé = vraie transaction bancaire reçue ce cycle
+        String currentCycleKey = CycleManager.getInstance().getCurrentCycleKey();
+        boolean confirmedThisMonth = currentCycleKey != null
+                && currentCycleKey.equals(charge.lastActualMonth)
+                && charge.lastActualAmount > 0;
 
-        int statusColor = alreadyDone ? ThemeColors.success() : ThemeColors.warning();
+        final String statusText;
+        final int statusColor;
+        final int statusBgColor;
 
-        int statusBgColor = alreadyDone
-                ? ThemeColors.withAlpha(ThemeColors.success(), 18)
-                : ThemeColors.withAlpha(ThemeColors.warning(), 18);
+        if (confirmedThisMonth) {
+            statusText = "✅ Confirmé · " + Fmt.money(charge.lastActualAmount);
+            statusColor = ThemeColors.success();
+            statusBgColor = ThemeColors.withAlpha(ThemeColors.success(), 18);
+        } else if (dueReached) {
+            statusText = "⏳ En attente de prélèvement";
+            statusColor = ThemeColors.warning();
+            statusBgColor = ThemeColors.withAlpha(ThemeColors.warning(), 20);
+        } else {
+            int daysLeft = dayOfMonth - today;
+            statusText = "Dans " + daysLeft + " jour" + (daysLeft > 1 ? "s" : "");
+            statusColor = ThemeColors.subtext();
+            statusBgColor = ThemeColors.withAlpha(ThemeColors.subtext(), 14);
+        }
 
         LinearLayout metaRow = new LinearLayout(activity);
         metaRow.setOrientation(LinearLayout.HORIZONTAL);

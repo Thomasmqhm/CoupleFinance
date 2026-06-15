@@ -226,6 +226,7 @@ public class RecurringChargeManager {
 
         executor.execute(() -> {
             int pending = 0;
+            List<String> upcomingIn3Days = new ArrayList<>();
             try {
                 List<FixedCharge> charges      = fetchFixedChargesSync();
                 String            currentMonth  = getCurrentMonth();
@@ -241,14 +242,28 @@ public class RecurringChargeManager {
                             && !recurringTransactionExistsSync(recurringKey)) {
                         pending++;
                     }
+
+                    // Annonce J-3 : charge prévue dans exactement 3 jours
+                    if (dueDay - today == 3
+                            && !currentMonth.equals(charge.lastAppliedMonth)) {
+                        upcomingIn3Days.add(charge.name + " — "
+                                + String.format(java.util.Locale.FRANCE, "%.2f €", charge.amount)
+                                + " prévu le " + dueDay);
+                    }
                 }
             } catch (Exception ignored) {}
 
-            int count = pending;
+            int finalPending = pending;
+            List<String> finalIn3 = upcomingIn3Days;
             handler.post(() -> {
-                if (count > 0 && context != null) {
+                if (context == null) return;
+                if (finalPending > 0) {
                     NotificationHelper.getInstance(context)
-                            .notifyPendingFixedCharges(count);
+                            .notifyPendingFixedCharges(finalPending);
+                }
+                for (String label : finalIn3) {
+                    NotificationHelper.getInstance(context)
+                            .notifyChargeReminder("Prélèvement dans 3 jours", label);
                 }
             });
         });
