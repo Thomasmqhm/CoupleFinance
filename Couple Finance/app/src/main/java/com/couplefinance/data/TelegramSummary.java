@@ -245,7 +245,7 @@ public final class TelegramSummary {
         List<String> selected = TelegramScheduler.getSelectedAccounts(ctx);
         boolean hasAny = false;
 
-        // Compte joint
+        // Compte joint — live banking > solde local
         boolean showJoint = selected.isEmpty() || containsIgnoreCase(selected, "Compte joint");
         if (showJoint) {
             double joint = Double.NaN;
@@ -262,7 +262,7 @@ public final class TelegramSummary {
             }
         }
 
-        // Membres
+        // Membres — live banking > monthlyStartBalance stocké dans SettingsModels
         try {
             SettingsModels.State state = SettingsCache.get();
             if (state != null && state.members != null) {
@@ -270,8 +270,16 @@ public final class TelegramSummary {
                     if (m == null || m.name == null || m.name.trim().isEmpty()) continue;
                     String name = m.name.trim();
                     if (!selected.isEmpty() && !containsIgnoreCase(selected, name)) continue;
+
+                    // 1) Solde live depuis la synchro bancaire
                     double bal = Double.NaN;
                     try { bal = BankAutoSyncManager.getLiveBalanceFor(ctx, name); } catch (Exception ignored) {}
+
+                    // 2) Fallback : monthlyStartBalance du membre (solde Firestore)
+                    if (Double.isNaN(bal) && m.monthlyStartBalance != 0) {
+                        bal = m.monthlyStartBalance;
+                    }
+
                     if (!Double.isNaN(bal)) {
                         if (!hasAny) { sb.append("\n💰 <b>Soldes</b>\n"); hasAny = true; }
                         sb.append("• ").append(esc(name)).append(" : <b>").append(money(bal)).append("</b>\n");
@@ -295,6 +303,9 @@ public final class TelegramSummary {
             if (t == null) continue;
             c.setTimeInMillis(t.dateMs);
             if (c.get(Calendar.MONTH) != month || c.get(Calendar.YEAR) != year) continue;
+            // Exclure les virements internes (transferts entre comptes) du bilan
+            String cat = t.category != null ? t.category.toLowerCase(Locale.FRANCE) : "";
+            if (cat.equals("virements") || cat.equals("virement")) continue;
             if ("income".equals(t.type)) income += Math.abs(t.amount);
             else expense += Math.abs(t.amount);
         }
@@ -325,6 +336,9 @@ public final class TelegramSummary {
             c.setTimeInMillis(t.dateMs);
             if (c.get(Calendar.MONTH) != month || c.get(Calendar.YEAR) != year) continue;
             String cat = (t.category != null && !t.category.isEmpty()) ? t.category : "Autre";
+            // Exclure les virements internes du classement des dépenses
+            String catLc = cat.toLowerCase(Locale.FRANCE);
+            if (catLc.equals("virements") || catLc.equals("virement")) continue;
             Double cur = byCategory.get(cat);
             byCategory.put(cat, (cur == null ? 0 : cur) + Math.abs(t.amount));
         }

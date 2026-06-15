@@ -131,7 +131,6 @@ public class DashboardActivity extends Activity {
 			RecurringChargeManager.getInstance().checkAndApplyRecurringCharges(null);
 			CreditManager.getInstance().init(this);
 			CreditManager.getInstance().checkAndApplyCredits(null);
-			NotificationHelper.getInstance(this).notifyPendingFixedCharges(3);
 			TelegramScheduler.checkAndSend(this);
 			TelegramScheduler.schedulePeriodicWork(this);
 			TelegramScheduler.schedulePollingWork(this);
