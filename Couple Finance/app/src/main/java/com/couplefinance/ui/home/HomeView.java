@@ -1588,6 +1588,14 @@ public class HomeView {
 						commonBalanceAnchorDate = myAnchorDate;
 					}
 
+					// Si la synchro bancaire a mis à jour le cache local plus récemment
+					// que la valeur lue depuis Firestore (race condition : écriture async
+					// non encore propagée), on prend la date locale qui est plus fraîche.
+					long localAnchor = BalanceManager.getInstance().getMonthlyStartBalanceDateLocal();
+					if (localAnchor > commonBalanceAnchorDate) {
+						commonBalanceAnchorDate = localAnchor;
+					}
+
 				} catch (Exception e) {
 					applyCachedBalanceFallback();
 					double jointFallback = readJointBalanceDirect();
@@ -2407,6 +2415,16 @@ public class HomeView {
 		}
 
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM", Locale.FRANCE);
+		// Si l'ancre date d'aujourd'hui (synchro bancaire récente), libellé spécifique
+		Calendar today = Calendar.getInstance();
+		if (a.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+				&& a.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
+			// Vérifier si un solde live existe (synchro bancaire)
+			String live = com.couplefinance.data.BankAutoSyncManager.getLiveBalances(activity);
+			if (live != null && !live.isEmpty()) {
+				return "Synchro bancaire aujourd'hui";
+			}
+		}
 		return "Solde saisi le " + sdf.format(new Date(anchor));
 	}
 
