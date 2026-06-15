@@ -611,14 +611,17 @@ public class AbonnementsView {
         final int statusBgColor;
 
         if (confirmedViaBank) {
+            // Vraie transaction bancaire reçue — montant réel connu
             statusText = "✅ Confirmé · " + Fmt.money(charge.lastActualAmount);
             statusColor = ThemeColors.success();
             statusBgColor = ThemeColors.withAlpha(ThemeColors.success(), 18);
         } else if (appliedThisCycle) {
-            statusText = "✅ Prélevé le " + dayOfMonth;
-            statusColor = ThemeColors.success();
-            statusBgColor = ThemeColors.withAlpha(ThemeColors.success(), 18);
+            // Transaction placeholder créée par l'app, débit bancaire pas encore arrivé
+            statusText = "🔄 Débit en cours · attente banque";
+            statusColor = ThemeColors.primary();
+            statusBgColor = ThemeColors.withAlpha(ThemeColors.primary(), 14);
         } else if (dueReached) {
+            // Date passée, aucune transaction créée
             statusText = "⏳ En attente de prélèvement";
             statusColor = ThemeColors.warning();
             statusBgColor = ThemeColors.withAlpha(ThemeColors.warning(), 20);
