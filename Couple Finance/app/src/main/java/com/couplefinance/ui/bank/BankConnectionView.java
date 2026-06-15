@@ -24,6 +24,7 @@ import com.couplefinance.core.theme.ThemeColors;
 import com.couplefinance.core.ui.AppDialog;
 import com.couplefinance.core.ui.DS;
 import com.couplefinance.core.ui.UiFactory;
+import com.couplefinance.data.BalanceManager;
 import com.couplefinance.data.BankImportPipeline;
 import com.couplefinance.data.CategoryManager;
 import com.couplefinance.data.CreditManager;
@@ -1295,8 +1296,18 @@ public final class BankConnectionView {
 
         List<String> names  = EnableBankingManager.getInstance().getAccountNames();
         List<String> owners = EnableBankingManager.getInstance().getAccountOwners();
+        List<String> ibans  = EnableBankingManager.getInstance().getAccountIbans();
+        java.util.Set<String> seenIbans = new java.util.HashSet<>();
 
         for (int idx = 0; idx <= maxIdx; idx++) {
+            String owner = idx < owners.size() ? owners.get(idx) : "";
+            // Ignorer les comptes exclus explicitement
+            if ("__skip__".equals(owner)) continue;
+
+            // Dédupliquer par IBAN (même compte physique dans deux sessions)
+            String iban = idx < ibans.size() ? ibans.get(idx) : "";
+            if (!iban.isEmpty() && !seenIbans.add(iban)) continue;
+
             // Meilleur solde pour ce compte (ITBD > CLBD > non-nul > premier)
             double best = 0; String bestType = "";
             for (EnableBankingManager.AccountBalance b : balances)
@@ -1310,7 +1321,6 @@ public final class BankConnectionView {
 
             final double amount = best;
             String accName  = idx < names.size()  ? names.get(idx)  : "Compte " + (idx+1);
-            String owner    = idx < owners.size() ? owners.get(idx) : "";
             String ownerLbl = "joint".equals(owner) ? "Compte joint"
                     : (owner != null && !owner.isEmpty()) ? owner : "Non attribué";
             String typeStr  = bestType.isEmpty() ? "" : " · " + bestType;
@@ -1356,10 +1366,25 @@ public final class BankConnectionView {
             LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2,-2);
             sp.rightMargin = DS.dp(a,4);
 
-            btns.addView(saveBtn(a, "Perso +"+absStr, () -> savePersonalBalance(a, abs)), sp);
-            btns.addView(saveBtn(a, "Perso −"+absStr, () -> savePersonalBalance(a, -abs)), sp);
-            btns.addView(saveBtn(a, "Joint +"+absStr, () -> saveJointBalance(a, abs)), sp);
-            btns.addView(saveBtn(a, "Joint −"+absStr, () -> saveJointBalance(a, -abs)));
+            final String ownerFinal = owner;
+            if ("joint".equals(ownerFinal)) {
+                // Compte joint : boutons Joint uniquement
+                btns.addView(saveBtn(a, "Joint +" + absStr, () -> saveJointBalance(a,  abs)), sp);
+                btns.addView(saveBtn(a, "Joint −" + absStr, () -> saveJointBalance(a, -abs)));
+            } else if (ownerFinal != null && !ownerFinal.isEmpty()) {
+                // Compte personnel identifié : enregistrer par nom de membre
+                String lbl = ownerLbl; // Thomas / Mélissa / …
+                btns.addView(saveBtn(a, lbl + " +" + absStr,
+                        () -> BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, abs)), sp);
+                btns.addView(saveBtn(a, lbl + " −" + absStr,
+                        () -> BalanceManager.getInstance().saveMonthlyStartBalanceByName(ownerFinal, -abs)));
+            } else {
+                // Propriétaire inconnu : proposer les deux destinations
+                btns.addView(saveBtn(a, "Perso +" + absStr, () -> savePersonalBalance(a,  abs)), sp);
+                btns.addView(saveBtn(a, "Perso −" + absStr, () -> savePersonalBalance(a, -abs)), sp);
+                btns.addView(saveBtn(a, "Joint +" + absStr, () -> saveJointBalance(a,  abs)), sp);
+                btns.addView(saveBtn(a, "Joint −" + absStr, () -> saveJointBalance(a, -abs)));
+            }
             card.addView(btns, btnsLp);
 
             root.addView(card, cardLp);
