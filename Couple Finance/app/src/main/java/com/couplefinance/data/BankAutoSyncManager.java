@@ -452,6 +452,8 @@ public final class BankAutoSyncManager {
         StringBuilder map = new StringBuilder();  // parseable: label=montant|||…
         for (java.util.Map.Entry<Integer, Double> e : bestByAccount.entrySet()) {
             String owner = EnableBankingManager.getInstance().getOwnerForIndex(e.getKey());
+            // Ignorer les comptes explicitement exclus
+            if ("__skip__".equals(owner)) continue;
             // Si le propriétaire n'est pas configuré, on attribue au compte de l'utilisateur courant
             if (owner == null || owner.isEmpty()) {
                 String fallback = currentUserName(app);
@@ -500,6 +502,7 @@ public final class BankAutoSyncManager {
 
         for (java.util.Map.Entry<Integer, Double> e : bestByAccount.entrySet()) {
             String owner = EnableBankingManager.getInstance().getOwnerForIndex(e.getKey());
+            if ("__skip__".equals(owner)) continue;
             final double value = e.getValue();
 
             if ("joint".equals(owner)) {

@@ -159,9 +159,10 @@ avLp.rightMargin = DS.dp(activity, 10);
         currentLabel.setIncludeFontPadding(false);
         balanceBlock.addView(currentLabel);
 
+        double displayBalance = (data.liveBalance != null) ? data.liveBalance : data.currentBalance;
         TextView current = new TextView(activity);
-        current.setText(fmt(data.currentBalance));
-        current.setTextColor(data.currentBalance >= 0 ? accent : ThemeColors.danger());
+        current.setText(fmt(displayBalance));
+        current.setTextColor(displayBalance >= 0 ? accent : ThemeColors.danger());
         current.setTextSize(22f);
         current.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         current.setLetterSpacing(-0.035f);
