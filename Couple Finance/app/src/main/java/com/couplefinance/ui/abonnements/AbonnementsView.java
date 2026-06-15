@@ -595,18 +595,27 @@ public class AbonnementsView {
         int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
         boolean dueReached = today >= dayOfMonth;
 
-        // Confirmé = vraie transaction bancaire reçue ce cycle
         String currentCycleKey = CycleManager.getInstance().getCurrentCycleKey();
-        boolean confirmedThisMonth = currentCycleKey != null
+
+        // Confirmé via synchro bancaire (montant réel connu)
+        boolean confirmedViaBank = currentCycleKey != null
                 && currentCycleKey.equals(charge.lastActualMonth)
                 && charge.lastActualAmount > 0;
+
+        // Appliqué ce cycle : RecurringChargeManager a créé la transaction récurrente
+        boolean appliedThisCycle = currentCycleKey != null
+                && currentCycleKey.equals(charge.lastAppliedMonth);
 
         final String statusText;
         final int statusColor;
         final int statusBgColor;
 
-        if (confirmedThisMonth) {
+        if (confirmedViaBank) {
             statusText = "✅ Confirmé · " + Fmt.money(charge.lastActualAmount);
+            statusColor = ThemeColors.success();
+            statusBgColor = ThemeColors.withAlpha(ThemeColors.success(), 18);
+        } else if (appliedThisCycle) {
+            statusText = "✅ Prélevé le " + dayOfMonth;
             statusColor = ThemeColors.success();
             statusBgColor = ThemeColors.withAlpha(ThemeColors.success(), 18);
         } else if (dueReached) {
