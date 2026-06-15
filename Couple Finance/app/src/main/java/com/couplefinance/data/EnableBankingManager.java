@@ -59,8 +59,9 @@ public class EnableBankingManager {
     private static final String K_ACC_NAMES   = "eb_account_names";     // ||| séparateur
     private static final String K_OWNERS      = "eb_account_owners";    // ||| séparateur : "thomas","melissa","joint",""
     private static final String SEP           = "|||";
+    private static final String K_SESSIONS    = "eb_sessions"; // JSON array of sessions
 
-    private static volatile EnableBankingManager instance;
+    private static EnableBankingManager instance;
     private final Executor executor = Executors.newFixedThreadPool(2);
     private final Handler  handler  = new Handler(Looper.getMainLooper());
     private Context context;
@@ -98,13 +99,8 @@ public class EnableBankingManager {
         public String balanceUrl;
         public AccountBalance() {}
         public double signedAmount() {
-            // Le montant renvoyé par Enable Banking porte déjà son propre signe
-            // (ex. "-177.28" pour un découvert). On ne se fie PLUS au champ
-            // credit_debit_indicator car certaines banques (CMB) l'envoient de
-            // façon incohérente entre deux requêtes (DBIT/CRDT alternés sur le
-            // même solde XPCD), ce qui inversait le signe du solde de façon
-            // aléatoire d'une synchro à l'autre.
-            return amount;
+            if (amount < 0) return amount;
+            return "DBIT".equals(indicator) ? -Math.abs(amount) : Math.abs(amount);
         }
     }
 
@@ -119,11 +115,7 @@ public class EnableBankingManager {
 
     private EnableBankingManager() {}
     public static EnableBankingManager getInstance() {
-        if (instance == null) {
-            synchronized (EnableBankingManager.class) {
-                if (instance == null) instance = new EnableBankingManager();
-            }
-        }
+        if (instance == null) instance = new EnableBankingManager();
         return instance;
     }
     public void init(Context ctx) {
@@ -141,7 +133,7 @@ public class EnableBankingManager {
         return !p(K_APP_ID).isEmpty() && !p(K_PRIV_KEY).isEmpty();
     }
     public boolean isConnected() {
-        return isConfigured() && !p(K_UIDS).isEmpty();
+        return isConfigured() && flatAccountLists().uids.size() > 0;
     }
 
     // ── Banque mémorisée ─────────────────────────────────────────
@@ -152,24 +144,24 @@ public class EnableBankingManager {
     public String getSavedBankId()   { return p(K_BANK_ID);   }
 
     // ── Comptes ──────────────────────────────────────────────────
-    public List<String> getSavedAccountIds()  { return split(p(K_UIDS),     ","); }
-    public List<String> getSavedTxUrls()      { return split(p(K_TX_URLS),  SEP); }
-    public List<String> getSavedBalUrls()     { return split(p(K_BAL_URLS), SEP); }
-    public List<String> getAccountIbans()     { return split(p(K_IBANS),    SEP); }
-    public List<String> getAccountNames()     { return split(p(K_ACC_NAMES),SEP); }
-    public List<String> getAccountOwners()    { return split(p(K_OWNERS),   SEP); }
-    public String getSavedRequisitionId()     { return p(K_SESSION); }
+    public List<String> getSavedAccountIds()  { return flatAccountLists().uids; }
+    public List<String> getSavedTxUrls()      { return flatAccountLists().txUrls; }
+    public List<String> getSavedBalUrls()     { return flatAccountLists().balUrls; }
+    public List<String> getAccountIbans()     { return flatAccountLists().ibans; }
+    public List<String> getAccountNames()     { return flatAccountLists().names; }
+    public List<String> getAccountOwners()    { return flatAccountLists().owners; }
+    public String getSavedRequisitionId()     { return p(K_SESSION); } // keep for compat
 
     /** Retourne le propriétaire d'un compte par son index. */
     public String getOwnerForIndex(int idx) {
-        List<String> owners = getAccountOwners();
+        List<String> owners = flatAccountLists().owners;
         if (idx >= 0 && idx < owners.size()) return owners.get(idx);
         return "";
     }
 
     /** Retourne l'IBAN court (4 derniers chiffres) pour un index de compte. */
     public String getShortIban(int idx) {
-        List<String> ibans = getAccountIbans();
+        List<String> ibans = flatAccountLists().ibans;
         if (idx >= 0 && idx < ibans.size()) {
             String iban = ibans.get(idx);
             return iban.length() > 4 ? "..." + iban.substring(iban.length() - 5) : iban;
@@ -178,11 +170,25 @@ public class EnableBankingManager {
     }
 
     /** Sauvegarde l'attribution propriétaire pour un compte. */
-    public void saveAccountOwner(int idx, String owner) {
-        List<String> owners = new ArrayList<>(getAccountOwners());
-        while (owners.size() <= idx) owners.add("");
-        owners.set(idx, owner != null ? owner : "");
-        prefs().edit().putString(K_OWNERS, join(owners, SEP)).apply();
+    public void saveAccountOwner(int flatIdx, String owner) {
+        JSONArray sessions = loadSessions();
+        int offset = 0;
+        for (int s = 0; s < sessions.length(); s++) {
+            JSONObject sess = sessions.optJSONObject(s);
+            if (sess == null) continue;
+            List<String> su = split(sess.optString("u", ""), ",");
+            if (flatIdx < offset + su.size()) {
+                int localIdx = flatIdx - offset;
+                List<String> owners = new ArrayList<>(split(sess.optString("o", ""), SEP));
+                while (owners.size() <= localIdx) owners.add("");
+                owners.set(localIdx, owner != null ? owner : "");
+                try { sess.put("o", join(owners, SEP)); } catch (Exception ignored) {}
+                sessions.put(s, sess);
+                saveSessions(sessions);
+                return;
+            }
+            offset += su.size();
+        }
     }
 
     public void clearConnection() {
@@ -191,9 +197,115 @@ public class EnableBankingManager {
                 .remove(K_TX_URLS).remove(K_BAL_URLS)
                 .remove(K_STATE).remove(K_IBANS)
                 .remove(K_ACC_NAMES).remove(K_OWNERS)
+                .remove(K_SESSIONS)
                 .apply();
     }
     public void clearAll() { prefs().edit().clear().apply(); }
+
+    // ─────────────────────────────────────────────────────────────
+    // Multi-session helpers
+    // ─────────────────────────────────────────────────────────────
+
+    /** Charge le tableau JSON de sessions (avec migration depuis l'ancien format mono-session). */
+    private JSONArray loadSessions() {
+        String raw = p(K_SESSIONS);
+        if (!raw.isEmpty()) {
+            try { return new JSONArray(raw); } catch (Exception ignored) {}
+        }
+        // Migration : ancien format mono-session → nouveau format multi-sessions
+        String oldSession = p(K_SESSION);
+        if (!oldSession.isEmpty() && !p(K_UIDS).isEmpty()) {
+            try {
+                JSONObject s = new JSONObject();
+                s.put("si", oldSession);
+                s.put("bn", p(K_BANK_NAME));
+                s.put("u",  p(K_UIDS));
+                s.put("t",  p(K_TX_URLS));
+                s.put("b",  p(K_BAL_URLS));
+                s.put("i",  p(K_IBANS));
+                s.put("n",  p(K_ACC_NAMES));
+                s.put("o",  p(K_OWNERS));
+                JSONArray arr = new JSONArray();
+                arr.put(s);
+                prefs().edit().putString(K_SESSIONS, arr.toString()).apply();
+                return arr;
+            } catch (Exception ignored) {}
+        }
+        return new JSONArray();
+    }
+
+    /** Persiste le tableau de sessions. */
+    private void saveSessions(JSONArray arr) {
+        prefs().edit().putString(K_SESSIONS, arr.toString()).apply();
+    }
+
+    /**
+     * Retourne les listes plates (à travers toutes les sessions) :
+     * uids, txUrls, balUrls, ibans, names, owners — dans le même ordre.
+     */
+    private static class FlatLists {
+        final List<String> uids    = new ArrayList<>();
+        final List<String> txUrls  = new ArrayList<>();
+        final List<String> balUrls = new ArrayList<>();
+        final List<String> ibans   = new ArrayList<>();
+        final List<String> names   = new ArrayList<>();
+        final List<String> owners  = new ArrayList<>();
+    }
+
+    private FlatLists flatAccountLists() {
+        FlatLists fl = new FlatLists();
+        JSONArray sessions = loadSessions();
+        for (int s = 0; s < sessions.length(); s++) {
+            JSONObject sess = sessions.optJSONObject(s);
+            if (sess == null) continue;
+            List<String> su = split(sess.optString("u", ""), ",");
+            List<String> st = split(sess.optString("t", ""), SEP);
+            List<String> sb = split(sess.optString("b", ""), SEP);
+            List<String> si = split(sess.optString("i", ""), SEP);
+            List<String> sn = split(sess.optString("n", ""), SEP);
+            List<String> so = split(sess.optString("o", ""), SEP);
+            for (int j = 0; j < su.size(); j++) {
+                fl.uids.add(su.get(j));
+                fl.txUrls.add(j < st.size() ? st.get(j) : "");
+                fl.balUrls.add(j < sb.size() ? sb.get(j) : "");
+                fl.ibans.add(j < si.size() ? si.get(j) : "");
+                fl.names.add(j < sn.size() ? sn.get(j) : "Compte " + (fl.uids.size()));
+                fl.owners.add(j < so.size() ? so.get(j) : "");
+            }
+        }
+        return fl;
+    }
+
+    /** Nombre de sessions bancaires connectées. */
+    public int getSessionCount() {
+        return loadSessions().length();
+    }
+
+    /** Noms de toutes les banques connectées, séparés par " · ". */
+    public String getConnectedBankNames() {
+        JSONArray sessions = loadSessions();
+        StringBuilder sb = new StringBuilder();
+        for (int s = 0; s < sessions.length(); s++) {
+            JSONObject sess = sessions.optJSONObject(s);
+            if (sess == null) continue;
+            String bn = sess.optString("bn", "");
+            if (!bn.isEmpty()) {
+                if (sb.length() > 0) sb.append(" · ");
+                sb.append(bn);
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : getSavedBankName();
+    }
+
+    /** Supprime une session bancaire par son index. */
+    public void removeSession(int sessionIdx) {
+        JSONArray sessions = loadSessions();
+        JSONArray newArr = new JSONArray();
+        for (int s = 0; s < sessions.length(); s++) {
+            if (s != sessionIdx) newArr.put(sessions.opt(s));
+        }
+        saveSessions(newArr);
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Institutions
@@ -346,15 +458,33 @@ public class EnableBankingManager {
                     return;
                 }
 
-                prefs().edit()
-                        .putString(K_SESSION,   session)
-                        .putString(K_UIDS,      join(uids,    ","))
-                        .putString(K_TX_URLS,   join(txUrls,  SEP))
-                        .putString(K_BAL_URLS,  join(balUrls, SEP))
-                        .putString(K_IBANS,     join(ibans,   SEP))
-                        .putString(K_ACC_NAMES, join(names,   SEP))
-                        .putString(K_OWNERS,    join(owners,  SEP))
-                        .apply();
+                // Construire l'objet session
+                JSONObject newSession = new JSONObject();
+                try {
+                    newSession.put("si", session);
+                    newSession.put("bn", p(K_BANK_NAME)); // banque mémorisée par saveBankSelection()
+                    newSession.put("u",  join(uids,    ","));
+                    newSession.put("t",  join(txUrls,  SEP));
+                    newSession.put("b",  join(balUrls, SEP));
+                    newSession.put("i",  join(ibans,   SEP));
+                    newSession.put("n",  join(names,   SEP));
+                    newSession.put("o",  join(owners,  SEP));
+                } catch (Exception ignored) {}
+
+                // Ajouter ou mettre à jour dans le tableau de sessions
+                // (mise à jour si une session avec le même session_id existe déjà)
+                JSONArray sessions = loadSessions();
+                boolean updated = false;
+                for (int s = 0; s < sessions.length(); s++) {
+                    JSONObject existing2 = sessions.optJSONObject(s);
+                    if (existing2 != null && session.equals(existing2.optString("si"))) {
+                        sessions.put(s, newSession);
+                        updated = true;
+                        break;
+                    }
+                }
+                if (!updated) sessions.put(newSession);
+                saveSessions(sessions);
 
                 handler.post(() -> cb.onSuccess(join(uids, ",")));
             } catch (Exception e) {
@@ -707,36 +837,27 @@ public class EnableBankingManager {
     }
     private JSONObject getJsonFullUrl(String url, String jwt) throws Exception {
         HttpURLConnection c = openConn(url, "GET", jwt, false);
-        try {
-            int code = c.getResponseCode();
-            String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
-            if (code == 401) throw new Exception("JWT invalide (401).");
-            if (code == 404) throw new Exception("404 — URL incorrecte. Reconnectez la banque.");
-            if (code == 400) {
-                if (body.contains("ASPSP_ERROR"))
-                    throw new Exception("ASPSP_ERROR — Banque a refusé (auth expirée ou dates trop larges).");
-                throw new Exception("HTTP 400 : " + body);
-            }
-            if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
-            return new JSONObject(body);
-        } finally {
-            c.disconnect();
+        int code = c.getResponseCode();
+        String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
+        if (code == 401) throw new Exception("JWT invalide (401).");
+        if (code == 404) throw new Exception("404 — URL incorrecte. Reconnectez la banque.");
+        if (code == 400) {
+            if (body.contains("ASPSP_ERROR"))
+                throw new Exception("ASPSP_ERROR — Banque a refusé (auth expirée ou dates trop larges).");
+            throw new Exception("HTTP 400 : " + body);
         }
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
+        return new JSONObject(body);
     }
     private JSONObject postJson(String endpoint, String jwt, String bodyStr) throws Exception {
         HttpURLConnection c = openConn(BASE_URL + endpoint, "POST", jwt, true);
-        try {
-            try (DataOutputStream dos = new DataOutputStream(c.getOutputStream())) {
-                dos.write(bodyStr.getBytes("UTF-8"));
-            }
-            int code = c.getResponseCode();
-            String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
-            if (code == 401) throw new Exception("JWT invalide (401).");
-            if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
-            return new JSONObject(body);
-        } finally {
-            c.disconnect();
-        }
+        DataOutputStream dos = new DataOutputStream(c.getOutputStream());
+        dos.write(bodyStr.getBytes("UTF-8")); dos.flush(); dos.close();
+        int code = c.getResponseCode();
+        String body = safeRead(code < 400 ? c.getInputStream() : c.getErrorStream());
+        if (code == 401) throw new Exception("JWT invalide (401).");
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + " : " + body);
+        return new JSONObject(body);
     }
     private HttpURLConnection openConn(String url, String method, String jwt, boolean out) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
@@ -789,12 +910,11 @@ public class EnableBankingManager {
         catch (Exception e) { return uid; }
     }
     private String safeRead(InputStream is) {
-        if (is == null) return "";
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
-            StringBuilder sb = new StringBuilder();
-            String l;
-            while ((l = br.readLine()) != null) sb.append(l);
-            return sb.toString();
+        if (is==null) return "";
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            StringBuilder sb = new StringBuilder(); String l;
+            while((l=br.readLine())!=null) sb.append(l); return sb.toString();
         } catch (Exception e) { return ""; }
     }
     private List<String> split(String raw, String sep) {
