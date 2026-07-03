@@ -135,7 +135,16 @@ public class DashboardActivity extends Activity {
 			TelegramScheduler.schedulePeriodicWork(this);
 			TelegramScheduler.schedulePollingWork(this);
 			com.couplefinance.data.CategoryManager.getInstance().seedSystemCategories();
-			if (BankAutoSyncManager.isEnabled(this)) BankAutoSyncManager.scheduleDaily(this);
+			// Récupère les comptes bancaires liés à l'utilisateur depuis le cloud
+			// (permet de retrouver ses comptes sur un nouvel appareil), puis
+			// planifie/rattrape la synchro quotidienne.
+			com.couplefinance.data.EnableBankingManager.getInstance().init(this);
+			com.couplefinance.data.EnableBankingManager.getInstance().hydrateSessionsFromCloud(() -> {
+				if (BankAutoSyncManager.isEnabled(this)) {
+					BankAutoSyncManager.scheduleDaily(this);
+					BankAutoSyncManager.runCatchUpIfDue(this);
+				}
+			});
 		} catch (Exception ignored) {
 		}
 	}

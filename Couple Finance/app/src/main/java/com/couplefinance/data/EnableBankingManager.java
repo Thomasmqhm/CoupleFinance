@@ -60,6 +60,7 @@ public class EnableBankingManager {
     private static final String K_OWNERS      = "eb_account_owners";    // ||| séparateur : "thomas","melissa","joint",""
     private static final String SEP           = "|||";
     private static final String K_SESSIONS    = "eb_sessions"; // JSON array of sessions
+    private static final String K_SESSIONS_UPD = "eb_sessions_updated"; // timestamp local
 
     private static EnableBankingManager instance;
     private final Executor executor = Executors.newFixedThreadPool(2);
@@ -236,9 +237,84 @@ public class EnableBankingManager {
         return new JSONArray();
     }
 
-    /** Persiste le tableau de sessions. */
+    /** Persiste le tableau de sessions (local + miroir cloud lié à l'utilisateur). */
     private void saveSessions(JSONArray arr) {
-        prefs().edit().putString(K_SESSIONS, arr.toString()).apply();
+        long now = System.currentTimeMillis();
+        prefs().edit().putString(K_SESSIONS, arr.toString())
+                .putLong(K_SESSIONS_UPD, now).apply();
+        pushSessionsToCloud(arr.toString(), now);
+    }
+
+    /**
+     * Miroir cloud des sessions bancaires, rattaché à l'UTILISATEUR (userId).
+     * Ainsi Thomas retrouve SES comptes sur n'importe quel appareil où il se connecte.
+     * Le JSON est encodé en base64 pour survivre proprement au stockage stringValue
+     * de Firestore (pas de guillemets/backslash à échapper).
+     */
+    private void pushSessionsToCloud(String json, long updatedAt) {
+        try {
+            String uid = com.couplefinance.AuthManager.getInstance().getUserId();
+            String hid = HouseholdManager.getInstance().getHouseholdId();
+            if (uid == null || uid.isEmpty() || hid == null || hid.isEmpty()) return;
+            String b64 = Base64.encodeToString(json.getBytes("UTF-8"), Base64.NO_WRAP);
+            String body = "{\"fields\":{"
+                    + "\"data\":{\"stringValue\":\"" + b64 + "\"},"
+                    + "\"updatedAt\":{\"integerValue\":\"" + updatedAt + "\"}"
+                    + "}}";
+            String mask = "updateMask.fieldPaths=data&updateMask.fieldPaths=updatedAt";
+            FirestoreManager.getInstance().patchDocument(
+                    "households/" + hid + "/ebSessions/" + uid, body, mask,
+                    new FirestoreManager.Callback() {
+                        @Override public void onSuccess(String r) { Log.d(TAG, "EB sessions → cloud OK"); }
+                        @Override public void onError(String e) { Log.w(TAG, "EB sessions → cloud : " + e); }
+                    });
+        } catch (Exception e) { Log.w(TAG, "pushSessionsToCloud", e); }
+    }
+
+    /**
+     * Récupère les sessions bancaires de l'utilisateur depuis le cloud et les adopte
+     * localement si elles sont plus récentes. À appeler au démarrage de l'app (après
+     * que l'authentification / householdId soit disponible), pour qu'un utilisateur
+     * qui se connecte sur un nouvel appareil retrouve ses comptes bancaires.
+     */
+    public void hydrateSessionsFromCloud(final Runnable onDone) {
+        try {
+            String uid = com.couplefinance.AuthManager.getInstance().getUserId();
+            String hid = HouseholdManager.getInstance().getHouseholdId();
+            if (uid == null || uid.isEmpty() || hid == null || hid.isEmpty()) {
+                if (onDone != null) onDone.run();
+                return;
+            }
+            final FirestoreManager fm = FirestoreManager.getInstance();
+            fm.getDocument("households/" + hid + "/ebSessions/" + uid,
+                    new FirestoreManager.Callback() {
+                        @Override public void onSuccess(String resp) {
+                            try {
+                                String b64 = fm.readString(resp, "data");
+                                String updStr = fm.readNumber(resp, "updatedAt");
+                                long cloudUpd = 0;
+                                try { cloudUpd = Long.parseLong(updStr.trim()); } catch (Exception ignored) {}
+                                long localUpd = prefs().getLong(K_SESSIONS_UPD, 0);
+                                if (b64 != null && !b64.isEmpty() && cloudUpd > localUpd) {
+                                    String json = new String(Base64.decode(b64, Base64.NO_WRAP), "UTF-8");
+                                    // Validation : doit être un tableau JSON exploitable
+                                    new JSONArray(json);
+                                    prefs().edit().putString(K_SESSIONS, json)
+                                            .putLong(K_SESSIONS_UPD, cloudUpd).apply();
+                                    Log.d(TAG, "EB sessions ← cloud adoptées");
+                                }
+                            } catch (Exception e) { Log.w(TAG, "hydrateSessionsFromCloud parse", e); }
+                            if (onDone != null) onDone.run();
+                        }
+                        @Override public void onError(String e) {
+                            Log.w(TAG, "hydrateSessionsFromCloud : " + e);
+                            if (onDone != null) onDone.run();
+                        }
+                    });
+        } catch (Exception e) {
+            Log.w(TAG, "hydrateSessionsFromCloud", e);
+            if (onDone != null) onDone.run();
+        }
     }
 
     /**
