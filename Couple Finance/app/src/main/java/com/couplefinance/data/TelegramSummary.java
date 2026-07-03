@@ -58,16 +58,15 @@ public final class TelegramSummary {
         sb.append("📅 <i>").append(esc(dateHeader())).append("</i>\n");
         sb.append(sep());
 
-        // Soldes
-        if (TelegramScheduler.isShowBalances(ctx)) {
-            appendBalances(ctx, sb);
-        }
-
-        // 1) Transactions → mois + catégories + récentes
+        // 1) Transactions → détail par compte + mois + catégories + récentes
         TransactionsRepository.loadAll(activity, new TransactionsRepository.OnDataLoaded() {
             @Override
             public void onLoaded(List<TransactionsModels.Transaction> transactions,
                                  List<String> members, List<String[]> categories) {
+                // Détail complet PAR COMPTE (solde, bilan, prélèvements, projection)
+                if (TelegramScheduler.isShowBalances(ctx)) {
+                    appendPerAccount(ctx, sb, transactions);
+                }
                 if (TelegramScheduler.isShowMonth(ctx)) {
                     appendMonth(ctx, sb, transactions);
                 }
@@ -87,32 +86,16 @@ public final class TelegramSummary {
         });
     }
 
-    // 2) Prélèvements à venir (liste détaillée)
+    // 2) Les prélèvements à venir sont désormais détaillés PAR COMPTE dans
+    //    appendPerAccount() (à partir de SettingsCache, montant réel confirmé),
+    //    ce qui évite le total global gonflé de RecurringChargeManager
+    //    (pire-cas amountMax + one-shots convertis en charges). On enchaîne donc
+    //    directement sur le budget.
     private static void stepCharges(final Activity activity, final Context ctx,
                                     final StringBuilder sb,
                                     final List<TransactionsModels.Transaction> txList,
                                     final Callback cb) {
-        if (!TelegramScheduler.isShowCharges(ctx)) {
-            stepBudget(activity, ctx, sb, txList, 0, cb);
-            return;
-        }
-        try {
-            RecurringChargeManager.getInstance().init(activity);
-            RecurringChargeManager.getInstance().getUpcomingChargesForCurrentMonth(
-                    new RecurringChargeManager.UpcomingChargesCallback() {
-                        @Override
-                        public void onResult(double total, int count) {
-                            appendCharges(ctx, sb, total, count);
-                            stepBudget(activity, ctx, sb, txList, total, cb);
-                        }
-                        @Override
-                        public void onError(String error) {
-                            stepBudget(activity, ctx, sb, txList, 0, cb);
-                        }
-                    });
-        } catch (Exception e) {
-            stepBudget(activity, ctx, sb, txList, 0, cb);
-        }
+        stepBudget(activity, ctx, sb, txList, 0, cb);
     }
 
     // 3) Budget
@@ -205,8 +188,8 @@ public final class TelegramSummary {
                                    final List<TransactionsModels.Transaction> txList,
                                    final double remainingCharges,
                                    final Callback cb) {
+        // La projection fin de mois est détaillée PAR COMPTE dans appendPerAccount().
         if (!TelegramScheduler.isShowAgenda(ctx)) {
-            appendProjection(ctx, sb, txList, remainingCharges);
             send(sb, cb);
             return;
         }
@@ -215,17 +198,14 @@ public final class TelegramSummary {
                 @Override
                 public void onLoaded(AgendaModels.AgendaData data) {
                     appendAgenda(sb, data);
-                    appendProjection(ctx, sb, txList, remainingCharges);
                     send(sb, cb);
                 }
                 @Override
                 public void onError(String message) {
-                    appendProjection(ctx, sb, txList, remainingCharges);
                     send(sb, cb);
                 }
             });
         } catch (Exception e) {
-            appendProjection(ctx, sb, txList, remainingCharges);
             send(sb, cb);
         }
     }
@@ -240,6 +220,175 @@ public final class TelegramSummary {
     }
 
     // ─────────────────────────── Sections ───────────────────────────
+
+    /**
+     * Détail complet PAR COMPTE : pour chaque membre + le compte joint, affiche
+     * le solde, le bilan du mois (revenus/dépenses hors virements), les
+     * prélèvements à venir, et une projection fin de mois basée sur l'historique
+     * (moyenne des dépenses des 3 derniers mois projetée sur les jours restants).
+     */
+    private static void appendPerAccount(Context ctx, StringBuilder sb,
+                                         List<TransactionsModels.Transaction> txAll) {
+        List<String> selected = TelegramScheduler.getSelectedAccounts(ctx);
+        boolean showCharges = TelegramScheduler.isShowCharges(ctx);
+        boolean showProj    = TelegramScheduler.isShowProjection(ctx);
+
+        Calendar now = Calendar.getInstance();
+        int month = now.get(Calendar.MONTH);
+        int year  = now.get(Calendar.YEAR);
+        int today = now.get(Calendar.DAY_OF_MONTH);
+        int daysInMonth   = now.getActualMaximum(Calendar.DAY_OF_MONTH);
+        int remainingDays = Math.max(0, daysInMonth - today);
+
+        long startOfMonth = startOfMonthMillis(now);
+        long threeMonthsAgo = threeMonthsAgoMillis(now);
+
+        SettingsModels.State state = null;
+        try { state = SettingsCache.get(); } catch (Exception ignored) {}
+
+        // Construit la liste des comptes : membres puis compte joint
+        List<String[]> accounts = new ArrayList<>(); // {key, label, type}
+        if (state != null && state.members != null) {
+            for (SettingsModels.Member m : state.members) {
+                if (m == null || m.name == null || m.name.trim().isEmpty()) continue;
+                accounts.add(new String[]{ m.name.trim(), m.name.trim(), "member" });
+            }
+        }
+        accounts.add(new String[]{ "Compte joint", "Compte joint", "joint" });
+
+        boolean header = false;
+        for (String[] acc : accounts) {
+            String key = acc[0], label = acc[1];
+            boolean joint = "joint".equals(acc[2]);
+            if (!selected.isEmpty() && !containsIgnoreCase(selected, label)) continue;
+
+            // ── Solde ──────────────────────────────────────────────
+            double solde = Double.NaN;
+            try { solde = BankAutoSyncManager.getLiveBalanceFor(ctx, joint ? "Compte joint" : key); }
+            catch (Exception ignored) {}
+            if (Double.isNaN(solde) && !joint && state != null && state.members != null) {
+                for (SettingsModels.Member m : state.members) {
+                    if (m != null && m.name != null && key.equalsIgnoreCase(m.name.trim())
+                            && m.monthlyStartBalance != 0) { solde = m.monthlyStartBalance; break; }
+                }
+            }
+            if (Double.isNaN(solde) && joint) {
+                try {
+                    JointAccountManager.getInstance().init(ctx);
+                    double j = JointAccountManager.getInstance().getBalanceLocal(ctx);
+                    if (!Double.isNaN(j)) solde = j;
+                } catch (Exception ignored) {}
+            }
+
+            // ── Bilan du mois + historique 3 mois (burn rate) ──────
+            double inc = 0, exp = 0, hist3 = 0;
+            Calendar c = Calendar.getInstance();
+            for (TransactionsModels.Transaction t : txAll) {
+                if (t == null || !belongsToAccount(t, key, joint)) continue;
+                String cat = t.category != null ? t.category.toLowerCase(Locale.FRANCE) : "";
+                if (cat.equals("virements") || cat.equals("virement")) continue; // transferts internes
+                c.setTimeInMillis(t.dateMs);
+                boolean curMonth = c.get(Calendar.MONTH) == month && c.get(Calendar.YEAR) == year;
+                if (curMonth) {
+                    if ("income".equals(t.type)) inc += Math.abs(t.amount);
+                    else                          exp += Math.abs(t.amount);
+                }
+                // Historique dépenses des 3 mois précédents (mois complets) pour la moyenne
+                if (!"income".equals(t.type) && t.dateMs >= threeMonthsAgo && t.dateMs < startOfMonth) {
+                    hist3 += Math.abs(t.amount);
+                }
+            }
+
+            // ── Prélèvements à venir (SettingsCache, montant réel confirmé) ──
+            double charges = 0; int chargeCount = 0;
+            List<SettingsModels.FixedCharge> upcoming = new ArrayList<>();
+            if (state != null && state.charges != null) {
+                for (SettingsModels.FixedCharge fc : state.charges) {
+                    if (fc == null || !chargeBelongs(fc, key, joint)) continue;
+                    if (fc.dayOfMonth <= today) continue;
+                    String ccat = fc.category != null ? fc.category.toLowerCase(Locale.FRANCE) : "";
+                    if (ccat.contains("revenu") || ccat.contains("salaire") || ccat.contains("virement"))
+                        continue; // jamais un prélèvement
+                    double amt = fc.effectiveTypique();
+                    if (amt <= 0) continue;
+                    charges += amt; chargeCount++;
+                    upcoming.add(fc);
+                }
+            }
+
+            // ── Projection fin de mois ─────────────────────────────
+            // Moyenne quotidienne des dépenses sur ~3 mois × jours restants.
+            // L'historique inclut déjà les prélèvements récurrents, donc pas de
+            // double comptage : la projection reflète le rythme réel de dépense.
+            double dailyBurn  = hist3 / 90.0;
+            double projSpend  = dailyBurn * remainingDays;
+            double projection = Double.NaN;
+            if (!Double.isNaN(solde)) projection = solde - projSpend;
+
+            // ── Rendu ──────────────────────────────────────────────
+            if (!header) { sb.append("\n🏦 <b>Détail par compte</b>\n"); header = true; }
+            sb.append("\n").append(joint ? "🏠" : "👤").append(" <b>").append(esc(label)).append("</b>\n");
+            if (!Double.isNaN(solde)) {
+                sb.append("   💰 Solde : <b>").append(money(solde)).append("</b>\n");
+            }
+            double bal = inc - exp;
+            sb.append("   📊 Bilan : +").append(money(inc)).append(" / -").append(money(exp))
+              .append(" → <b>").append(bal >= 0 ? "+" : "").append(money(bal)).append("</b>")
+              .append(bal >= 0 ? " 🟢" : " 🔴").append("\n");
+            if (showCharges && chargeCount > 0) {
+                sb.append("   📋 Prélèv. à venir : <b>-").append(money(charges)).append("</b> (")
+                  .append(chargeCount).append(chargeCount > 1 ? " charges)\n" : " charge)\n");
+                Collections.sort(upcoming, (a, b) -> Integer.compare(a.dayOfMonth, b.dayOfMonth));
+                int n = Math.min(4, upcoming.size());
+                for (int i = 0; i < n; i++) {
+                    SettingsModels.FixedCharge fc = upcoming.get(i);
+                    sb.append("      · J").append(fc.dayOfMonth).append(" ")
+                      .append(esc(fc.name)).append(" -").append(money(fc.effectiveTypique())).append("\n");
+                }
+            }
+            if (showProj && !Double.isNaN(projection)) {
+                sb.append("   🔮 Projection fin de mois : <b>").append(money(projection)).append("</b>")
+                  .append(projection < 0 ? " ⚠️" : " ✅").append("\n");
+            }
+        }
+        if (header) sb.append(sep());
+    }
+
+    /** Vrai si la transaction appartient au compte demandé. */
+    private static boolean belongsToAccount(TransactionsModels.Transaction t, String key, boolean joint) {
+        boolean isJointTx = "joint".equalsIgnoreCase(t.compte);
+        if (joint) return isJointTx;
+        if (isJointTx) return false;
+        return t.person != null && key.equalsIgnoreCase(t.person.trim());
+    }
+
+    /** Vrai si la charge fixe est rattachée au compte demandé (via paidBy). */
+    private static boolean chargeBelongs(SettingsModels.FixedCharge fc, String key, boolean joint) {
+        String pb = fc.paidBy != null ? fc.paidBy.trim() : "";
+        boolean isJointCharge = pb.isEmpty()
+                || pb.equalsIgnoreCase("joint")
+                || pb.equalsIgnoreCase("Compte joint")
+                || pb.equalsIgnoreCase("commun");
+        if (joint) return isJointCharge;
+        return key.equalsIgnoreCase(pb);
+    }
+
+    private static long startOfMonthMillis(Calendar now) {
+        Calendar c = (Calendar) now.clone();
+        c.set(Calendar.DAY_OF_MONTH, 1);
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0);
+        c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
+    }
+
+    private static long threeMonthsAgoMillis(Calendar now) {
+        Calendar c = (Calendar) now.clone();
+        c.set(Calendar.DAY_OF_MONTH, 1);
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0);
+        c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0);
+        c.add(Calendar.MONTH, -3);
+        return c.getTimeInMillis();
+    }
 
     private static void appendBalances(Context ctx, StringBuilder sb) {
         List<String> selected = TelegramScheduler.getSelectedAccounts(ctx);
