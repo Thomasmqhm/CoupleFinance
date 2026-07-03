@@ -715,6 +715,25 @@ public final class BankAutoSyncManager {
     private static void rescheduleTomorrow(Context app) {
         if (isEnabled(app)) scheduleDaily(app);
     }
+
+    /**
+     * Rattrapage : si la synchro quotidienne est activée mais qu'aucune synchro
+     * n'a eu lieu depuis plus de ~20 h (app fermée plusieurs jours, alarme manquée
+     * en Doze, appareil éteint à l'heure prévue…), on lance une synchro immédiate.
+     * Ainsi les données sont toujours à jour à l'ouverture de l'app, en complément
+     * de l'alarme quotidienne exacte.
+     */
+    public static void runCatchUpIfDue(Context ctx) {
+        if (ctx == null || !isEnabled(ctx)) return;
+        long last = getLastSync(ctx);
+        long age  = System.currentTimeMillis() - last;
+        if (last == 0 || age > 20L * 60 * 60 * 1000) {
+            Log.d(TAG, "Rattrapage synchro (dernière il y a " + (age / 3600000L) + " h)");
+            try { runSync(ctx.getApplicationContext()); } catch (Exception e) {
+                Log.w(TAG, "runCatchUpIfDue", e);
+            }
+        }
+    }
     /** Vrai nom de l'utilisateur courant. Renvoie "" si inconnu (jamais "Moi"). */
     private static String currentUserName(Context ctx) {
         try {
